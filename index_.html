@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>足場・敷地計画ツール</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#f5f6f8;color:#1a1d27;font-family:system-ui,"Hiragino Sans","Yu Gothic",sans-serif;font-size:13px;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+header{height:48px;background:#fff;border-bottom:1px solid #d8dce3;display:flex;align-items:center;padding:0 10px;gap:6px;flex-shrink:0;z-index:100;}
+.logo{font-size:15px;font-weight:700;color:#0277bd;margin-right:10px;white-space:nowrap;}
+.h-btn{background:#eef1f6;border:1px solid #d8dce3;color:#1a1d27;padding:6px 10px;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap;}
+.h-btn:hover{background:#dde2ea;}
+.h-btn.primary{background:#0277bd;border-color:#0277bd;color:#fff;}
+.h-btn.primary:hover{background:#025d94;}
+.h-spacer{flex:1;}
+.dirty-dot{width:8px;height:8px;border-radius:50%;background:#d32f2f;margin-right:2px;display:none;}
+.dirty-dot.on{display:inline-block;}
+
+/* シートタブバー */
+.sheet-tabs{height:34px;background:#fff;border-bottom:1px solid #d8dce3;display:flex;align-items:center;gap:6px;padding:0 8px;flex-shrink:0;z-index:90;}
+.sheet-tabs-inner{display:flex;gap:4px;overflow-x:auto;flex:1;height:100%;align-items:center;}
+.sheet-tab{display:flex;align-items:center;gap:5px;padding:4px 8px;border-radius:6px;border:1px solid #d8dce3;background:#eef1f6;font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+.sheet-tab.on{background:#0277bd;color:#fff;border-color:#0277bd;}
+.sheet-tab .st-rename,.sheet-tab .st-del{opacity:.7;cursor:pointer;padding:0 1px;font-size:10px;}
+.sheet-tab .st-rename:hover,.sheet-tab .st-del:hover{opacity:1;}
+.st-add-btn{padding:4px 10px;border-radius:6px;border:1px dashed #8892a6;background:#fff;color:#5c6b8a;font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+.st-add-btn:hover{background:#f3f5f8;}
+
+.body{flex:1;display:flex;overflow:hidden;position:relative;}
+.canvas-wrap{flex:1;position:relative;overflow:hidden;background:#e9ebef;}
+#c{position:absolute;top:0;left:0;cursor:crosshair;background:#fff;}
+
+/* 左：ツールバー */
+.toolbar{position:absolute;left:8px;top:8px;background:#fff;border:1px solid #d8dce3;border-radius:10px;padding:6px;box-shadow:0 2px 10px rgba(0,0,0,.08);z-index:60;display:flex;flex-direction:column;gap:4px;width:96px;}
+.tbtn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 4px;border-radius:7px;border:1.5px solid #d8dce3;background:#eef1f6;cursor:pointer;font-size:10px;line-height:1.2;}
+.tbtn .ic{font-size:16px;}
+.tbtn.on{border-color:#0277bd;background:rgba(2,119,189,.1);color:#0277bd;}
+.tbtn:hover{background:#dde2ea;}
+.tb-div{height:1px;background:#d8dce3;margin:3px 2px;}
+
+/* 色パレット */
+.palette{position:absolute;left:112px;top:8px;background:#fff;border:1px solid #d8dce3;border-radius:10px;padding:6px;box-shadow:0 2px 10px rgba(0,0,0,.08);z-index:60;display:none;grid-template-columns:repeat(5,1fr);gap:4px;width:118px;}
+.palette.vis{display:grid;}
+.pswatch{width:20px;height:20px;border-radius:5px;cursor:pointer;border:2px solid transparent;}
+.pswatch.on{border-color:#1a1d27;}
+
+/* ステータス */
+.status{position:absolute;left:8px;bottom:8px;background:rgba(255,255,255,.94);border:1px solid #d8dce3;border-radius:6px;padding:5px 10px;font-size:11px;color:#5c6b8a;z-index:20;pointer-events:none;line-height:1.5;}
+.status b{color:#0277bd;}
+.status .warn{color:#d32f2f;font-weight:700;}
+
+/* 背景調整パネル */
+.bg-panel{position:absolute;right:276px;top:8px;background:#fff;border:1px solid #0277bd;border-radius:10px;padding:10px;z-index:200;display:none;box-shadow:0 4px 16px rgba(0,0,0,.18);width:190px;}
+.bg-panel.vis{display:block;}
+.bg-panel h4{font-size:11px;color:#0277bd;margin-bottom:6px;}
+.bg-panel label{font-size:10px;color:#5c6b8a;display:block;margin-top:6px;}
+.bg-panel input[type=range]{width:100%;}
+.bg-row{display:flex;gap:4px;margin-top:4px;}
+.bg-row button{flex:1;padding:4px;font-size:10px;border-radius:5px;border:1px solid #d8dce3;background:#eef1f6;cursor:pointer;}
+.bg-vis-btn{width:100%;margin-top:8px;padding:6px;background:rgba(2,119,189,.08);border:1px solid #0277bd;color:#0277bd;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;}
+.bg-close{width:100%;margin-top:6px;padding:5px;background:rgba(211,47,47,.08);border:1px solid #d32f2f;color:#d32f2f;border-radius:6px;cursor:pointer;font-size:11px;}
+
+/* 高さ入力ポップアップ */
+.pop{position:absolute;background:#fff;border:1px solid #0277bd;border-radius:10px;padding:12px;min-width:180px;z-index:300;box-shadow:0 4px 20px rgba(0,0,0,.22);display:none;}
+.pop.vis{display:block;}
+.pop-title{font-weight:700;color:#0277bd;margin-bottom:8px;font-size:12px;}
+.pop-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;}
+.pop-row label{color:#5c6b8a;font-size:11px;white-space:nowrap;}
+.pop-row .val{font-size:11px;font-weight:600;}
+.pop-row input[type=number]{width:80px;background:#eef1f6;border:1px solid #d8dce3;padding:4px 6px;border-radius:5px;font-size:12px;}
+.pop-row input[type=text]{width:120px;background:#eef1f6;border:1px solid #d8dce3;padding:4px 6px;border-radius:5px;font-size:12px;}
+.pop-note{font-size:9px;color:#8892a6;margin:2px 0 8px;line-height:1.4;}
+.pop-btns{display:flex;gap:6px;margin-top:6px;}
+.pop-btns button{flex:1;padding:6px;border-radius:6px;font-size:11px;cursor:pointer;}
+.pop-ok{background:#0277bd;border:1px solid #0277bd;color:#fff;}
+.pop-cancel{background:#eef1f6;border:1px solid #d8dce3;color:#1a1d27;}
+
+/* 右：アノテーションリスト（ドラッグ可能） */
+.drawer{position:absolute;width:260px;background:#fff;border:1px solid #d8dce3;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:80;display:flex;flex-direction:column;max-height:calc(100% - 20px);}
+.drawer.hidden{display:none;}
+.dr-head{background:#0277bd;color:#fff;padding:8px 10px;border-radius:9px 9px 0 0;cursor:move;display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:700;user-select:none;}
+.dr-head .close{cursor:pointer;font-size:14px;opacity:.9;}
+.dr-body{overflow-y:auto;padding:8px;flex:1;}
+.dgroup{margin-bottom:10px;}
+.dgroup-h{font-size:11px;font-weight:700;color:#0277bd;border-bottom:1.5px solid #d8dce3;padding-bottom:3px;margin-bottom:5px;display:flex;justify-content:space-between;}
+.ditem{display:flex;align-items:center;gap:6px;padding:5px 4px;border-radius:6px;font-size:10.5px;cursor:pointer;border:1px solid transparent;}
+.ditem:hover{background:#f3f5f8;}
+.ditem.sel{border-color:#0277bd;background:rgba(2,119,189,.07);}
+.ditem .sw{width:14px;height:14px;border-radius:4px;flex-shrink:0;border:1px solid rgba(0,0,0,.15);}
+.ditem .info{flex:1;line-height:1.35;}
+.ditem .info .l1{font-weight:600;}
+.ditem .info .l2{color:#5c6b8a;font-size:9.5px;}
+.ditem .del{color:#d32f2f;font-size:13px;cursor:pointer;padding:2px 4px;}
+.dgroup-total{font-size:9.5px;color:#5c6b8a;text-align:right;margin-top:2px;}
+.dr-empty{color:#8892a6;font-size:11px;text-align:center;padding:20px 4px;}
+.show-drawer-btn{position:absolute;right:8px;top:8px;background:#fff;border:1px solid #d8dce3;border-radius:8px;padding:7px 12px;font-size:11px;cursor:pointer;z-index:80;box-shadow:0 2px 8px rgba(0,0,0,.1);display:none;}
+.show-drawer-btn.vis{display:block;}
+
+/* トースト */
+.toast{position:fixed;top:56px;left:50%;transform:translateX(-50%);background:#1a1d27;color:#f5f6f8;padding:6px 16px;border-radius:20px;font-size:12px;z-index:900;opacity:0;transition:opacity .3s;pointer-events:none;}
+.toast.show{opacity:1;}
+#loadPdfInput,#loadJsonInput{display:none;}
+
+/* 出力範囲確認モーダル */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:none;align-items:center;justify-content:center;}
+.modal-overlay.vis{display:flex;}
+.modal-box{background:#fff;border-radius:12px;padding:16px;width:min(720px,94vw);max-height:92vh;overflow:auto;box-shadow:0 8px 30px rgba(0,0,0,.3);}
+.modal-box h3{color:#0277bd;margin-bottom:4px;font-size:14px;}
+.modal-sub{font-size:10.5px;color:#5c6b8a;margin-bottom:10px;}
+.export-preview-wrap{border:1px solid #d8dce3;background:#dfe3ea;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:6px;}
+#exportPreviewCanvas{display:block;cursor:move;}
+.export-controls{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap;font-size:11px;color:#3a4256;}
+.export-controls input[type=number]{width:64px;background:#eef1f6;border:1px solid #d8dce3;padding:4px 6px;border-radius:5px;font-size:12px;}
+
+/* 保存確認モーダル（アプリ内“閉じる/新規”操作向け） */
+.confirm-box{background:#fff;border-radius:12px;padding:18px;width:min(360px,92vw);box-shadow:0 8px 30px rgba(0,0,0,.3);}
+.confirm-box p{font-size:12.5px;color:#3a4256;line-height:1.6;margin-bottom:14px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">足場・敷地計画ツール</div>
+  <span class="dirty-dot" id="dirtyDot" title="未保存の変更があります"></span>
+  <button class="h-btn" onclick="triggerLoadPdf()">📄 PDF/画像 取込</button>
+  <button class="h-btn" id="bgToggleHeaderBtn" onclick="toggleBgPanel()" style="display:none;">🖼️ 背景調整</button>
+  <button class="h-btn" onclick="triggerLoadJson()">開く</button>
+  <button class="h-btn" onclick="saveJson()">保存</button>
+  <div class="h-spacer"></div>
+  <button class="h-btn" onclick="exportExcel()">Excel出力</button>
+  <button class="h-btn primary" onclick="exportPdf()">PDF出力</button>
+</header>
+
+<div class="sheet-tabs">
+  <div class="sheet-tabs-inner" id="sheetTabsInner"></div>
+  <button class="st-add-btn" onclick="addSheet()">＋ シート追加</button>
+</div>
+
+<div class="body">
+  <div class="canvas-wrap" id="wrap">
+    <canvas id="c"></canvas>
+
+    <div class="toolbar" id="toolbar">
+      <div class="tbtn on" data-tool="select" onclick="setTool('select')"><span class="ic">🖱️</span>選択/移動</div>
+      <div class="tbtn" data-tool="ruler" onclick="setTool('ruler')"><span class="ic">📏</span>物差し校正</div>
+      <div class="tb-div"></div>
+      <div class="tbtn" data-tool="suspended" onclick="setTool('suspended')"><span class="ic">🟦</span>吊り足場</div>
+      <div class="tbtn" data-tool="frame" onclick="setTool('frame')"><span class="ic">🟩</span>組足場</div>
+      <div class="tbtn" data-tool="cantilever" onclick="setTool('cantilever')"><span class="ic">🟧</span>張出足場</div>
+      <div class="tbtn" data-tool="interior" onclick="setTool('interior')"><span class="ic">🟪</span>内部足場</div>
+      <div class="tbtn" data-tool="site" onclick="setTool('site')"><span class="ic">⬜</span>敷地</div>
+      <div class="tb-div"></div>
+      <div class="tbtn" onclick="zoomStep(1.25)"><span class="ic">➕</span>拡大</div>
+      <div class="tbtn" onclick="zoomStep(0.8)"><span class="ic">➖</span>縮小</div>
+    </div>
+
+    <div class="palette" id="palette"></div>
+
+    <div class="status" id="status"></div>
+
+    <div class="bg-panel" id="bgPanel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+        <h4 style="margin-bottom:0;">背景（読込画像）の調整</h4>
+        <span style="cursor:pointer;color:#5c6b8a;font-size:14px;padding:0 2px;" onclick="toggleBgPanel()">✕</span>
+      </div>
+      <label>濃さ</label>
+      <input type="range" id="bgOpacitySlider" min="10" max="100" value="45" oninput="setBgOpacity(this.value)">
+      <label>手動サイズ（校正前の目安合わせ用）</label>
+      <div class="bg-row">
+        <button onclick="scaleBg(0.98)">－ 縮小</button>
+        <button onclick="scaleBg(1.02)">＋ 拡大</button>
+      </div>
+      <label>回転</label>
+      <div class="bg-row">
+        <button onclick="rotateBg(-1)">↺ 微回転</button>
+        <button onclick="rotateBg(1)">↻ 微回転</button>
+      </div>
+      <div class="bg-row">
+        <button onclick="rotateBg(-90)">↺ 90°</button>
+        <button onclick="rotateBg(90)">↻ 90°</button>
+      </div>
+      <button class="bg-vis-btn" id="bgVisBtn" onclick="toggleBgVisible()">🙈 背景を非表示にする</button>
+      <button class="bg-close" onclick="removeBg()">背景を削除（元に戻せません）</button>
+    </div>
+
+    <div class="pop" id="heightPop">
+      <div class="pop-title">高さ（座）を入力</div>
+      <div class="pop-row"><label>布方向</label><span class="val" id="popNuno"></span></div>
+      <div class="pop-row"><label>桁方向</label><span class="val" id="popKeta"></span></div>
+      <div class="pop-row"><label>高さ(座) m</label><input type="number" id="popHeight" step="0.5" min="0.5" value="2.0"></div>
+      <div class="pop-note">数量計算は「座高さ＋1m」を採用高さとして (布+桁)×2×採用高さ で算出します。</div>
+      <div class="pop-btns">
+        <button class="pop-cancel" onclick="cancelHeightPop()">取消</button>
+        <button class="pop-ok" onclick="confirmHeightPop()">OK</button>
+      </div>
+    </div>
+
+    <div class="pop" id="editPop">
+      <div class="pop-title" id="editTitle">編集</div>
+      <div class="pop-row"><label>名称</label><input type="text" id="editName" placeholder="任意（例：北面）"></div>
+      <div class="pop-row"><label>布方向 m</label><input type="number" id="editNuno" step="0.5" min="0.5" style="width:80px;"></div>
+      <div class="pop-row"><label>桁方向 m</label><input type="number" id="editKeta" step="0.5" min="0.5" style="width:80px;"></div>
+      <div class="pop-row" id="editHeightRow"><label>高さ(座) m</label><input type="number" id="editHeight" step="0.5" min="0.5"></div>
+      <div class="pop-row"><label>色</label></div>
+      <div class="palette vis" id="editPalette" style="position:static;box-shadow:none;border:none;padding:0;margin-bottom:8px;"></div>
+      <div class="pop-btns">
+        <button class="pop-cancel" onclick="deleteSelected()" style="background:rgba(211,47,47,.08);border-color:#d32f2f;color:#d32f2f;">削除</button>
+        <button class="pop-ok" onclick="applyEditPop()">適用して閉じる</button>
+      </div>
+    </div>
+
+    <div class="drawer" id="drawer" style="right:8px;top:8px;">
+      <div class="dr-head" id="drHead">
+        <span>足場・敷地 一覧</span>
+        <span class="close" onclick="toggleDrawer(false)">✕</span>
+      </div>
+      <div class="dr-body" id="drBody"></div>
+    </div>
+    <button class="show-drawer-btn" id="showDrawerBtn" onclick="toggleDrawer(true)">📋 一覧を表示</button>
+  </div>
+</div>
+
+<!-- 出力範囲確認モーダル -->
+<div class="modal-overlay" id="exportModal">
+  <div class="modal-box">
+    <h3 id="exportModalTitle">出力範囲の確認</h3>
+    <div class="modal-sub">赤枠が出力される範囲です。枠をドラッグして位置を調整できます。「余白」を変えると図形全体を囲む枠を再計算します。</div>
+    <div class="export-preview-wrap">
+      <canvas id="exportPreviewCanvas"></canvas>
+    </div>
+    <div class="export-controls">
+      <label>余白(m): <input type="number" id="exportMargin" value="2" min="0" step="0.5" oninput="resetExportRangeToShapes()"></label>
+      <label>幅(m): <input type="number" id="exportRangeW" min="1" step="0.5" onchange="applyExportRangeInputs()"></label>
+      <label>高さ(m): <input type="number" id="exportRangeH" min="1" step="0.5" onchange="applyExportRangeInputs()"></label>
+      <button class="h-btn" onclick="resetExportRangeToAll()">表示範囲全体にする</button>
+      <button class="h-btn" onclick="resetExportRangeToShapes()">図形＋余白に戻す</button>
+    </div>
+    <div class="pop-btns" style="margin-top:14px;">
+      <button class="pop-cancel" onclick="closeExportModal()">キャンセル</button>
+      <button class="pop-ok" onclick="confirmExportRange()">この範囲で出力する</button>
+    </div>
+  </div>
+</div>
+
+<!-- 未保存確認モーダル（アプリ内操作用） -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="confirm-box">
+    <h3 style="color:#0277bd;font-size:13px;margin-bottom:8px;" id="confirmTitle">確認</h3>
+    <p id="confirmMsg">保存されていない変更があります。続けますか？</p>
+    <div class="pop-btns">
+      <button class="pop-cancel" onclick="confirmModalCancel()">キャンセル</button>
+      <button class="pop-ok" onclick="confirmModalOk()" style="background:#d32f2f;border-color:#d32f2f;">保存せずに続ける</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="loadPdfInput" accept="application/pdf,image/*" onchange="handleLoadPdf(event)">
+<input type="file" id="loadJsonInput" accept="application/json" onchange="handleLoadJson(event)">
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+var PX_PER_M = 60;
+var COLORS = ['#e53935','#fb8c00','#fdd835','#7cb342','#43a047','#00acc1','#1e88e5','#3949ab','#8e24aa','#6d4c41'];
+var TYPE_INFO = {
+  suspended:{label:'吊り足場', abbr:'吊', color:'#1e88e5', pop:true},
+  frame:{label:'組足場', abbr:'組', color:'#43a047', pop:true},
+  cantilever:{label:'張出足場', abbr:'張', color:'#fb8c00', pop:true},
+  interior:{label:'内部足場', abbr:'内', color:'#8e24aa', pop:true},
+  site:{label:'敷地', abbr:'敷', color:'#757575', pop:false}
+};
+var TYPE_ORDER = ['suspended','frame','cantilever','interior','site'];
+
+var canvas = document.getElementById('c'), ctx = canvas.getContext('2d');
+
+/* S = 現在アクティブなシートの作業用データ。S.sheets が全シートの配列。 */
+var S = {
+  px:0, py:0, zoom:1,
+  bg:null, // {img,wx,wy,baseW,baseH,scale,opacity,angle,hidden}
+  calibrated:false,
+  tool:'select',
+  shapes:[],
+  counters:{suspended:0,frame:0,cantilever:0,interior:0,site:0},
+  drawing:null,
+  rulerP1:null, rulerPreview:null,
+  selectedId:null,
+  dragMoveId:null, dragOffset:null,
+  panning:false, panStart:null,
+  pendingShape:null,
+  currentColor:{suspended:'#1e88e5',frame:'#43a047',cantilever:'#fb8c00',interior:'#8e24aa',site:'#757575'},
+  sheets:[], currentSheetIndex:0,
+  dirty:false,
+  exportKind:null, exportRange:null
+};
+
+function w2s(wx,wy){ return {x:S.px+wx*PX_PER_M*S.zoom, y:S.py+wy*PX_PER_M*S.zoom}; }
+function s2w(sx,sy){ return {x:(sx-S.px)/(PX_PER_M*S.zoom), y:(sy-S.py)/(PX_PER_M*S.zoom)}; }
+function snap05(v){ return Math.round(v*2)/2; }
+function fmt(n){ return (Math.round(n*10)/10).toFixed(1); }
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function markDirty(){ S.dirty = true; updateDirtyDot(); }
+function updateDirtyDot(){ document.getElementById('dirtyDot').classList.toggle('on', !!S.dirty); }
+
+function resize(){
+  var wrap = document.getElementById('wrap');
+  canvas.width = wrap.clientWidth; canvas.height = wrap.clientHeight;
+  render();
+}
+window.addEventListener('resize', resize);
+
+/* ---------- レンダリング ---------- */
+function render(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawGrid();
+  if(S.bg) drawBg();
+  drawShapes();
+  drawDrawing();
+  drawRulerTemp();
+  updateStatus();
+}
+function drawGrid(){
+  var stepM = 1;
+  var gpx = stepM*PX_PER_M*S.zoom;
+  if(gpx<8){ stepM=5; gpx = stepM*PX_PER_M*S.zoom; }
+  ctx.strokeStyle = '#eef0f4'; ctx.lineWidth=1;
+  var ox = ((S.px%gpx)+gpx)%gpx, oy=((S.py%gpx)+gpx)%gpx;
+  ctx.beginPath();
+  for(var x=ox;x<canvas.width;x+=gpx){ ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); }
+  for(var y=oy;y<canvas.height;y+=gpx){ ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); }
+  ctx.stroke();
+  var o = w2s(0,0);
+  ctx.strokeStyle = '#dde1e8'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(o.x,0); ctx.lineTo(o.x,canvas.height); ctx.moveTo(0,o.y); ctx.lineTo(canvas.width,o.y); ctx.stroke();
+}
+function drawBg(){
+  var b = S.bg;
+  if(!b || b.hidden) return;
+  var wPx = b.baseW*b.scale*PX_PER_M*S.zoom, hPx = b.baseH*b.scale*PX_PER_M*S.zoom;
+  var c = w2s(b.wx,b.wy);
+  ctx.save();
+  ctx.globalAlpha = b.opacity;
+  ctx.translate(c.x,c.y);
+  ctx.rotate(b.angle*Math.PI/180);
+  ctx.drawImage(b.img, -wPx/2, -hPx/2, wPx, hPx);
+  ctx.restore();
+}
+function shapeRect(s){
+  var x0=Math.min(s.x,s.x+s.w), y0=Math.min(s.y,s.y+s.h), w=Math.abs(s.w), h=Math.abs(s.h);
+  return {x0:x0,y0:y0,w:w,h:h};
+}
+function drawShapes(){
+  S.shapes.forEach(function(s){
+    var r = shapeRect(s);
+    var p1 = w2s(r.x0,r.y0), p2 = w2s(r.x0+r.w,r.y0+r.h);
+    var x=p1.x,y=p1.y,w=p2.x-p1.x,h=p2.y-p1.y;
+    ctx.fillStyle = s.color; ctx.globalAlpha = 0.32;
+    ctx.fillRect(x,y,w,h);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = s.color; ctx.lineWidth = (s.id===S.selectedId)?3:2;
+    if(s.id===S.selectedId){ ctx.setLineDash([6,3]); } else { ctx.setLineDash([]); }
+    ctx.strokeRect(x,y,w,h);
+    ctx.setLineDash([]);
+    var info = TYPE_INFO[s.type];
+    ctx.fillStyle = '#1a1d27'; ctx.font='bold 12px system-ui'; ctx.textAlign='center';
+    var cx = x+w/2, cy=y+h/2;
+    if(Math.abs(w)>30 && Math.abs(h)>18){
+      ctx.fillText(info.abbr+'-'+s.number, cx, cy-4);
+      ctx.font='10px system-ui'; ctx.fillStyle='#3a4256';
+      var dimTxt = fmt(r.w)+'×'+fmt(r.h);
+      ctx.fillText(dimTxt, cx, cy+11);
+      if(s.name && Math.abs(h)>34){
+        ctx.font='9px system-ui'; ctx.fillStyle='#0277bd';
+        ctx.fillText(s.name, cx, cy+24);
+      }
+    }
+  });
+}
+function drawDrawing(){
+  if(!S.drawing) return;
+  var s=S.drawing, r=shapeRect(s);
+  var p1=w2s(r.x0,r.y0), p2=w2s(r.x0+r.w,r.y0+r.h);
+  ctx.fillStyle = s.color; ctx.globalAlpha=0.25; ctx.fillRect(p1.x,p1.y,p2.x-p1.x,p2.y-p1.y);
+  ctx.globalAlpha=1; ctx.strokeStyle=s.color; ctx.lineWidth=2; ctx.setLineDash([5,4]);
+  ctx.strokeRect(p1.x,p1.y,p2.x-p1.x,p2.y-p1.y); ctx.setLineDash([]);
+  ctx.fillStyle='#1a1d27'; ctx.font='bold 11px system-ui'; ctx.textAlign='center';
+  ctx.fillText(fmt(r.w)+'m × '+fmt(r.h)+'m', (p1.x+p2.x)/2, p1.y-6);
+}
+function drawRulerTemp(){
+  if(S.tool!=='ruler' || !S.rulerP1) return;
+  var p1 = w2s(S.rulerP1.x,S.rulerP1.y);
+  ctx.fillStyle='#d32f2f'; ctx.beginPath(); ctx.arc(p1.x,p1.y,4,0,7); ctx.fill();
+  if(S.rulerPreview){
+    var p2 = w2s(S.rulerPreview.x,S.rulerPreview.y);
+    ctx.strokeStyle='#d32f2f'; ctx.lineWidth=2; ctx.setLineDash([6,4]);
+    ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#d32f2f'; ctx.beginPath(); ctx.arc(p2.x,p2.y,4,0,7); ctx.fill();
+    var d = Math.hypot(S.rulerPreview.x-S.rulerP1.x, S.rulerPreview.y-S.rulerP1.y);
+    ctx.fillStyle='#1a1d27'; ctx.font='bold 11px system-ui'; ctx.textAlign='center';
+    ctx.fillText('約'+fmt(d)+'m（水平/垂直に固定）', (p1.x+p2.x)/2, (p1.y+p2.y)/2-8);
+  }
+}
+
+/* ---------- ステータス ---------- */
+function updateStatus(){
+  var el = document.getElementById('status');
+  var calText = S.calibrated ? '<b>校正済み ✓</b>' : '<span class="warn">未校正（実寸ズレの恐れ）</span>';
+  var sheetName = (S.sheets[S.currentSheetIndex]||{}).name || '';
+  el.innerHTML = 'シート: <b>'+escapeHtml(sheetName)+'</b> ｜ ツール: <b>'+toolLabel(S.tool)+'</b> ｜ 縮尺: '+calText+' ｜ 表示倍率 '+Math.round(S.zoom*100)+'%';
+}
+function toolLabel(t){
+  return {select:'選択/移動',ruler:'物差し校正',suspended:'吊り足場',frame:'組足場',cantilever:'張出足場',interior:'内部足場',site:'敷地'}[t]||t;
+}
+
+/* ---------- ツール切替 ---------- */
+function setTool(t){
+  S.tool=t; S.drawing=null; S.rulerP1=null; S.rulerPreview=null;
+  document.querySelectorAll('.tbtn[data-tool]').forEach(function(b){ b.classList.toggle('on', b.dataset.tool===t); });
+  var pal = document.getElementById('palette');
+  if(TYPE_INFO[t]){
+    refreshToolPalette();
+    pal.classList.add('vis');
+  } else {
+    pal.classList.remove('vis');
+  }
+  hidePops();
+  render();
+}
+function buildPalette(container, current, onPick){
+  container.innerHTML='';
+  COLORS.forEach(function(c){
+    var d=document.createElement('div');
+    d.className='pswatch'+(c===current?' on':'');
+    d.style.background=c;
+    d.onclick=function(){ onPick(c); };
+    container.appendChild(d);
+  });
+}
+function refreshToolPalette(){
+  var pal = document.getElementById('palette');
+  if(TYPE_INFO[S.tool]) buildPalette(pal, S.currentColor[S.tool], function(c){ S.currentColor[S.tool]=c; refreshToolPalette(); });
+}
+
+/* ---------- マウス/タッチ操作 ---------- */
+canvas.addEventListener('mousedown', function(e){
+  var pos = {x:e.offsetX,y:e.offsetY};
+  if(e.button===1 || (e.button===0 && e.shiftKey)){ S.panning=true; S.panStart={x:pos.x-S.px,y:pos.y-S.py}; return; }
+  var w = s2w(pos.x,pos.y);
+
+  if(S.tool==='select'){
+    var hit = hitTest(w.x,w.y);
+    if(hit){
+      selectShape(hit.id);
+      S.dragMoveId = hit.id;
+      S.dragOffset = {x:w.x-hit.x, y:w.y-hit.y};
+    } else {
+      selectShape(null);
+      S.panning=true; S.panStart={x:pos.x-S.px,y:pos.y-S.py};
+    }
+    render();
+    return;
+  }
+  if(S.tool==='ruler'){
+    if(!S.rulerP1){ S.rulerP1 = w; S.rulerPreview=null; render(); }
+    else {
+      var w2 = rulerConstrain(w);
+      var d = Math.hypot(w2.x-S.rulerP1.x, w2.y-S.rulerP1.y);
+      var real = prompt('この2点間の実際の距離は何mですか？（現在表示上は約'+fmt(d)+'m）','');
+      S.rulerP1=null; S.rulerPreview=null;
+      if(real!==null && real!=='' && !isNaN(parseFloat(real)) && parseFloat(real)>0 && S.bg){
+        var factor = parseFloat(real)/d;
+        S.bg.scale *= factor;
+        S.calibrated = true;
+        markDirty();
+        showToast('校正しました（1m = '+Math.round(PX_PER_M*S.zoom)+'px 基準／背景を'+fmt(factor)+'倍調整）');
+      } else if(real!==null && real!==''){
+        showToast('背景画像が読み込まれていないため校正できません');
+      }
+      render();
+    }
+    return;
+  }
+  if(TYPE_INFO[S.tool]){
+    S.drawing = {type:S.tool, x:w.x, y:w.y, w:0, h:0, color:S.currentColor[S.tool]};
+    return;
+  }
+});
+canvas.addEventListener('mousemove', function(e){
+  var pos = {x:e.offsetX,y:e.offsetY};
+  if(S.panning){ S.px=pos.x-S.panStart.x; S.py=pos.y-S.panStart.y; render(); return; }
+  var w = s2w(pos.x,pos.y);
+  if(S.dragMoveId!==null){
+    var s = S.shapes.find(function(sh){return sh.id===S.dragMoveId;});
+    if(s){ s.x = snap05(w.x-S.dragOffset.x); s.y = snap05(w.y-S.dragOffset.y); render(); }
+    return;
+  }
+  if(S.drawing){
+    S.drawing.w = snap05(w.x-S.drawing.x);
+    S.drawing.h = snap05(w.y-S.drawing.y);
+    render();
+  }
+  if(S.tool==='ruler' && S.rulerP1){
+    S.rulerPreview = rulerConstrain(w);
+    render();
+  }
+});
+window.addEventListener('mouseup', function(e){
+  S.panning=false;
+  if(S.dragMoveId!==null){ S.dragMoveId=null; S.dragOffset=null; markDirty(); return; }
+  if(S.drawing){
+    var s = S.drawing; S.drawing=null;
+    var r = shapeRect(s);
+    if(r.w<0.5 || r.h<0.5){ render(); return; }
+    var info = TYPE_INFO[s.type];
+    S.counters[s.type]++;
+    var newShape = {
+      id: 'sh'+Date.now()+Math.floor(Math.random()*1000),
+      type: s.type, x:r.x0, y:r.y0, w:r.w, h:r.h,
+      color: s.color, number: S.counters[s.type], name:'',
+      height:null, calcHeight:null, qty:null
+    };
+    if(info.pop){
+      S.pendingShape = newShape;
+      openHeightPop(newShape, e.offsetX, e.offsetY);
+    } else {
+      newShape.qty = r.w*r.h;
+      S.shapes.push(newShape);
+      markDirty();
+      selectShape(newShape.id);
+      render();
+      refreshDrawer();
+    }
+  }
+});
+canvas.addEventListener('wheel', function(e){
+  e.preventDefault();
+  var factor = e.deltaY<0 ? 1.1 : 0.9;
+  var pos={x:e.offsetX,y:e.offsetY};
+  var before = s2w(pos.x,pos.y);
+  S.zoom = Math.max(0.1, Math.min(8, S.zoom*factor));
+  var after = w2s(before.x,before.y);
+  S.px += pos.x-after.x; S.py += pos.y-after.y;
+  render();
+},{passive:false});
+
+function rulerConstrain(w){
+  if(!S.rulerP1) return w;
+  var dx = w.x-S.rulerP1.x, dy = w.y-S.rulerP1.y;
+  if(Math.abs(dx) >= Math.abs(dy)) return {x:w.x, y:S.rulerP1.y};
+  return {x:S.rulerP1.x, y:w.y};
+}
+function hitTest(wx,wy){
+  for(var i=S.shapes.length-1;i>=0;i--){
+    var s=S.shapes[i], r=shapeRect(s);
+    if(wx>=r.x0 && wx<=r.x0+r.w && wy>=r.y0 && wy<=r.y0+r.h) return s;
+  }
+  return null;
+}
+function zoomStep(f){
+  var cx=canvas.width/2, cy=canvas.height/2;
+  var before = s2w(cx,cy);
+  S.zoom = Math.max(0.1, Math.min(8, S.zoom*f));
+  var after = w2s(before.x,before.y);
+  S.px += cx-after.x; S.py += cy-after.y;
+  render();
+}
+
+/* ---------- 高さ入力ポップアップ ---------- */
+function openHeightPop(shape, sx, sy){
+  var r = shapeRect(shape);
+  document.getElementById('popNuno').textContent = fmt(r.h)+' m';
+  document.getElementById('popKeta').textContent = fmt(r.w)+' m';
+  document.getElementById('popHeight').value = 2.0;
+  var pop = document.getElementById('heightPop');
+  pop.classList.add('vis');
+  var wrap = document.getElementById('wrap');
+  var px = Math.min(sx+10, wrap.clientWidth-200), py = Math.min(sy+10, wrap.clientHeight-200);
+  pop.style.left = px+'px'; pop.style.top = py+'px';
+  setTimeout(function(){ document.getElementById('popHeight').focus(); },50);
+}
+function confirmHeightPop(){
+  var h = parseFloat(document.getElementById('popHeight').value);
+  if(isNaN(h) || h<=0){ showToast('高さを正しく入力してください'); return; }
+  var s = S.pendingShape;
+  var r = shapeRect(s);
+  s.height = h;
+  s.calcHeight = h+1;
+  s.qty = (r.w+r.h)*2*s.calcHeight;
+  S.shapes.push(s);
+  S.pendingShape=null;
+  markDirty();
+  document.getElementById('heightPop').classList.remove('vis');
+  selectShape(s.id);
+  render();
+  refreshDrawer();
+  showToast('登録しました（数量 '+fmt(s.qty)+' m²）続けて名称や色を編集できます');
+}
+function cancelHeightPop(){
+  if(S.pendingShape){ S.counters[S.pendingShape.type]--; }
+  S.pendingShape=null;
+  document.getElementById('heightPop').classList.remove('vis');
+  render();
+}
+function hidePops(){
+  document.getElementById('heightPop').classList.remove('vis');
+  document.getElementById('editPop').classList.remove('vis');
+}
+
+/* ---------- 選択・編集ポップアップ ---------- */
+function selectShape(id){
+  S.selectedId = id;
+  refreshDrawer();
+  document.getElementById('editPop').classList.remove('vis');
+  if(id){
+    var s = S.shapes.find(function(x){return x.id===id;});
+    if(s) openEditPop(s);
+  }
+}
+function openEditPop(s){
+  var info = TYPE_INFO[s.type];
+  document.getElementById('editTitle').textContent = info.label+' #'+s.number+' の編集';
+  document.getElementById('editName').value = s.name||'';
+  document.getElementById('editNuno').value = s.h;
+  document.getElementById('editKeta').value = s.w;
+  var hrow = document.getElementById('editHeightRow');
+  if(info.pop){
+    hrow.style.display='flex';
+    document.getElementById('editHeight').value = s.height;
+  } else {
+    hrow.style.display='none';
+  }
+  var pal = document.getElementById('editPalette');
+  function pickEditColor(c){
+    s.color = c; markDirty(); render(); refreshDrawer();
+    buildPalette(pal, c, pickEditColor);
+  }
+  buildPalette(pal, s.color, pickEditColor);
+  var pop = document.getElementById('editPop');
+  var r = shapeRect(s);
+  var c = w2s(r.x0+r.w/2, r.y0);
+  var wrap = document.getElementById('wrap');
+  pop.classList.add('vis');
+  pop.style.left = Math.min(Math.max(8,c.x-90), wrap.clientWidth-210)+'px';
+  pop.style.top = Math.min(Math.max(8,c.y-8), wrap.clientHeight-300)+'px';
+  setTimeout(function(){ document.getElementById('editName').focus(); },50);
+}
+function applyEditPop(){
+  var s = S.shapes.find(function(x){return x.id===S.selectedId;});
+  if(s){
+    s.name = document.getElementById('editName').value.trim();
+    var nuno = parseFloat(document.getElementById('editNuno').value);
+    var keta = parseFloat(document.getElementById('editKeta').value);
+    if(!isNaN(nuno) && nuno>0) s.h = snap05(nuno);
+    if(!isNaN(keta) && keta>0) s.w = snap05(keta);
+    if(TYPE_INFO[s.type].pop){
+      var h = parseFloat(document.getElementById('editHeight').value);
+      if(!isNaN(h) && h>0){ s.height=h; s.calcHeight=h+1; }
+      s.qty = (s.w+s.h)*2*s.calcHeight;
+    } else {
+      s.qty = s.w*s.h;
+    }
+    markDirty();
+  }
+  document.getElementById('editPop').classList.remove('vis');
+  render(); refreshDrawer();
+}
+function deleteSelected(){
+  S.shapes = S.shapes.filter(function(s){return s.id!==S.selectedId;});
+  S.selectedId=null;
+  markDirty();
+  document.getElementById('editPop').classList.remove('vis');
+  render(); refreshDrawer();
+}
+
+/* ---------- 右側アノテーション一覧 ---------- */
+function refreshDrawer(){
+  var body = document.getElementById('drBody');
+  body.innerHTML='';
+  if(S.shapes.length===0){
+    body.innerHTML = '<div class="dr-empty">まだ足場・敷地がありません。<br>左のツールバーから作図してください。</div>';
+    return;
+  }
+  TYPE_ORDER.forEach(function(type){
+    var items = S.shapes.filter(function(s){return s.type===type;});
+    if(!items.length) return;
+    var info = TYPE_INFO[type];
+    var g = document.createElement('div'); g.className='dgroup';
+    var h = document.createElement('div'); h.className='dgroup-h';
+    h.innerHTML = '<span>'+info.label+'（'+items.length+'）</span>';
+    g.appendChild(h);
+    var total=0;
+    items.forEach(function(s){
+      total += s.qty||0;
+      var it = document.createElement('div'); it.className='ditem'+(s.id===S.selectedId?' sel':'');
+      var line1 = info.abbr+'-'+s.number+(s.name?('　'+escapeHtml(s.name)):'');
+      var line2 = fmt(s.w)+'×'+fmt(s.h)+'m';
+      if(info.pop) line2 += ' ／ 座H'+fmt(s.height)+'m(採用'+fmt(s.calcHeight)+'m) ／ '+fmt(s.qty)+'m²';
+      else line2 += ' ／ 面積'+fmt(s.qty)+'m²';
+      it.innerHTML = '<div class="sw" style="background:'+s.color+'"></div>'+
+        '<div class="info"><div class="l1">'+line1+'</div><div class="l2">'+line2+'</div></div>'+
+        '<div class="del" data-id="'+s.id+'">✕</div>';
+      it.addEventListener('click', function(ev){
+        if(ev.target.classList.contains('del')){
+          S.shapes = S.shapes.filter(function(x){return x.id!==s.id;});
+          if(S.selectedId===s.id) S.selectedId=null;
+          markDirty();
+          render(); refreshDrawer();
+          return;
+        }
+        selectShape(s.id);
+        centerOnShape(s);
+        render();
+      });
+      g.appendChild(it);
+    });
+    var tot = document.createElement('div'); tot.className='dgroup-total';
+    tot.textContent = '小計: '+fmt(total)+' m²';
+    g.appendChild(tot);
+    body.appendChild(g);
+  });
+}
+function centerOnShape(s){
+  var r = shapeRect(s);
+  var cx = r.x0+r.w/2, cy=r.y0+r.h/2;
+  S.px = canvas.width/2 - cx*PX_PER_M*S.zoom;
+  S.py = canvas.height/2 - cy*PX_PER_M*S.zoom;
+}
+
+/* ---------- ドロワーの表示/非表示・ドラッグ移動 ---------- */
+function toggleDrawer(show){
+  var d = document.getElementById('drawer');
+  var btn = document.getElementById('showDrawerBtn');
+  d.classList.toggle('hidden', !show);
+  btn.classList.toggle('vis', !show);
+}
+(function(){
+  var head = document.getElementById('drHead'), drawer = document.getElementById('drawer');
+  var dragging=false, offX=0, offY=0;
+  head.addEventListener('mousedown', function(e){
+    dragging=true;
+    var rect = drawer.getBoundingClientRect();
+    offX = e.clientX-rect.left; offY = e.clientY-rect.top;
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', function(e){
+    if(!dragging) return;
+    var wrap = document.getElementById('wrap').getBoundingClientRect();
+    var left = e.clientX-wrap.left-offX, top = e.clientY-wrap.top-offY;
+    left = Math.max(0, Math.min(left, wrap.width-drawer.offsetWidth));
+    top = Math.max(0, Math.min(top, wrap.height-drawer.offsetHeight));
+    drawer.style.left = left+'px'; drawer.style.top = top+'px'; drawer.style.right='auto';
+  });
+  window.addEventListener('mouseup', function(){ dragging=false; });
+})();
+
+/* ---------- トースト ---------- */
+var toastTimer=null;
+function showToast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2400);
+}
+
+/* ================= シート機能 ================= */
+function newSheetObj(name){
+  return {
+    id:'sheet'+Date.now()+Math.floor(Math.random()*10000),
+    name:name||('シート'+(S.sheets.length+1)),
+    bg:null, calibrated:false, shapes:[],
+    counters:{suspended:0,frame:0,cantilever:0,interior:0,site:0},
+    px:0, py:0, zoom:1
+  };
+}
+function syncCurrentToSheets(){
+  var sh = S.sheets[S.currentSheetIndex];
+  if(!sh) return;
+  sh.bg=S.bg; sh.calibrated=S.calibrated; sh.shapes=S.shapes; sh.counters=S.counters;
+  sh.px=S.px; sh.py=S.py; sh.zoom=S.zoom;
+}
+function loadFromSheet(idx){
+  var sh = S.sheets[idx];
+  S.bg=sh.bg; S.calibrated=sh.calibrated; S.shapes=sh.shapes; S.counters=sh.counters;
+  S.px=sh.px; S.py=sh.py; S.zoom=sh.zoom;
+  S.selectedId=null; S.drawing=null; S.rulerP1=null; S.rulerPreview=null; S.pendingShape=null;
+  S.currentSheetIndex=idx;
+}
+function switchSheet(idx){
+  if(idx===S.currentSheetIndex) return;
+  syncCurrentToSheets();
+  loadFromSheet(idx);
+  hidePops();
+  updateBgPanelState();
+  setTool('select');
+  renderSheetTabs();
+  render();
+  refreshDrawer();
+}
+function addSheet(){
+  syncCurrentToSheets();
+  var sh = newSheetObj();
+  S.sheets.push(sh);
+  loadFromSheet(S.sheets.length-1);
+  S.px = canvas.width/2; S.py = canvas.height/2;
+  markDirty();
+  updateBgPanelState();
+  setTool('select');
+  renderSheetTabs();
+  render();
+  refreshDrawer();
+  showToast('新しいシート「'+sh.name+'」を追加しました');
+}
+function renameSheet(idx){
+  var sh = S.sheets[idx];
+  var name = prompt('シート名を入力してください', sh.name);
+  if(name!==null && name.trim()!==''){
+    sh.name = name.trim();
+    markDirty();
+    renderSheetTabs();
+    if(idx===S.currentSheetIndex) updateStatus();
+  }
+}
+function deleteSheet(idx){
+  if(S.sheets.length<=1){ showToast('最後のシートは削除できません'); return; }
+  if(!confirm('シート「'+S.sheets[idx].name+'」を削除します。よろしいですか？（元に戻せません）')) return;
+  syncCurrentToSheets();
+  S.sheets.splice(idx,1);
+  var newIdx = Math.min(idx, S.sheets.length-1);
+  loadFromSheet(newIdx);
+  markDirty();
+  updateBgPanelState();
+  renderSheetTabs();
+  render();
+  refreshDrawer();
+}
+function renderSheetTabs(){
+  var bar = document.getElementById('sheetTabsInner');
+  bar.innerHTML='';
+  S.sheets.forEach(function(sh, i){
+    var tab = document.createElement('div');
+    tab.className = 'sheet-tab'+(i===S.currentSheetIndex?' on':'');
+    var nameSpan = document.createElement('span');
+    nameSpan.textContent = sh.name;
+    nameSpan.addEventListener('click', function(){ switchSheet(i); });
+    tab.appendChild(nameSpan);
+    var renameSpan = document.createElement('span');
+    renameSpan.className='st-rename'; renameSpan.textContent='✎'; renameSpan.title='名称変更';
+    renameSpan.addEventListener('click', function(ev){ ev.stopPropagation(); renameSheet(i); });
+    tab.appendChild(renameSpan);
+    if(S.sheets.length>1){
+      var delSpan = document.createElement('span');
+      delSpan.className='st-del'; delSpan.textContent='✕'; delSpan.title='シート削除';
+      delSpan.addEventListener('click', function(ev){ ev.stopPropagation(); deleteSheet(i); });
+      tab.appendChild(delSpan);
+    }
+    bar.appendChild(tab);
+  });
+}
+
+/* ---------- 背景（PDF/画像）読込 ---------- */
+function triggerLoadPdf(){ document.getElementById('loadPdfInput').value=''; document.getElementById('loadPdfInput').click(); }
+function handleLoadPdf(evt){
+  var file = evt.target.files && evt.target.files[0];
+  if(!file) return;
+  if(file.type && file.type.indexOf('image/')===0){ loadImageToBg(file); return; }
+  showToast('PDFを読み込んでいます…');
+  var reader = new FileReader();
+  reader.onload = function(e){
+    pdfjsLib.getDocument({data:e.target.result}).promise.then(function(pdf){
+      if(pdf.numPages>1){
+        var input = prompt('取り込むページを指定してください（例: 1 ／ 1,3 ／ 1-3 ／ all）全'+pdf.numPages+'ページ中\n複数ページを指定すると、ページごとに別シートへ取り込みます。', 'all');
+        if(input===null) return;
+        var pages = parsePageSpec(input, pdf.numPages);
+        if(!pages.length){ showToast('ページ指定が正しくありません'); return; }
+        if(pages.length===1){
+          if(S.bg && !confirm('現在のシートには既に背景があります。上書きしますか？')) return;
+          renderPdfPage(pdf, pages[0]);
+        } else {
+          importPdfPagesAsSheets(pdf, pages, file.name);
+        }
+      } else {
+        if(S.bg && !confirm('現在のシートには既に背景があります。上書きしますか？')) return;
+        renderPdfPage(pdf,1);
+      }
+    }).catch(function(){ showToast('PDFの読み込みに失敗しました'); });
+  };
+  reader.readAsArrayBuffer(file);
+}
+function parsePageSpec(str, maxN){
+  var set = {};
+  str = (str||'').trim().toLowerCase();
+  if(str==='all' || str===''){
+    for(var i=1;i<=maxN;i++) set[i]=true;
+    return Object.keys(set).map(Number).sort(function(a,b){return a-b;});
+  }
+  str.split(',').forEach(function(part){
+    part=part.trim(); if(!part) return;
+    if(part.indexOf('-')>=0){
+      var pr = part.split('-'); var a=parseInt(pr[0],10), b=parseInt(pr[1],10);
+      if(!isNaN(a)&&!isNaN(b)){ for(var i=Math.min(a,b);i<=Math.max(a,b);i++){ if(i>=1&&i<=maxN) set[i]=true; } }
+    } else {
+      var n=parseInt(part,10);
+      if(!isNaN(n) && n>=1 && n<=maxN) set[n]=true;
+    }
+  });
+  return Object.keys(set).map(Number).sort(function(a,b){return a-b;});
+}
+function importPdfPagesAsSheets(pdf, pages, fileName){
+  showToast(pages.length+'ページを個別シートへ取り込んでいます…');
+  var baseName = fileName ? fileName.replace(/\.pdf$/i,'') : 'PDF';
+  var idx=0, firstIdx=null;
+  function next(){
+    if(idx>=pages.length){
+      if(firstIdx!==null) switchSheet(firstIdx);
+      showToast(pages.length+'枚のPDFページをそれぞれ別シートに取り込みました。1枚目から順に物差し校正してください。');
+      return;
+    }
+    var pnum = pages[idx];
+    pdf.getPage(pnum).then(function(page){
+      var viewport = page.getViewport({scale:2});
+      var off = document.createElement('canvas'); off.width=viewport.width; off.height=viewport.height;
+      var offCtx = off.getContext('2d');
+      page.render({canvasContext:offCtx, viewport:viewport}).promise.then(function(){
+        var img = new Image();
+        img.onload = function(){
+          addSheet();
+          if(firstIdx===null) firstIdx = S.currentSheetIndex;
+          renameSheet0(S.currentSheetIndex, baseName+' p.'+pnum);
+          var center = {x:0,y:0};
+          S.bg = {img:img, wx:center.x, wy:center.y, baseW:viewport.width/300, baseH:viewport.height/300, scale:2.6, opacity:0.45, angle:0, hidden:false};
+          S.calibrated=false;
+          markDirty();
+          idx++; next();
+        };
+        img.src = off.toDataURL();
+      });
+    }).catch(function(){ idx++; next(); });
+  }
+  next();
+}
+function renameSheet0(idx, name){ S.sheets[idx].name = name; renderSheetTabs(); }
+
+function renderPdfPage(pdf, num){
+  pdf.getPage(num).then(function(page){
+    var viewport = page.getViewport({scale:2});
+    var off = document.createElement('canvas'); off.width=viewport.width; off.height=viewport.height;
+    var offCtx = off.getContext('2d');
+    return page.render({canvasContext:offCtx, viewport:viewport}).promise.then(function(){
+      var img = new Image();
+      img.onload = function(){
+        var center = s2w(canvas.width/2, canvas.height/2);
+        S.bg = {img:img, wx:center.x, wy:center.y, baseW:viewport.width/300, baseH:viewport.height/300, scale:2.6, opacity:0.45, angle:0, hidden:false};
+        S.calibrated = false;
+        markDirty();
+        updateBgPanelState();
+        showBgPanel(true);
+        setTool('ruler');
+        showToast('PDFを読み込みました。続けて2点をクリックして実寸を校正してください。');
+        render();
+      };
+      img.src = off.toDataURL();
+    });
+  }).catch(function(){ showToast('PDFページの読込に失敗しました'); });
+}
+function loadImageToBg(file){
+  if(S.bg && !confirm('現在のシートには既に背景があります。上書きしますか？')) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var img = new Image();
+    img.onload = function(){
+      var center = s2w(canvas.width/2, canvas.height/2);
+      S.bg = {img:img, wx:center.x, wy:center.y, baseW:img.naturalWidth/300, baseH:img.naturalHeight/300, scale:2.6, opacity:0.45, angle:0, hidden:false};
+      S.calibrated=false;
+      markDirty();
+      updateBgPanelState();
+      showBgPanel(true);
+      setTool('ruler');
+      showToast('画像を読み込みました。続けて2点をクリックして実寸を校正してください。');
+      render();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function setBgOpacity(v){ if(!S.bg) return; S.bg.opacity = Math.max(.1, v/100); markDirty(); render(); }
+function scaleBg(f){ if(!S.bg) return; S.bg.scale = Math.max(0.05, S.bg.scale*f); S.calibrated=false; markDirty(); render(); }
+function rotateBg(d){ if(!S.bg) return; S.bg.angle=((S.bg.angle||0)+d+360)%360; markDirty(); render(); }
+function removeBg(){
+  if(!confirm('背景画像を削除します。この操作は元に戻せません。よろしいですか？')) return;
+  S.bg=null; S.calibrated=false;
+  markDirty();
+  document.getElementById('bgPanel').classList.remove('vis');
+  document.getElementById('bgToggleHeaderBtn').style.display='none';
+  render();
+}
+/* 背景の表示/非表示（削除とは別。いつでも再表示できる） */
+function toggleBgVisible(){
+  if(!S.bg) return;
+  S.bg.hidden = !S.bg.hidden;
+  markDirty();
+  updateBgVisBtn();
+  render();
+}
+function updateBgVisBtn(){
+  var btn = document.getElementById('bgVisBtn');
+  if(!btn) return;
+  if(S.bg && S.bg.hidden){ btn.textContent = '👁️ 背景を再表示する'; }
+  else { btn.textContent = '🙈 背景を非表示にする'; }
+}
+function showBgPanel(open){
+  document.getElementById('bgPanel').classList.toggle('vis', !!open);
+  document.getElementById('bgToggleHeaderBtn').style.display = S.bg ? 'inline-block' : 'none';
+  if(S.bg){
+    document.getElementById('bgOpacitySlider').value = Math.round(S.bg.opacity*100);
+    updateBgVisBtn();
+  }
+}
+function toggleBgPanel(){
+  if(!S.bg) return;
+  var panel = document.getElementById('bgPanel');
+  showBgPanel(!panel.classList.contains('vis'));
+}
+/* シート切替時などに背景UIの状態を同期する（表示/非表示にかかわらずボタンは常に再表示できる） */
+function updateBgPanelState(){
+  var hasBg = !!S.bg;
+  document.getElementById('bgToggleHeaderBtn').style.display = hasBg ? 'inline-block' : 'none';
+  if(!hasBg){
+    document.getElementById('bgPanel').classList.remove('vis');
+  } else {
+    document.getElementById('bgOpacitySlider').value = Math.round(S.bg.opacity*100);
+    updateBgVisBtn();
+  }
+}
+
+/* ---------- 保存/読込（JSON、全シート対応） ---------- */
+function saveJson(){
+  syncCurrentToSheets();
+  var data = {
+    version:2,
+    currentSheetIndex:S.currentSheetIndex,
+    sheets: S.sheets.map(function(sh){
+      return {name:sh.name, shapes:sh.shapes, counters:sh.counters, calibrated:sh.calibrated};
+    })
+  };
+  var blob = new Blob([JSON.stringify(data)], {type:'application/json'});
+  var a = document.createElement('a');
+  var ts=new Date(), pad=function(n){return (n<10?'0':'')+n;};
+  a.download = 'scaffold-plan-'+ts.getFullYear()+pad(ts.getMonth()+1)+pad(ts.getDate())+'-'+pad(ts.getHours())+pad(ts.getMinutes())+'.json';
+  a.href = URL.createObjectURL(blob); a.click();
+  S.dirty = false; updateDirtyDot();
+  showToast('保存しました（背景画像は含まれません）');
+}
+function triggerLoadJson(){
+  if(S.dirty){
+    askConfirm('保存されていない変更があります', '「開く」を実行すると現在の変更は失われます。保存せずに続けますか？', function(){
+      document.getElementById('loadJsonInput').value='';
+      document.getElementById('loadJsonInput').click();
+    });
+    return;
+  }
+  document.getElementById('loadJsonInput').value='';
+  document.getElementById('loadJsonInput').click();
+}
+function handleLoadJson(evt){
+  var file = evt.target.files && evt.target.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var data;
+    try{ data = JSON.parse(e.target.result); }catch(err){ showToast('読み込みに失敗しました'); return; }
+    if(data && Array.isArray(data.sheets)){
+      S.sheets = data.sheets.map(function(sh){
+        return {
+          id:'sheet'+Date.now()+Math.floor(Math.random()*100000),
+          name: sh.name||'シート',
+          bg:null,
+          calibrated: !!sh.calibrated,
+          shapes: (sh.shapes||[]).map(function(s){ if(typeof s.name!=='string') s.name=''; return s; }),
+          counters: sh.counters||{suspended:0,frame:0,cantilever:0,interior:0,site:0},
+          px:0, py:0, zoom:1
+        };
+      });
+      if(!S.sheets.length) S.sheets=[newSheetObj('シート1')];
+      loadFromSheet(Math.min(data.currentSheetIndex||0, S.sheets.length-1));
+    } else if(data && Array.isArray(data.shapes)){
+      S.sheets = [{
+        id:'sheet'+Date.now(), name:'シート1', bg:null, calibrated:!!data.calibrated,
+        shapes: data.shapes.map(function(s){ if(typeof s.name!=='string') s.name=''; return s; }),
+        counters: data.counters||{suspended:0,frame:0,cantilever:0,interior:0,site:0},
+        px:0, py:0, zoom:1
+      }];
+      loadFromSheet(0);
+    } else { showToast('このファイルは対応していません'); return; }
+    S.px = canvas.width/2; S.py = canvas.height/2;
+    S.dirty = false; updateDirtyDot();
+    updateBgPanelState();
+    setTool('select');
+    renderSheetTabs();
+    render(); refreshDrawer();
+    showToast('読み込みました（背景画像は含まれないため、必要ならPDF/画像を再取込してください）');
+  };
+  reader.readAsText(file);
+}
+
+/* ---------- 未保存変更の確認モーダル（アプリ内操作用） ---------- */
+var _confirmCallback = null;
+function askConfirm(title, msg, onOk){
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMsg').textContent = msg;
+  _confirmCallback = onOk;
+  document.getElementById('confirmModal').classList.add('vis');
+}
+function confirmModalOk(){
+  document.getElementById('confirmModal').classList.remove('vis');
+  var cb = _confirmCallback; _confirmCallback=null;
+  if(cb) cb();
+}
+function confirmModalCancel(){
+  document.getElementById('confirmModal').classList.remove('vis');
+  _confirmCallback=null;
+}
+/* ブラウザのタブを閉じる／再読込するとき、未保存の変更があれば確認する */
+window.addEventListener('beforeunload', function(e){
+  syncCurrentToSheets();
+  if(S.dirty){
+    e.preventDefault();
+    e.returnValue = '';
+    return '';
+  }
+});
+
+/* ================= 出力範囲の確認モーダル ================= */
+function computeShapesBBox(){
+  if(!S.shapes.length) return null;
+  var x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  S.shapes.forEach(function(s){
+    var r=shapeRect(s);
+    x0=Math.min(x0,r.x0); y0=Math.min(y0,r.y0);
+    x1=Math.max(x1,r.x0+r.w); y1=Math.max(y1,r.y0+r.h);
+  });
+  return {x0:x0,y0:y0,x1:x1,y1:y1};
+}
+function openExportModal(kind){
+  if(!S.shapes.length && !S.bg){ showToast('出力する足場・敷地がありません'); return; }
+  S.exportKind = kind;
+  document.getElementById('exportModalTitle').textContent = (kind==='pdf'?'PDF':'Excel')+' 出力範囲の確認';
+  document.getElementById('exportMargin').value = 2;
+  resetExportRangeToShapes();
+  document.getElementById('exportModal').classList.add('vis');
+}
+function closeExportModal(){ document.getElementById('exportModal').classList.remove('vis'); }
+function resetExportRangeToShapes(){
+  var margin = parseFloat(document.getElementById('exportMargin').value)||0;
+  var bbox = computeShapesBBox();
+  if(!bbox){ resetExportRangeToAll(); return; }
+  S.exportRange = {x0:bbox.x0-margin, y0:bbox.y0-margin, w:(bbox.x1-bbox.x0)+margin*2, h:(bbox.y1-bbox.y0)+margin*2};
+  syncExportRangeInputs();
+  updateExportPreview();
+}
+function resetExportRangeToAll(){
+  var topLeft = s2w(0,0), botRight = s2w(canvas.width, canvas.height);
+  S.exportRange = {x0:topLeft.x, y0:topLeft.y, w:botRight.x-topLeft.x, h:botRight.y-topLeft.y};
+  syncExportRangeInputs();
+  updateExportPreview();
+}
+function syncExportRangeInputs(){
+  document.getElementById('exportRangeW').value = fmt(S.exportRange.w);
+  document.getElementById('exportRangeH').value = fmt(S.exportRange.h);
+}
+function applyExportRangeInputs(){
+  var w = parseFloat(document.getElementById('exportRangeW').value);
+  var h = parseFloat(document.getElementById('exportRangeH').value);
+  if(!isNaN(w) && w>0) S.exportRange.w = w;
+  if(!isNaN(h) && h>0) S.exportRange.h = h;
+  updateExportPreview();
+}
+function updateExportPreview(){
+  var prevCanvas = document.getElementById('exportPreviewCanvas');
+  var maxW=640, maxH=420;
+  var scale = Math.min(maxW/canvas.width, maxH/canvas.height, 1);
+  prevCanvas.width = Math.max(1,Math.round(canvas.width*scale));
+  prevCanvas.height = Math.max(1,Math.round(canvas.height*scale));
+  var pctx = prevCanvas.getContext('2d');
+  pctx.clearRect(0,0,prevCanvas.width,prevCanvas.height);
+  pctx.drawImage(canvas, 0,0, prevCanvas.width, prevCanvas.height);
+  var p1 = w2s(S.exportRange.x0, S.exportRange.y0), p2 = w2s(S.exportRange.x0+S.exportRange.w, S.exportRange.y0+S.exportRange.h);
+  var rx=p1.x*scale, ry=p1.y*scale, rw=(p2.x-p1.x)*scale, rh=(p2.y-p1.y)*scale;
+  pctx.save();
+  pctx.strokeStyle='#d32f2f'; pctx.lineWidth=2; pctx.setLineDash([6,4]);
+  pctx.strokeRect(rx,ry,rw,rh);
+  pctx.fillStyle='rgba(211,47,47,.12)'; pctx.fillRect(rx,ry,rw,rh);
+  pctx.restore();
+  prevCanvas._scale = scale;
+}
+(function(){
+  var prevCanvas, dragging=false, startClient=null, startRange=null;
+  window.addEventListener('load', function(){
+    prevCanvas = document.getElementById('exportPreviewCanvas');
+    prevCanvas.addEventListener('mousedown', function(e){
+      dragging=true;
+      startClient = {x:e.clientX, y:e.clientY};
+      startRange = {x0:S.exportRange.x0, y0:S.exportRange.y0};
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', function(e){
+      if(!dragging || !S.exportRange) return;
+      var scale = (prevCanvas._scale||1) * PX_PER_M * S.zoom;
+      var dxM = (e.clientX-startClient.x)/scale;
+      var dyM = (e.clientY-startClient.y)/scale;
+      S.exportRange.x0 = startRange.x0 + dxM;
+      S.exportRange.y0 = startRange.y0 + dyM;
+      updateExportPreview();
+    });
+    window.addEventListener('mouseup', function(){ dragging=false; });
+  });
+})();
+function confirmExportRange(){
+  var range = {x0:S.exportRange.x0, y0:S.exportRange.y0, w:S.exportRange.w, h:S.exportRange.h};
+  var kind = S.exportKind;
+  closeExportModal();
+  if(kind==='pdf') doExportPdf(range);
+  else doExportExcel(range);
+}
+
+/* ---------- Excel出力（背景と各図形を分離したオブジェクトとして出力） ---------- */
+function exportExcel(){ openExportModal('excel'); }
+async function doExportExcel(range){
+  if(!S.shapes.length){ showToast('出力する足場・敷地がありません'); return; }
+  showToast('Excelを作成しています…');
+  var prevSel = S.selectedId; selectShape(null); hidePops(); render();
+
+  var wb = new ExcelJS.Workbook();
+  wb.creator = '足場・敷地計画ツール';
+
+  var wsImg = wb.addWorksheet('図面（背景+足場）');
+  var pxW = Math.max(1, Math.round(range.w*PX_PER_M));
+  var pxH = Math.max(1, Math.round(range.h*PX_PER_M));
+  var COL_PX=64, ROW_PX=20;
+
+  // 背景（読込画像）は1枚の独立したオブジェクトとして配置
+  if(S.bg && !S.bg.hidden){
+    var bgCanvas = document.createElement('canvas'); bgCanvas.width=pxW; bgCanvas.height=pxH;
+    var bctx = bgCanvas.getContext('2d');
+    var b=S.bg;
+    var wPx=b.baseW*b.scale*PX_PER_M, hPx=b.baseH*b.scale*PX_PER_M;
+    var cx=(b.wx-range.x0)*PX_PER_M, cy=(b.wy-range.y0)*PX_PER_M;
+    bctx.save(); bctx.globalAlpha=b.opacity; bctx.translate(cx,cy); bctx.rotate(b.angle*Math.PI/180);
+    bctx.drawImage(b.img, -wPx/2, -hPx/2, wPx, hPx);
+    bctx.restore();
+    var bgData = bgCanvas.toDataURL('image/png').split(',')[1];
+    var bgImgId = wb.addImage({base64:bgData, extension:'png'});
+    wsImg.addImage(bgImgId, {tl:{col:0,row:0}, ext:{width:pxW,height:pxH}});
+  }
+
+  // 足場・敷地は1点ずつ独立した画像オブジェクトとして配置（グループ化しない）
+  S.shapes.forEach(function(s){
+    var r = shapeRect(s);
+    if(r.x0+r.w < range.x0 || r.x0 > range.x0+range.w) return;
+    if(r.y0+r.h < range.y0 || r.y0 > range.y0+range.h) return;
+    var shW = Math.max(6, Math.round(r.w*PX_PER_M));
+    var shH = Math.max(6, Math.round(r.h*PX_PER_M));
+    var shCanvas = document.createElement('canvas'); shCanvas.width=shW; shCanvas.height=shH;
+    var sctx = shCanvas.getContext('2d');
+    sctx.fillStyle=s.color; sctx.globalAlpha=0.32; sctx.fillRect(0,0,shW,shH);
+    sctx.globalAlpha=1; sctx.strokeStyle=s.color; sctx.lineWidth=2; sctx.strokeRect(1,1,shW-2,shH-2);
+    var info=TYPE_INFO[s.type];
+    var label = info.abbr+'-'+s.number+(s.name?(' '+s.name):'');
+    if(shW>34 && shH>16){
+      sctx.fillStyle='#1a1d27'; sctx.font='bold 12px sans-serif'; sctx.textAlign='center';
+      sctx.fillText(label, shW/2, shH/2);
+    }
+    var shData = shCanvas.toDataURL('image/png').split(',')[1];
+    var shImgId = wb.addImage({base64:shData, extension:'png'});
+    var px = (r.x0-range.x0)*PX_PER_M, py=(r.y0-range.y0)*PX_PER_M;
+    wsImg.addImage(shImgId, {tl:{col:px/COL_PX, row:py/ROW_PX}, ext:{width:shW,height:shH}});
+  });
+
+  var wsList = wb.addWorksheet('足場・敷地 数量一覧');
+  wsList.columns = [
+    {header:'種別', key:'type', width:12},
+    {header:'番号', key:'no', width:8},
+    {header:'名称', key:'name', width:16},
+    {header:'布方向(m)', key:'nuno', width:12},
+    {header:'桁方向(m)', key:'keta', width:12},
+    {header:'高さ(座,m)', key:'h', width:12},
+    {header:'採用高さ(m)', key:'ch', width:12},
+    {header:'数量(m²)', key:'qty', width:12},
+    {header:'色', key:'color', width:10}
+  ];
+  wsList.getRow(1).font = {bold:true};
+  wsList.getRow(1).fill = {type:'pattern', pattern:'solid', fgColor:{argb:'FFEEF1F6'}};
+
+  TYPE_ORDER.forEach(function(type){
+    var items = S.shapes.filter(function(s){return s.type===type;});
+    if(!items.length) return;
+    var info = TYPE_INFO[type];
+    items.forEach(function(s){
+      var row = wsList.addRow({
+        type: info.label, no: s.number, name: s.name||'',
+        nuno: parseFloat(fmt(s.h)), keta: parseFloat(fmt(s.w)),
+        h: info.pop ? parseFloat(fmt(s.height)) : '-',
+        ch: info.pop ? parseFloat(fmt(s.calcHeight)) : '-',
+        qty: parseFloat(fmt(s.qty)), color: s.color
+      });
+      var colorCell = row.getCell('color');
+      colorCell.fill = {type:'pattern', pattern:'solid', fgColor:{argb:'FF'+s.color.replace('#','').toUpperCase()}};
+      colorCell.value = '';
+    });
+    var total = items.reduce(function(a,s){return a+s.qty;},0);
+    var tRow = wsList.addRow({type: info.label+' 合計', qty: parseFloat(fmt(total))});
+    tRow.font = {bold:true};
+    tRow.getCell('type').border = {top:{style:'thin'}};
+    tRow.getCell('qty').border = {top:{style:'thin'}};
+  });
+
+  var buf = await wb.xlsx.writeBuffer();
+  var blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  var a = document.createElement('a');
+  var ts=new Date(), pad=function(n){return (n<10?'0':'')+n;};
+  a.download = 'scaffold-plan-'+ts.getFullYear()+pad(ts.getMonth()+1)+pad(ts.getDate())+'.xlsx';
+  a.href = URL.createObjectURL(blob); a.click();
+  if(prevSel) selectShape(prevSel);
+  showToast('Excelを出力しました（背景と各足場・敷地は個別オブジェクトです）');
+}
+
+/* ---------- PDF出力（範囲確認後、指定範囲のみ描画） ---------- */
+function exportPdf(){ openExportModal('pdf'); }
+function doExportPdf(range){
+  var prevSel = S.selectedId; selectShape(null); hidePops(); render();
+
+  var pxW = Math.max(1, Math.round(range.w*PX_PER_M));
+  var pxH = Math.max(1, Math.round(range.h*PX_PER_M));
+  var off = document.createElement('canvas'); off.width=pxW; off.height=pxH;
+  var octx = off.getContext('2d');
+  octx.fillStyle='#fff'; octx.fillRect(0,0,pxW,pxH);
+  if(S.bg && !S.bg.hidden){
+    var b=S.bg;
+    var wPx=b.baseW*b.scale*PX_PER_M, hPx=b.baseH*b.scale*PX_PER_M;
+    var cx=(b.wx-range.x0)*PX_PER_M, cy=(b.wy-range.y0)*PX_PER_M;
+    octx.save(); octx.globalAlpha=b.opacity; octx.translate(cx,cy); octx.rotate(b.angle*Math.PI/180);
+    octx.drawImage(b.img,-wPx/2,-hPx/2,wPx,hPx);
+    octx.restore();
+  }
+  S.shapes.forEach(function(s){
+    var r=shapeRect(s);
+    var x=(r.x0-range.x0)*PX_PER_M, y=(r.y0-range.y0)*PX_PER_M;
+    var w=r.w*PX_PER_M, h=r.h*PX_PER_M;
+    octx.fillStyle=s.color; octx.globalAlpha=0.32; octx.fillRect(x,y,w,h);
+    octx.globalAlpha=1; octx.strokeStyle=s.color; octx.lineWidth=2; octx.strokeRect(x,y,w,h);
+    var info=TYPE_INFO[s.type];
+    if(w>30&&h>18){
+      octx.fillStyle='#1a1d27'; octx.font='bold 12px system-ui'; octx.textAlign='center';
+      octx.fillText(info.abbr+'-'+s.number+(s.name?(' '+s.name):''), x+w/2, y+h/2-4);
+      octx.font='10px system-ui'; octx.fillStyle='#3a4256';
+      octx.fillText(fmt(r.w)+'×'+fmt(r.h), x+w/2, y+h/2+11);
+    }
+  });
+
+  var imgData = off.toDataURL('image/png');
+  var { jsPDF } = window.jspdf;
+  var landscape = pxW >= pxH;
+  var doc = new jsPDF({orientation: landscape?'l':'p', unit:'mm', format:'a4'});
+  var pageW = doc.internal.pageSize.getWidth(), pageH = doc.internal.pageSize.getHeight();
+  var ratio = Math.min((pageW-10)/pxW, (pageH-10)/pxH);
+  var w = pxW*ratio, h = pxH*ratio;
+  doc.setFontSize(12); doc.text('足場・敷地計画図', 6, 8);
+  doc.addImage(imgData, 'PNG', (pageW-w)/2, 12, w, h);
+
+  doc.addPage('a4','p');
+  doc.setFontSize(13); doc.text('足場・敷地 数量一覧', 10, 14);
+  var y = 22;
+  doc.setFontSize(9);
+  var colX = [10,42,62,78,96,116,140,163];
+  var headers = ['種別-No','名称','布方向m','桁方向m','座高さm','採用高さm','数量m2',''];
+  headers.forEach(function(hh,i){ doc.text(hh, colX[i], y); });
+  y+=4; doc.line(10,y,200,y); y+=5;
+  TYPE_ORDER.forEach(function(type){
+    var items = S.shapes.filter(function(s){return s.type===type;});
+    if(!items.length) return;
+    var info = TYPE_INFO[type];
+    items.forEach(function(s){
+      if(y>280){ doc.addPage('a4','p'); y=16; }
+      doc.text(info.abbr+'-'+s.number, colX[0], y);
+      doc.text(s.name||'-', colX[1], y);
+      doc.text(fmt(s.w), colX[2], y);
+      doc.text(fmt(s.h), colX[3], y);
+      doc.text(info.pop?fmt(s.height):'-', colX[4], y);
+      doc.text(info.pop?fmt(s.calcHeight):'-', colX[5], y);
+      doc.text(fmt(s.qty), colX[6], y);
+      y+=6;
+    });
+    var total = items.reduce(function(a,s){return a+s.qty;},0);
+    doc.setFont(undefined,'bold');
+    doc.text(info.label+' 合計: '+fmt(total)+' m2', colX[0], y);
+    doc.setFont(undefined,'normal');
+    y+=8;
+  });
+  var ts=new Date(), pad=function(n){return (n<10?'0':'')+n;};
+  doc.save('scaffold-plan-'+ts.getFullYear()+pad(ts.getMonth()+1)+pad(ts.getDate())+'.pdf');
+  if(prevSel) selectShape(prevSel);
+  showToast('PDFを出力しました（指定範囲のみ）');
+}
+
+/* ---------- キーボード ---------- */
+window.addEventListener('keydown', function(e){
+  if(e.key==='Escape'){ S.drawing=null; S.rulerP1=null; S.rulerPreview=null; hidePops(); closeExportModal(); render(); }
+  if((e.key==='Delete'||e.key==='Backspace') && S.selectedId && document.activeElement.tagName!=='INPUT'){ deleteSelected(); }
+});
+
+/* ---------- 初期化 ---------- */
+function init(){
+  resize();
+  S.sheets = [newSheetObj('シート1')];
+  loadFromSheet(0);
+  S.px = canvas.width/2; S.py = canvas.height/2;
+  S.dirty = false; updateDirtyDot();
+  setTool('select');
+  renderSheetTabs();
+  updateBgPanelState();
+  refreshDrawer();
+  render();
+}
+init();
+</script>
+</body>
+</html>
