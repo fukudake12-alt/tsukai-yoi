@@ -397,7 +397,7 @@ header{
     <div class="esc-btn" onclick="escapeToNeutral()" title="操作を中断してニュートラルに戻る">ESC</div>
     <div class="status" id="status">配管</div>
     <div class="ctx-menu" id="ctxMenu"></div>
-    <div class="pipe-mode-switch" id="pipeModeSwitch" style="display:none;" onclick="togglePipeDrawMode()" title="配管を描くときの角度・長さの合わせ方を切替">
+    <div class="pipe-mode-switch" id="pipeModeSwitch" onclick="togglePipeDrawMode()" title="配管を描くときの角度・長さの合わせ方を切替">
       <span class="ic" id="pipeModeSwitchIcon">📐</span><span id="pipeModeSwitchLabel">アイソメ</span>
     </div>
 
@@ -520,6 +520,12 @@ header{
     </div>
     <div class="drawer-scroll">
     <div id="drawerPaneTools">
+
+    <!-- ■ 校正（物差し）：背景PDF/写真の縮尺を合わせるツール。よく使うためツールの一番上に配置 -->
+    <div class="dsec">
+      <button class="di" id="bCalib" style="width:100%" onclick="setTool('ruler')" title="背景PDF/写真上の既知の寸法区間をなぞって縮尺を校正します">📏 校正（物差し）</button>
+    </div>
+    <div class="div"></div>
 
     <!-- ■ 足場・敷地 -->
     <div class="dsec dsec-toggle" onclick="toggleSection('scaff')">
@@ -1217,6 +1223,24 @@ function render(){
     ctx.setLineDash([]);
     [rp1,rp2].forEach(function(p){ ctx.beginPath(); ctx.arc(p.x,p.y,5,0,Math.PI*2); ctx.fillStyle='#00838f'; ctx.fill(); });
     ctx.restore();
+    // ドラッグ中の区間長さを仮の寸法としてゴースト表示（確定はしていないので現在の縮尺での参考値）
+    var rlDx0=S.rulerPrev.x2-S.rulerPrev.x1, rlDy0=S.rulerPrev.y2-S.rulerPrev.y1;
+    var rlLen0=Math.sqrt(rlDx0*rlDx0+rlDy0*rlDy0);
+    if(rlLen0>=0.02){
+      var rgm={x:(rp1.x+rp2.x)/2, y:(rp1.y+rp2.y)/2};
+      var rgFs=Math.max(9,Math.min(13,10*S.zoom))*1.8;
+      var rgTxt=rlLen0.toFixed(2)+'m';
+      ctx.save();
+      ctx.font=rgFs+'px sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      var rgTw=ctx.measureText(rgTxt).width;
+      var rgLy=rgm.y - (2/2 + rgFs + 8);
+      ctx.fillStyle='rgba(255,255,255,0.85)';
+      ctx.fillRect(rgm.x-rgTw/2-3, rgLy-rgFs/2-1, rgTw+6, rgFs+2);
+      ctx.fillStyle='rgba(0,131,141,0.95)';
+      ctx.fillText(rgTxt, rgm.x, rgLy);
+      ctx.restore();
+    }
   }
   if(S.hoseDrawing && S.hosePts && S.hosePts.length>=2){
     drawEl({kind:'hose', pts:S.hosePts}, false, true);
@@ -5280,6 +5304,8 @@ function setTool(t){
   ['bPipe','bTxt','bErs','bSel'].forEach(function(id){document.getElementById(id).classList.remove('on');});
   var m={pipe:'bPipe',dim:'bSel',text:'bTxt',eraser:'bErs',rangesel:'bSel'};
   if(m[t]) document.getElementById(m[t]).classList.add('on');
+  var bCalib=document.getElementById('bCalib');
+  if(bCalib) bCalib.classList.toggle('on', t==='ruler');
   if(t!=='scaff'){
     ['bScaffAsm','bScaffSusp','bScaffInternal','bScaffOverhang','bScaffSite'].forEach(function(id){
       var b=document.getElementById(id); if(b) b.classList.remove('on');
@@ -5308,7 +5334,7 @@ function togglePipeDrawMode(){
 function updatePipeModeSwitch(){
   var sw=document.getElementById('pipeModeSwitch');
   if(!sw) return;
-  sw.style.display = (S.tool==='pipe') ? 'flex' : 'none';
+  sw.style.display = 'flex'; // 常に表示（以前は配管ツール使用中のみ表示していた）
   sw.classList.toggle('plan', S.pipeDrawMode==='plan');
   var icon=document.getElementById('pipeModeSwitchIcon'), label=document.getElementById('pipeModeSwitchLabel');
   if(S.pipeDrawMode==='plan'){ if(icon) icon.textContent='📏'; if(label) label.textContent='平面図'; }
