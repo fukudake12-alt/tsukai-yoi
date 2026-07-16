@@ -245,6 +245,17 @@ header{
 .pipe-mode-switch.plan{background:#2e7d32;}
 .pipe-mode-switch:active{opacity:0.85;}
 .pipe-mode-switch .ic{font-size:14px;line-height:1;}
+/* 配管を描くときの角度固定（15°/30°/45°/90°刻み）：アイソメ／平面図どちらのモードでも共通で使う。
+   タップするたびに15°→30°→45°→90°と切り替わる単一ボタン。モード切替スイッチのすぐ上に配置する。 */
+.angle-step-switch{
+  position:absolute;left:8px;bottom:44px;
+  display:flex;align-items:center;
+  background:#5c6b8a;color:#ffffff;font-size:12px;font-weight:700;
+  padding:7px 12px;border-radius:var(--radius-pill);cursor:pointer;
+  box-shadow:0 2px 8px rgba(0,0,0,0.25);
+  z-index:40;-webkit-tap-highlight-color:transparent;
+}
+.angle-step-switch:active{opacity:0.85;}
 /* TOAST */
 .toast{
   position:fixed;top:56px;left:50%;transform:translateX(-50%);
@@ -364,7 +375,7 @@ header{
 /* PRINT */
 @media print{
   body{background:#ffffff;color:#000000;}
-  header,.btbar,.sheet-tabbar,.ovl,.esc-btn,.drawer,.multisel-panel,.pipe-edit-panel,.scaff-edit-panel,.scaff-list-panel,.status,.toast,.text-input-overlay,.share-sheet-overlay,.ctx-menu,.bg-panel,.pipe-mode-switch{display:none!important;}
+  header,.btbar,.sheet-tabbar,.ovl,.esc-btn,.drawer,.multisel-panel,.pipe-edit-panel,.scaff-edit-panel,.scaff-list-panel,.status,.toast,.text-input-overlay,.share-sheet-overlay,.ctx-menu,.bg-panel,.pipe-mode-switch,.angle-step-switch{display:none!important;}
   .canvas-wrap{position:static;width:100%;height:100vh;}
 }
 </style>
@@ -397,6 +408,9 @@ header{
     <div class="esc-btn" onclick="escapeToNeutral()" title="操作を中断してニュートラルに戻る">ESC</div>
     <div class="status" id="status">配管</div>
     <div class="ctx-menu" id="ctxMenu"></div>
+    <div class="angle-step-switch" id="angleStepSwitch" onclick="cycleAngleStep()" title="配管を描くときの角度固定（タップで15°/30°/45°/90°を切替）">
+      <span id="angleStepSwitchLabel">30°固定</span>
+    </div>
     <div class="pipe-mode-switch" id="pipeModeSwitch" onclick="togglePipeDrawMode()" title="配管を描くときの角度・長さの合わせ方を切替">
       <span class="ic" id="pipeModeSwitchIcon">📐</span><span id="pipeModeSwitchLabel">アイソメ</span>
     </div>
@@ -736,7 +750,7 @@ header{
   <div class="text-input-box" style="width:min(260px,84vw);">
     <div class="text-input-title" id="scaffInfoTitle">足場情報を入力</div>
     <div id="scaffInfoHeightRow">
-      <div style="font-size:var(--fs-2);color:#5c6b8a;margin-bottom:3px;">高さ（m）</div>
+      <div style="font-size:var(--fs-2);color:#5c6b8a;margin-bottom:3px;">座高さ（m）</div>
       <input id="scaffInfoHeight" type="number" inputmode="decimal" step="0.1" onkeydown="if(event.key==='Enter')confirmScaffInfo();">
     </div>
     <div style="font-size:var(--fs-2);color:#5c6b8a;margin-bottom:3px;">呼び名（空欄なら自動採番）</div>
@@ -816,8 +830,8 @@ var SNAP_DIST_PX = 28;  // スナップ精度向上のため拡大
 var DBL_MS       = 350;
 var SCAFF_GRID_M = 0.5; // 足場・敷地は0.5m単位でスナップする
 var PIPE_LEN_SNAP_M  = 0.01; // 配管を描くときの長さの合わせ単位（アイソメ・平面図とも共通）
-var ISO_ANGLE_STEP_DEG  = 30; // アイソメモード：角度の合わせ単位
-var PLAN_ANGLE_STEP_DEG = 15; // 平面図モード：角度の合わせ単位
+var ISO_ANGLE_STEP_DEG  = 30; // 既定値（初回起動時のみ使用。以後は角度固定ボタンでS.angleStepDegを切替）
+var PLAN_ANGLE_STEP_DEG = 15; // 既定値（互換のため残置。実際の判定はS.angleStepDegを参照）
 
 // ── 足場・敷地 ──────────────────────────────────
 var SCAFF_KIND_LABELS = {asm:'組足場', susp:'吊り足場', internal:'内部足場', overhang:'張出足場', site:'敷地'};
@@ -904,13 +918,14 @@ var S = {
   showGrid:false, showDim:true, zoom:1, px:0, py:0,
   // 配管を描くときの角度・長さの合わせ方：'iso'=アイソメ（30°刻み）／'plan'=平面図（15°刻み）
   pipeDrawMode:'iso',
+  angleStepDeg:30,
   els:[], sel:null, hist:[], histRedo:[],
   drawing:false, drawStart:null, prev:null, snapPt:null,
   drawingLeader:false, leaderStart:null, leaderPrev:null,
   // 足場・敷地（矩形）の描画状態
   scaffSub:null, scaffDrawing:false, scaffStart:null, scaffPrev:null,
   scaffCounters:{asm:0, susp:0, internal:0, overhang:0, site:0},
-  lastScaffHeight:1.7, lastScaffColor:null, scaffListOpen:false,
+  lastScaffHeight:2, lastScaffColor:null, scaffListOpen:false,
   // 物差し（背景PDF/写真の縮尺校正）
   rulerDrawing:false, rulerStart:null, rulerPrev:null,
   // 現場情報（工事名称・施工会社名）
@@ -1056,13 +1071,13 @@ function setScaffTool(sub){
   var btn=document.getElementById(idMap[sub]); if(btn) btn.classList.add('on');
   showToast(SCAFF_KIND_LABELS[sub]+'：0.5m単位で矩形をドラッグして作成してください');
 }
-// 配管の描画スナップ：アイソメモードは30°刻み、平面図モードは15°刻み。
+// 配管の描画スナップ：角度は角度固定ボタン（15°/30°/45°/90°）で選んだ刻みに合わせる（アイソメ・平面図共通）。
 // 長さはどちらのモードも0.01m単位に合わせる（S.pipeDrawModeで切替）。
 function snapIso(ssx,ssy,sex,sey){
   var ws=s2w(ssx,ssy), we=s2w(sex,sey);
   var dx=we.x-ws.x, dy=we.y-ws.y;
   if(Math.abs(dx)<0.001&&Math.abs(dy)<0.001) return snapGrid(we.x,we.y);
-  var angStep = (S.pipeDrawMode==='plan') ? PLAN_ANGLE_STEP_DEG : ISO_ANGLE_STEP_DEG;
+  var angStep = S.angleStepDeg || 30;
   var ang=Math.atan2(dy,dx)*180/Math.PI;
   var sAng=Math.round(ang/angStep)*angStep, rad=sAng*Math.PI/180;
   var len=Math.sqrt(dx*dx+dy*dy);
@@ -1403,7 +1418,7 @@ function drawScaffold(el, sel, ghost){
   // ラベル（種類-番号／寸法／高さ）を矩形の中央に表示。矩形が小さい時は文字がはみ出さないよう省略する。
   if(rw>34 && rh>18){
     var lines = [];
-    lines.push(scaffLabel(el));
+    lines.push(el.num!=null ? scaffLabel(el) : peekNextScaffLabel(el.sub));
     lines.push(el.w.toFixed(1)+'×'+el.d.toFixed(1)+'m');
     if(!isSite && el.height!=null) lines.push('H'+parseFloat(el.height).toFixed(1)+'m');
     ctx.fillStyle = sel ? '#d32f2f' : '#1a1d27';
@@ -3783,14 +3798,15 @@ function endPress(pos){
         S.snapPt=null; render(); return;
       }
       if(S.pipeDrawMode==='plan'){
-        // 平面図モード：タップした点が始点、離した点は「向き」だけを決める（15°刻みにスナップ）。
+        // 平面図モード：タップした点が始点、離した点は「向き」だけを決める（角度固定ボタンで選んだ刻みにスナップ）。
         // 離したら実際の長さを数値で確認し、入力した長さ分だけその向きに配管を描く。
         var weP=s2w(pos.x,pos.y);
         var dxP=weP.x-S.drawStart.x, dyP=weP.y-S.drawStart.y;
         var draggedLen=Math.sqrt(dxP*dxP+dyP*dyP);
         if(draggedLen>=GRID_M*0.5){
           var angP=Math.atan2(dyP,dxP)*180/Math.PI;
-          var sAngP=Math.round(angP/PLAN_ANGLE_STEP_DEG)*PLAN_ANGLE_STEP_DEG, radP=sAngP*Math.PI/180;
+          var angStepP = S.angleStepDeg || 15;
+          var sAngP=Math.round(angP/angStepP)*angStepP, radP=sAngP*Math.PI/180;
           var uxP=Math.cos(radP), uyP=Math.sin(radP);
           var startPtP={x:S.drawStart.x, y:S.drawStart.y};
           var defaultLenP=(Math.round(draggedLen*100)/100).toFixed(2);
@@ -3863,7 +3879,7 @@ function endPress(pos){
     var scCx=(scR.x1+scR.x2)/2, scCy=(scR.y1+scR.y2)/2;
     var scSub = S.scaffSub || 'asm';
     render();
-    openScaffInfo(scSub, scSub!=='site', String(S.lastScaffHeight||1.7), function(info){
+    openScaffInfo(scSub, scSub!=='site', String(S.lastScaffHeight||2), function(info){
       saveH();
       var scNum = nextScaffNum(scSub);
       var newEl = {kind:'scaffold', sub:scSub, wx:scCx, wy:scCy, w:scW, d:scD,
@@ -4850,7 +4866,7 @@ function updateScaffEditPanel(){
   if(isScaff) buildScaffEditPanel(el);
 }
 function buildScaffEditPanel(el){
-  document.getElementById('scaffEditTitle').textContent = SCAFF_KIND_LABELS[el.sub]+' '+scaffLabel(el)+' 編集中';
+  document.getElementById('scaffEditTitle').textContent = scaffLabel(el)+' 編集中';
   var subHost=document.getElementById('scaffEditSubButtons');
   if(subHost){
     var subHtml='';
@@ -4897,7 +4913,7 @@ function adjustScaffDim(which, delta){
 function adjustScaffHeight(delta){
   if(!S.dragEl || S.dragEl.kind!=='scaffold' || S.dragEl.sub==='site') return;
   saveH();
-  var cur = S.dragEl.height || 1.7;
+  var cur = S.dragEl.height || 2;
   var next = Math.max(0.1, Math.round((cur+delta)*10)/10);
   S.dragEl.height = next;
   S.lastScaffHeight = next;
@@ -4925,7 +4941,7 @@ function applyScaffEditCompanyName(val){
 function applyScaffEditCustomLabel(val){
   if(!S.dragEl || S.dragEl.kind!=='scaffold') return;
   S.dragEl.customLabel = val;
-  document.getElementById('scaffEditTitle').textContent = SCAFF_KIND_LABELS[S.dragEl.sub]+' '+scaffLabel(S.dragEl)+' 編集中';
+  document.getElementById('scaffEditTitle').textContent = scaffLabel(S.dragEl)+' 編集中';
   updateScaffListPanel();
   render();
 }
@@ -4944,7 +4960,7 @@ function applyScaffEditNum(val){
   var dup = S.els.some(function(e){ return e!==S.dragEl && e.kind==='scaffold' && e.sub===S.dragEl.sub && e.num===n; });
   S.dragEl.num = n;
   if(n > (S.scaffCounters[S.dragEl.sub]||0)) S.scaffCounters[S.dragEl.sub] = n;
-  document.getElementById('scaffEditTitle').textContent = SCAFF_KIND_LABELS[S.dragEl.sub]+' '+scaffLabel(S.dragEl)+' 編集中';
+  document.getElementById('scaffEditTitle').textContent = scaffLabel(S.dragEl)+' 編集中';
   var lEl2=document.getElementById('scaffEditCustomLabel');
   if(lEl2) lEl2.placeholder = scaffAutoLabel(S.dragEl);
   updateScaffListPanel();
@@ -4968,7 +4984,7 @@ function changeScaffSub(newSub){
   if(newSub==='site'){
     el.height = null;
   } else if(el.height==null){
-    el.height = S.lastScaffHeight || 1.7;
+    el.height = S.lastScaffHeight || 2;
   }
   updateScaffEditPanel();
   render();
@@ -5316,7 +5332,7 @@ function setTool(t){
   updateSt(); updateMirrorButton(); updateMultiSelPanel(); updatePipeEditPanel(); updateScaffEditPanel(); updatePipeModeSwitch(); updateBgPanel();
 }
 // ── 配管の描画モード切替（アイソメ／平面図） ─────────────
-// アイソメ：角度30°刻み／平面図：角度15°刻み。長さはどちらも0.01m単位。配管ツール使用中のみ切替スイッチを表示する。
+// 角度の合わせ単位は角度固定ボタン（15°/30°/45°/90°）でアイソメ・平面図共通に切り替える。長さはどちらも0.01m単位。
 var PIPE_DRAWMODE_STORAGE_KEY = 'pipeiso_draw_mode';
 function initPipeDrawMode(){
   try{ S.pipeDrawMode = (localStorage.getItem(PIPE_DRAWMODE_STORAGE_KEY)==='plan') ? 'plan' : 'iso'; }
@@ -5329,7 +5345,7 @@ function togglePipeDrawMode(){
   try{ localStorage.setItem(PIPE_DRAWMODE_STORAGE_KEY, S.pipeDrawMode); }catch(e){}
   updatePipeModeSwitch();
   syncFitSectionsWithPipeMode();
-  showToast(S.pipeDrawMode==='plan' ? '平面図モード：角度15°刻み・長さ0.01m単位で配管を描きます' : 'アイソメモード：角度30°刻み・長さ0.01m単位で配管を描きます');
+  showToast((S.pipeDrawMode==='plan' ? '平面図モード' : 'アイソメモード')+'：長さ0.01m単位で配管を描きます（角度は'+(S.angleStepDeg||30)+'°刻み）');
 }
 function updatePipeModeSwitch(){
   var sw=document.getElementById('pipeModeSwitch');
@@ -5339,6 +5355,31 @@ function updatePipeModeSwitch(){
   var icon=document.getElementById('pipeModeSwitchIcon'), label=document.getElementById('pipeModeSwitchLabel');
   if(S.pipeDrawMode==='plan'){ if(icon) icon.textContent='📏'; if(label) label.textContent='平面図'; }
   else { if(icon) icon.textContent='📐'; if(label) label.textContent='アイソメ'; }
+}
+// ── 配管の角度固定（15°/30°/45°/90°）：アイソメ・平面図どちらのモードでも共通の刻みを使う。
+// ボタンをタップするたびに15°→30°→45°→90°→15°…と巡回して切り替える。
+var ANGLE_STEP_STORAGE_KEY = 'pipeiso_angle_step';
+var ANGLE_STEP_SEQ = [15,30,45,90];
+function initAngleStep(){
+  var saved = null;
+  try{ saved = parseInt(localStorage.getItem(ANGLE_STEP_STORAGE_KEY), 10); }catch(e){}
+  S.angleStepDeg = (ANGLE_STEP_SEQ.indexOf(saved)>=0) ? saved : 30;
+  updateAngleStepSwitch();
+}
+function cycleAngleStep(){
+  var i = ANGLE_STEP_SEQ.indexOf(S.angleStepDeg);
+  var next = ANGLE_STEP_SEQ[(i+1) % ANGLE_STEP_SEQ.length];
+  setAngleStep(next);
+}
+function setAngleStep(deg){
+  S.angleStepDeg = deg;
+  try{ localStorage.setItem(ANGLE_STEP_STORAGE_KEY, String(deg)); }catch(e){}
+  updateAngleStepSwitch();
+  showToast('角度固定：'+deg+'°刻みに切り替えました');
+}
+function updateAngleStepSwitch(){
+  var label = document.getElementById('angleStepSwitchLabel');
+  if(label) label.textContent = (S.angleStepDeg||30)+'°固定';
 }
 // ☰メニューはドロワー（基本操作／継手／ヘッダー等）の開閉だけを行い、ツールは切り替えない。
 // ※以前はここで強制的にツールを『継手』へ切り替えていたため、色・太さを選んだだけのつもりでも
@@ -5354,7 +5395,7 @@ function setToolFitting(){
   }
 }
 
-// ── ESCボタン：進行中の操作をすべて中断し、ニュートラルな状態（配管ツール）に戻す ──
+// ── ESCボタン：進行中の操作をすべて中断し、ニュートラルな状態（選択/寸法ツール）に戻す ──
 function escapeToNeutral(){
   hideContextMenu();
   closeTextInput();
@@ -5364,7 +5405,7 @@ function escapeToNeutral(){
   S.drawingLeader=false; S.leaderStart=null; S.leaderPrev=null;
   S.rangeSelecting=false; S.rangeStart=null; S.rangeEnd=null;
   S.sel=null; S.lastFit=null; S.pendingScale=false;
-  setTool('pipe'); // 内部でドラッグ・グループ移動モードの終了と選択解除も行われる
+  setTool('rangesel'); // 内部でドラッグ・グループ移動モードの終了と選択解除も行われる
   showToast('⏹ 操作を中断しました');
   render();
 }
@@ -5596,7 +5637,7 @@ function openScaffInfo(sub, showHeight, initialHeight, callback){
   scaffInfoSub = sub;
   scaffInfoCallback = callback;
   var def = getScaffTypeDefault(sub);
-  document.getElementById('scaffInfoTitle').textContent = SCAFF_KIND_LABELS[sub]+'の情報を入力';
+  document.getElementById('scaffInfoTitle').textContent = peekNextScaffLabel(sub)+'の情報を入力';
   document.getElementById('scaffInfoHeightRow').style.display = showHeight ? '' : 'none';
   if(showHeight) document.getElementById('scaffInfoHeight').value = initialHeight;
   document.getElementById('scaffInfoProjectName').value = def.projectName || '';
@@ -6896,6 +6937,7 @@ function initApp(){
   initDrawerTab();
   initDrawStyle();
   initPipeDrawMode();
+  initAngleStep();
   document.getElementById('appVersionLabel').textContent = 'v'+APP_VERSION;
   document.getElementById('bDimToggle').classList.add('on');
   S.px=canvas.width/2 - 2*PX_PER_M;
