@@ -919,6 +919,7 @@ var S = {
   // 配管を描くときの角度・長さの合わせ方：'iso'=アイソメ（30°刻み）／'plan'=平面図（15°刻み）
   pipeDrawMode:'iso',
   angleStepDeg:30,
+  scaffRotateGuideShow:false, scaffRotateGuideDeg:0, scaffResize:null, // 足場・敷地：回転ハンドル用ガイド表示／辺ドラッグでのサイズ変更用
   els:[], sel:null, hist:[], histRedo:[],
   drawing:false, drawStart:null, prev:null, snapPt:null,
   drawingLeader:false, leaderStart:null, leaderPrev:null,
@@ -1397,38 +1398,98 @@ function drawEl(el,sel,ghost,cuts){
 }
 
 // ── 足場・敷地（矩形）の描画 ──
-// wx,wy＝矩形の中心（ワールド座標）、w＝桁行き（X方向）、d＝布方向（Y方向）。
+// wx,wy＝矩形の中心（ワールド座標）、w＝桁行き（X方向）、d＝布方向（Y方向）、angle＝回転角（度、時計回り）。
 // 敷地(site)は破線・高さ無し表示、それ以外（足場）は実線＋高さ表示とする。
+// 矩形本体は角度に合わせて回転させるが、ラベル文字は読みやすさを優先して常に水平のまま表示する。
 function drawScaffold(el, sel, ghost){
-  var c1=w2s(el.wx-el.w/2, el.wy-el.d/2), c2=w2s(el.wx+el.w/2, el.wy+el.d/2);
-  var rx=Math.min(c1.x,c2.x), ry=Math.min(c1.y,c2.y);
-  var rw=Math.abs(c2.x-c1.x), rh=Math.abs(c2.y-c1.y);
+  var c = w2s(el.wx, el.wy);
+  var rw = el.w*PX_PER_M*S.zoom, rh = el.d*PX_PER_M*S.zoom;
   var col = el.color || SCAFF_COLORS[0];
   var isSite = el.sub==='site';
+  var angRad = (el.angle||0) * Math.PI/180;
+  var grabbed = !!(S.dragMode==='move' && S.dragEl===el && !ghost);
+
   ctx.save();
+  ctx.translate(c.x, c.y);
+  ctx.rotate(angRad);
   if(ghost) ctx.globalAlpha = 0.5;
   ctx.fillStyle = col; ctx.globalAlpha = (ghost?0.14:0.16);
-  ctx.fillRect(rx,ry,rw,rh);
+  ctx.fillRect(-rw/2,-rh/2,rw,rh);
   ctx.globalAlpha = ghost?0.6:1;
   ctx.strokeStyle = sel ? '#d32f2f' : col;
   ctx.lineWidth = sel ? 2.4 : 1.8;
   if(isSite) ctx.setLineDash([7,5]);
-  ctx.strokeRect(rx,ry,rw,rh);
+  ctx.strokeRect(-rw/2,-rh/2,rw,rh);
   ctx.setLineDash([]);
-  // ラベル（種類-番号／寸法／高さ）を矩形の中央に表示。矩形が小さい時は文字がはみ出さないよう省略する。
+  ctx.restore();
+
+  // ラベル（種類-番号／寸法／高さ）を矩形の中央に水平表示。矩形が小さい時は文字がはみ出さないよう省略する。
   if(rw>34 && rh>18){
     var lines = [];
     lines.push(el.num!=null ? scaffLabel(el) : peekNextScaffLabel(el.sub));
     lines.push(el.w.toFixed(1)+'×'+el.d.toFixed(1)+'m');
     if(!isSite && el.height!=null) lines.push('H'+parseFloat(el.height).toFixed(1)+'m');
+    ctx.save();
+    if(ghost) ctx.globalAlpha = 0.6;
     ctx.fillStyle = sel ? '#d32f2f' : '#1a1d27';
     ctx.font = 'bold '+Math.max(9,Math.min(13,rh/5))+'px sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline='middle';
     var lh = Math.max(10, Math.min(14,rh/5));
-    var cx0=rx+rw/2, cy0=ry+rh/2 - (lh*(lines.length-1))/2;
-    lines.forEach(function(ln,i){ ctx.fillText(ln, cx0, cy0+i*lh); });
+    var cy0=c.y - (lh*(lines.length-1))/2;
+    lines.forEach(function(ln,i){ ctx.fillText(ln, c.x, cy0+i*lh); });
+    ctx.restore();
   }
-  ctx.restore();
+
+  // 回転ハンドル・サイズ変更ハンドル：長押しで掴んで編集中のみ表示。
+  if(grabbed){
+    // 辺の中点（回転後の位置）に、サイズ変更用の小さな■ハンドルを表示する
+    var edgeMids = [
+      {lx:0, ly:-rh/2}, {lx:0, ly:rh/2}, {lx:-rw/2, ly:0}, {lx:rw/2, ly:0}
+    ];
+    ctx.save();
+    edgeMids.forEach(function(p){
+      var ex = c.x + p.lx*Math.cos(angRad) - p.ly*Math.sin(angRad);
+      var ey = c.y + p.lx*Math.sin(angRad) + p.ly*Math.cos(angRad);
+      ctx.fillStyle = '#43a047';
+      ctx.fillRect(ex-5, ey-5, 10, 10);
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.2;
+      ctx.strokeRect(ex-5, ey-5, 10, 10);
+    });
+    ctx.restore();
+
+    var hp = scaffHandleScreenPos(el);
+    ctx.save();
+    ctx.strokeStyle = '#0277bd'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(c.x,c.y); ctx.lineTo(hp.x,hp.y); ctx.stroke();
+    // 白丸を下地にして、その上に回転アイコン(🔄)を重ねる（青丸だけだと何のハンドルか分かりにくいため）
+    ctx.beginPath(); ctx.arc(hp.x,hp.y,12,0,Math.PI*2);
+    ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.strokeStyle = '#0277bd'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.font = '15px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🔄', hp.x, hp.y+0.5);
+    ctx.restore();
+
+    if(S.dragSubMode==='rotateScaff' && S.scaffRotateGuideShow){
+      var gRad = (S.scaffRotateGuideDeg||0) * Math.PI/180;
+      var glen = Math.max(rw,rh)*0.9 + 160;
+      var gx = Math.sin(gRad)*glen, gy = -Math.cos(gRad)*glen;
+      ctx.save();
+      ctx.strokeStyle = '#ff6f00'; ctx.lineWidth = 1.2;
+      ctx.setLineDash([5,4]);
+      ctx.beginPath(); ctx.moveTo(c.x-gx,c.y-gy); ctx.lineTo(c.x+gx,c.y+gy); ctx.stroke();
+      ctx.restore();
+    }
+  }
+}
+// 回転ハンドルの画面座標（矩形上辺の外側、角度に応じて中心を軸に回った位置）を返す。
+// 描画（drawScaffold）と当たり判定（startPress）の両方から参照する共通ロジック。
+function scaffHandleScreenPos(el){
+  var c = w2s(el.wx, el.wy);
+  var rh = el.d*PX_PER_M*S.zoom;
+  var angRad = (el.angle||0) * Math.PI/180;
+  var H = rh/2 + 30;
+  return { x: c.x + H*Math.sin(angRad), y: c.y - H*Math.cos(angRad) };
 }
 
 // ── 角度モード：補助三角形（頂点V・基準配管の両端点A/Bで構成）の描画 ──
@@ -3181,11 +3242,14 @@ function hitTest(sx,sy){
       var agA=w2s(e.ax,e.ay), agB=w2s(e.bx,e.by), agV=w2s(e.vx,e.vy);
       if(segD({x:sx,y:sy},agA,agV)<10 || segD({x:sx,y:sy},agB,agV)<10 || pointInTriangle(sx,sy, agA.x,agA.y,agB.x,agB.y,agV.x,agV.y)) return {el:e,part:'body'};
     } else if(e.kind==='scaffold'){
-      // 足場・敷地：矩形の内側（少し余白を持たせる）をタップしたら当たりとする
-      var scc1=w2s(e.wx-e.w/2, e.wy-e.d/2), scc2=w2s(e.wx+e.w/2, e.wy+e.d/2);
-      var srx0=Math.min(scc1.x,scc2.x)-4, srx1=Math.max(scc1.x,scc2.x)+4;
-      var sry0=Math.min(scc1.y,scc2.y)-4, sry1=Math.max(scc1.y,scc2.y)+4;
-      if(sx>=srx0 && sx<=srx1 && sy>=sry0 && sy<=sry1) return {el:e,part:'body'};
+      // 足場・敷地：矩形の内側（少し余白を持たせる）をタップしたら当たりとする。
+      // 回転しているため、タップ位置を中心基準で逆回転させてから矩形内かどうかを判定する。
+      var scc=w2s(e.wx,e.wy);
+      var scAng=(e.angle||0)*Math.PI/180, scCos=Math.cos(scAng), scSin=Math.sin(scAng);
+      var scdx=sx-scc.x, scdy=sy-scc.y;
+      var slx=scdx*scCos+scdy*scSin, sly=-scdx*scSin+scdy*scCos;
+      var shw=(e.w/2)*PX_PER_M*S.zoom+4, shh=(e.d/2)*PX_PER_M*S.zoom+4;
+      if(slx>=-shw && slx<=shw && sly>=-shh && sly<=shh) return {el:e,part:'body'};
     }
   }
   return null;
@@ -3551,6 +3615,38 @@ function startPress(pos){
   if(S.dragMode==='move'){
     S.dragging=true;
     var el2=S.dragEl;
+    if(el2.kind==='scaffold'){
+      var hHandle=scaffHandleScreenPos(el2);
+      if(dist2(pos.x,pos.y,hHandle.x,hHandle.y) < 18){
+        // 回転ハンドルを掴んだ：以降のmovePressで角度のみを更新する
+        S.dragSubMode='rotateScaff';
+        S.scaffRotateGuideShow=false;
+        return;
+      }
+      // 矩形の辺付近をタップしたかどうかを、回転を考慮したローカル座標で判定する
+      var sccS=w2s(el2.wx,el2.wy);
+      var angS=(el2.angle||0)*Math.PI/180, cosS=Math.cos(angS), sinS=Math.sin(angS);
+      var ddx=pos.x-sccS.x, ddy=pos.y-sccS.y;
+      var lxS=ddx*cosS+ddy*sinS, lyS=-ddx*sinS+ddy*cosS;
+      var hwPx=(el2.w/2)*PX_PER_M*S.zoom, hdPx=(el2.d/2)*PX_PER_M*S.zoom;
+      var EDGE_BAND=14, NEAR_MARGIN=20;
+      var nearRectArea = (lxS>=-hwPx-NEAR_MARGIN && lxS<=hwPx+NEAR_MARGIN && lyS>=-hdPx-NEAR_MARGIN && lyS<=hdPx+NEAR_MARGIN);
+      var rzEdges = {left:false,right:false,top:false,bottom:false};
+      if(nearRectArea){
+        if(Math.abs(lxS-(-hwPx))<=EDGE_BAND && lyS>=-hdPx-EDGE_BAND && lyS<=hdPx+EDGE_BAND) rzEdges.left=true;
+        if(Math.abs(lxS-(hwPx))<=EDGE_BAND && lyS>=-hdPx-EDGE_BAND && lyS<=hdPx+EDGE_BAND) rzEdges.right=true;
+        if(Math.abs(lyS-(-hdPx))<=EDGE_BAND && lxS>=-hwPx-EDGE_BAND && lxS<=hwPx+EDGE_BAND) rzEdges.top=true;
+        if(Math.abs(lyS-(hdPx))<=EDGE_BAND && lxS>=-hwPx-EDGE_BAND && lxS<=hwPx+EDGE_BAND) rzEdges.bottom=true;
+      }
+      if(rzEdges.left||rzEdges.right||rzEdges.top||rzEdges.bottom){
+        S.dragSubMode='resizeScaff';
+        S.scaffResize={edges:rzEdges, origWx:el2.wx, origWy:el2.wy, origW:el2.w, origD:el2.d, angle:el2.angle||0};
+        return;
+      }
+      S.dragSubMode='moveScaff';
+      var wws0=s2w(pos.x,pos.y); S.dragOffX=wws0.x-el2.wx; S.dragOffY=wws0.y-el2.wy;
+      return;
+    }
     if(el2.kind==='pipe' || el2.kind==='leader'){
       var ww0=s2w(pos.x,pos.y); S.dragOffX=ww0.x-el2.wx1; S.dragOffY=ww0.y-el2.wy1;
     } else if(el2.kind==='hose'){
@@ -3650,9 +3746,47 @@ function movePress(pos){
       var ww2=s2w(pos.x,pos.y),sg2=snapGrid(ww2.x-S.dragOffX,ww2.y-S.dragOffY);
       S.dragEl.wx=sg2.x; S.dragEl.wy=sg2.y;
     } else if(S.dragEl.kind==='scaffold'){
-      // 足場・敷地：0.5m単位にスナップしながら平行移動する
-      var wws=s2w(pos.x,pos.y), sgS=snapScaffPt(wws.x-S.dragOffX, wws.y-S.dragOffY);
-      S.dragEl.wx=sgS.x; S.dragEl.wy=sgS.y;
+      if(S.dragSubMode==='rotateScaff'){
+        // 回転ハンドルをドラッグ中：角度補助なし（自由角度）で回転させる。
+        // ただしキリのいい角度（角度固定スイッチの刻み）に近づいたら橙色の補助線を出し、
+        // さらに近い時だけ軽くスナップさせる。
+        var sccR=w2s(S.dragEl.wx,S.dragEl.wy);
+        var rawDeg=Math.atan2(pos.x-sccR.x, -(pos.y-sccR.y))*180/Math.PI;
+        rawDeg=((rawDeg%360)+360)%360;
+        var stepR=S.angleStepDeg||30;
+        var nearestR=Math.round(rawDeg/stepR)*stepR % 360;
+        var diffR=Math.abs(rawDeg-nearestR); diffR=Math.min(diffR,360-diffR);
+        var GUIDE_TOL_DEG=6, SNAP_TOL_DEG=2.5;
+        if(diffR<=GUIDE_TOL_DEG){
+          S.scaffRotateGuideShow=true; S.scaffRotateGuideDeg=nearestR;
+          S.dragEl.angle=(diffR<=SNAP_TOL_DEG) ? nearestR : rawDeg;
+        } else {
+          S.scaffRotateGuideShow=false;
+          S.dragEl.angle=rawDeg;
+        }
+      } else if(S.dragSubMode==='resizeScaff' && S.scaffResize){
+        // 辺（または角）をドラッグ中：反対側の辺は固定したまま、掴んだ辺だけを0.5m単位で伸縮させる
+        var rs=S.scaffResize;
+        var pw=s2w(pos.x,pos.y);
+        var relX=pw.x-rs.origWx, relY=pw.y-rs.origWy;
+        var aRad=rs.angle*Math.PI/180, cA=Math.cos(aRad), sA=Math.sin(aRad);
+        var plx=relX*cA+relY*sA, ply=-relX*sA+relY*cA; // ローカル座標（回転前）に戻す
+        var halfW=rs.origW/2, halfD=rs.origD/2;
+        var newLeft=-halfW, newRight=halfW, newTop=-halfD, newBottom=halfD;
+        if(rs.edges.right) newRight = -halfW + Math.max(SCAFF_GRID_M, Math.round((plx+halfW)/SCAFF_GRID_M)*SCAFF_GRID_M);
+        if(rs.edges.left)  newLeft  =  halfW - Math.max(SCAFF_GRID_M, Math.round((halfW-plx)/SCAFF_GRID_M)*SCAFF_GRID_M);
+        if(rs.edges.bottom) newBottom = -halfD + Math.max(SCAFF_GRID_M, Math.round((ply+halfD)/SCAFF_GRID_M)*SCAFF_GRID_M);
+        if(rs.edges.top)    newTop    =  halfD - Math.max(SCAFF_GRID_M, Math.round((halfD-ply)/SCAFF_GRID_M)*SCAFF_GRID_M);
+        var newW=newRight-newLeft, newD=newBottom-newTop;
+        var localCx=(newLeft+newRight)/2, localCy=(newTop+newBottom)/2;
+        S.dragEl.w=newW; S.dragEl.d=newD;
+        S.dragEl.wx = rs.origWx + localCx*cA - localCy*sA;
+        S.dragEl.wy = rs.origWy + localCx*sA + localCy*cA;
+      } else {
+        // 足場・敷地：0.5m単位にスナップしながら平行移動する
+        var wws=s2w(pos.x,pos.y), sgS=snapScaffPt(wws.x-S.dragOffX, wws.y-S.dragOffY);
+        S.dragEl.wx=sgS.x; S.dragEl.wy=sgS.y;
+      }
     } else if(S.dragEl.kind==='leader'){
       var ww3=s2w(pos.x,pos.y);
       if(S.dragPart==='text'){
@@ -3882,7 +4016,7 @@ function endPress(pos){
     openScaffInfo(scSub, scSub!=='site', String(S.lastScaffHeight||2), function(info){
       saveH();
       var scNum = nextScaffNum(scSub);
-      var newEl = {kind:'scaffold', sub:scSub, wx:scCx, wy:scCy, w:scW, d:scD,
+      var newEl = {kind:'scaffold', sub:scSub, wx:scCx, wy:scCy, w:scW, d:scD, angle:0,
         height: scSub==='site' ? null : info.height,
         color: info.color, num:scNum,
         customLabel: info.customLabel || '',
@@ -3965,7 +4099,7 @@ function grabElementAt(pos){
     S.dragMode='move'; S.dragEl=h.el; S.dragging=true; S.dragEntryTime=Date.now();
     S.sel=h.el;
     S.lastFit = (h.el.kind==='fitting') ? h.el : null;
-    S.dragSubMode = null; S.dragEnd = null;
+    S.dragSubMode = null; S.dragEnd = null; S.scaffRotateGuideShow = false; S.scaffResize = null;
     if(h.el.kind==='pipe'){
       // 掴んだ時点では固定せず、動かしている最中の指の位置で毎回「移動」か「伸縮」かを判定する
       S.dragSubMode = null;
@@ -3995,6 +4129,8 @@ function grabElementAt(pos){
       showToast('↔ 中央付近をドラッグで移動 / 端付近をドラッグで伸縮 — タップで確定');
     } else if(h.el.kind==='leader'){
       showToast(h.part==='text' ? '↔ 文字をドラッグで移動（始点は固定）— タップで確定' : '↔ 線ごとドラッグで移動 — タップで確定');
+    } else if(h.el.kind==='scaffold'){
+      showToast('↔ 中央をドラッグで移動 / 端をドラッグでサイズ変更 / 🔄ハンドルで回転 — タップで確定');
     } else {
       showToast('↔ ドラッグで移動 — タップで確定');
     }
@@ -4021,7 +4157,7 @@ function activateLongPress(pos){
 }
 
 function endDragMode(){
-  S.dragMode=null; S.dragEl=null; S.dragging=false; S.snapPt=null; S.justGrabbed=false; S.dragSubMode=null; S.dragEnd=null; S.dragPart=null;
+  S.dragMode=null; S.dragEl=null; S.dragging=false; S.snapPt=null; S.justGrabbed=false; S.dragSubMode=null; S.dragEnd=null; S.dragPart=null; S.scaffRotateGuideShow=false; S.scaffResize=null;
   showToast('✅ 確定'); updateMirrorButton(); render();
 }
 
@@ -6107,13 +6243,38 @@ function dimSvgMarkup(el,col){
 // キャンバス表示の全要素をベクターSVGとして組み立てる（PDF/SVG出力共通）
 // rect: {x,y,w,h}（スクリーンpx座標）を渡すと、その範囲だけを出力する viewBox にする。
 // 省略時（既存のSVG保存・メール送付機能）は今まで通りキャンバス全体を出力する。
+// PDF出力用：敷地・足場1件分のSVGマークアップ（drawScaffoldと同じ見た目にする。
+// 矩形は<g rotate>で回転、ラベル文字は読みやすさのため回転させず水平のまま重ねる）
+function scaffoldSvgMarkup(el){
+  var c = w2s(el.wx, el.wy);
+  var rw = el.w*PX_PER_M*S.zoom, rh = el.d*PX_PER_M*S.zoom;
+  var col = el.color || SCAFF_COLORS[0];
+  var isSite = el.sub==='site';
+  var ang = el.angle||0;
+  var dash = isSite ? ' stroke-dasharray="7,5"' : '';
+  var rectSvg = '<rect x="'+(-rw/2).toFixed(2)+'" y="'+(-rh/2).toFixed(2)+'" width="'+rw.toFixed(2)+'" height="'+rh.toFixed(2)+'" fill="'+col+'" fill-opacity="0.16" stroke="'+col+'" stroke-width="1.8"'+dash+'/>';
+  var out = '<g transform="translate('+c.x.toFixed(2)+' '+c.y.toFixed(2)+') rotate('+ang.toFixed(2)+')">'+rectSvg+'</g>';
+  if(rw>34 && rh>18){
+    var lines = [scaffLabel(el), el.w.toFixed(1)+'×'+el.d.toFixed(1)+'m'];
+    if(!isSite && el.height!=null) lines.push('H'+parseFloat(el.height).toFixed(1)+'m');
+    var fs = Math.max(9, Math.min(13, rh/5));
+    var lh = Math.max(10, Math.min(14, rh/5));
+    var cy0 = c.y - (lh*(lines.length-1))/2;
+    lines.forEach(function(ln,i){
+      out += '<text x="'+c.x.toFixed(2)+'" y="'+(cy0+i*lh+fs*0.35).toFixed(2)+'" text-anchor="middle" font-size="'+fs.toFixed(1)+'" font-weight="bold" fill="#1a1d27">'+escSvgText(ln)+'</text>';
+    });
+  }
+  return out;
+}
 function buildFullSvg(rect){
   var w=canvas.width, h=canvas.height;
   var vx=0, vy=0, vw=w, vh=h;
   if(rect){ vx=rect.x; vy=rect.y; vw=rect.w; vh=rect.h; }
-  var pipeParts=[], otherParts=[];
+  var scaffParts=[], pipeParts=[], otherParts=[];
   S.els.forEach(function(el){
-    if(el.kind==='pipe'){
+    if(el.kind==='scaffold'){
+      scaffParts.push(scaffoldSvgMarkup(el));
+    } else if(el.kind==='pipe'){
       var p1=w2s(el.wx1,el.wy1), p2=w2s(el.wx2,el.wy2);
       var col=el.color||PIPE_COLOR;
       var isExisting=el.status==='existing';
@@ -6133,8 +6294,9 @@ function buildFullSvg(rect){
       otherParts.push(textSvgMarkup(el));
     }
   });
-  // 配管線を先に、継手等を後に並べることで、配管線が継手記号を突き抜けて見えないようにする
-  var parts = pipeParts.concat(otherParts);
+  // 足場・敷地を一番奥、配管線をその手前、継手等をさらに手前に並べることで、
+  // 画面表示（drawScaffold→配管→継手の順）と同じ重なり順にする
+  var parts = scaffParts.concat(pipeParts).concat(otherParts);
   return '<svg xmlns="http://www.w3.org/2000/svg" width="'+vw+'" height="'+vh+'" viewBox="'+vx+' '+vy+' '+vw+' '+vh+'" style="background:#fff">'+parts.join('\n')+'</svg>';
 }
 
@@ -6520,11 +6682,15 @@ function xlsxScaffoldShapeXml(el, rect, emuPerPx, shapeId){
     return '<a:p><a:pPr algn="ctr"/><a:r><a:rPr lang="ja-JP" sz="900" b="1"><a:solidFill><a:srgbClr val="1A1D27"/></a:solidFill></a:rPr><a:t>'+escSvgText(ln)+'</a:t></a:r></a:p>';
   }).join('');
   var dash = isSite ? '<a:prstDash val="dash"/>' : '';
+  // 回転角：OOXMLのrot属性は60,000分の1度・時計回り。off/extは回転前（未回転）の矩形のまま渡し、
+  // 表示上の回転はExcel側がこの矩形の中心を軸に自動で行う。
+  var rotVal = Math.round((((el.angle||0)%360)+360)%360 * 60000);
+  var xfrmAttr = rotVal ? (' rot="'+rotVal+'"') : '';
   return '<xdr:absoluteAnchor>'+
     '<xdr:pos x="'+offX+'" y="'+offY+'"/><xdr:ext cx="'+cx+'" cy="'+cy+'"/>'+
     '<xdr:sp macro="" textlink="">'+
     '<xdr:nvSpPr><xdr:cNvPr id="'+shapeId+'" name="足場'+shapeId+'"/><xdr:cNvSpPr/></xdr:nvSpPr>'+
-    '<xdr:spPr><a:xfrm><a:off x="'+offX+'" y="'+offY+'"/><a:ext cx="'+cx+'" cy="'+cy+'"/></a:xfrm>'+
+    '<xdr:spPr><a:xfrm'+xfrmAttr+'><a:off x="'+offX+'" y="'+offY+'"/><a:ext cx="'+cx+'" cy="'+cy+'"/></a:xfrm>'+
     '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'+
     '<a:solidFill><a:srgbClr val="'+hex+'"><a:alpha val="16000"/></a:srgbClr></a:solidFill>'+
     '<a:ln w="22225"><a:solidFill><a:srgbClr val="'+hex+'"/></a:solidFill>'+dash+'</a:ln>'+
