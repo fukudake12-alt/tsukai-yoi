@@ -47,22 +47,9 @@ header{
   padding:5px 10px;border-radius:var(--radius-sm);font-size:var(--fs-4);cursor:pointer;white-space:nowrap;
 }
 .h-btn:active{background:#dde2ea;}
-.h-btn.drag-over-btn,.di.drag-over-btn,.ov-label-btn.drag-over-btn{outline:2px dashed #0277bd;outline-offset:2px;background:rgba(2,119,189,0.12);}
 .body{flex:1;display:flex;overflow:hidden;position:relative;}
 .canvas-wrap{flex:1;position:relative;overflow:hidden;background:#ffffff;}
 #c{position:absolute;top:0;left:0;touch-action:none;cursor:crosshair;}
-/* Excel/CSVドラッグ&ドロップ用オーバーレイ：ファイルを画面上にドラッグしている間だけ表示する */
-.excel-drop-overlay{
-  position:fixed;inset:0;background:rgba(2,119,189,0.12);
-  display:none;align-items:center;justify-content:center;
-  z-index:500;pointer-events:none;
-}
-.excel-drop-overlay.vis{display:flex;}
-.excel-drop-box{
-  background:#ffffff;border:2px dashed #0277bd;border-radius:var(--radius-lg);
-  color:#0277bd;font-weight:700;font-size:var(--fs-6);
-  padding:20px 28px;box-shadow:0 4px 16px rgba(0,0,0,0.18);
-}
 /* SHEET TABS（Excelのシートタブと同じ考え方：複数の作図ページを切り替えられる） */
 .sheet-tabbar{
   height:34px;background:#eef1f6;border-top:1px solid #d8dce3;
@@ -71,15 +58,14 @@ header{
 .sheet-tabs{flex:1;display:flex;align-items:stretch;overflow-x:auto;scrollbar-width:none;}
 .sheet-tabs::-webkit-scrollbar{display:none;}
 .sheet-tab{
-  display:flex;align-items:center;gap:6px;padding:0 8px;white-space:nowrap;
+  display:flex;align-items:center;gap:4px;padding:0 10px;white-space:nowrap;
   font-size:var(--fs-4);color:#5c6b8a;border-right:1px solid #d8dce3;cursor:pointer;
   -webkit-tap-highlight-color:transparent;max-width:150px;
 }
 .sheet-tab .stlabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .sheet-tab.on{background:#ffffff;color:#0277bd;font-weight:700;}
-.sheet-tab .stbtn{color:#8a93a3;font-size:var(--fs-4);padding:4px 5px;line-height:1;border-radius:4px;}
-.sheet-tab .stbtn.stbtn-close{margin-left:1px;}
-.sheet-tab.on .stbtn:active{color:#1a1d27;background:#e3e7f0;}
+.sheet-tab .stbtn{color:#8a93a3;font-size:var(--fs-4);padding:2px;line-height:1;}
+.sheet-tab.on .stbtn:active{color:#1a1d27;}
 .sheet-tab-add{
   width:36px;display:flex;align-items:center;justify-content:center;
   color:#5c6b8a;font-size:var(--fs-6);cursor:pointer;border-left:1px solid #d8dce3;
@@ -89,16 +75,8 @@ header{
 .btbar{
   height:54px;background:#ffffff;border-top:1px solid #d8dce3;
   display:flex;align-items:center;justify-content:space-around;
-  padding:0 4px;flex-shrink:0;z-index:100;overflow-x:auto;
+  padding:0 8px;flex-shrink:0;z-index:100;
 }
-/* 下部ツールバーを「モード切替／編集操作／履歴」の3グループに分け、
-   区切り線を入れることで初めて使う人にも役割の違いが伝わるようにする。
-   グループを均等幅(flex:1)にすると、ボタン数が多いグループが窮屈になり
-   区切り線とボタンが重なって見えてしまうため、内容に応じた自然な幅にする。
-   万一、画面幅が狭くて全体が収まらない場合はこのバー自体を横スクロールできるようにして
-   ボタン同士が重なって表示されることがないようにする。 */
-.bt-group{display:flex;align-items:center;gap:2px;flex:0 0 auto;}
-.bt-divider{width:1px;align-self:center;height:32px;background:#d8dce3;flex-shrink:0;margin:0 4px;}
 .bt{
   display:flex;flex-direction:column;align-items:center;gap:1px;
   background:none;border:none;color:#5c6b8a;font-size:var(--fs-1);cursor:pointer;
@@ -116,20 +94,6 @@ header{
   display:flex;flex-direction:column;
 }
 .drawer.open{transform:none;}
-/* 右メニュー（ドロワー）の幅をつまんで変更するためのハンドル */
-.drawer-resize-handle{
-  position:absolute;left:-8px;top:0;bottom:0;width:16px;cursor:ew-resize;
-  touch-action:none;z-index:10;
-}
-.drawer-resize-handle::after{
-  content:'';position:absolute;left:6px;top:50%;width:4px;height:36px;
-  transform:translateY(-50%);border-radius:3px;background:#c7cdd8;
-}
-.drawer-resize-handle:active::after{background:#0277bd;}
-/* 移動可能なパネルのつまみ（ヘッダー部分） */
-.drag-handle{cursor:grab;touch-action:none;position:relative;}
-.drag-handle:active{cursor:grabbing;}
-.drag-handle::before{content:'⠿ ';opacity:0.45;letter-spacing:-2px;}
 .drawer-tabs{display:flex;flex-shrink:0;border-bottom:1px solid #d8dce3;}
 .drawer-tab{
   flex:1;text-align:center;padding:7px 2px;font-size:var(--fs-3);font-weight:700;
@@ -177,31 +141,6 @@ header{
   cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.12);-webkit-tap-highlight-color:transparent;
 }
 .ov:active{background:#eef1f6;}
-/* 表示パネル群を1つにまとめた「表示」ボタンと、部品選択を独立させた「部品」ボタン */
-.ov-label-btn{
-  width:56px;min-height:44px;border-radius:10px;background:#ffffff;border:1px solid #d8dce3;
-  color:#1a1d27;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
-  cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.12);font-size:11px;font-weight:700;line-height:1.2;
-  -webkit-tap-highlight-color:transparent;
-}
-.ov-label-btn .ic{font-size:18px;line-height:1;}
-.ov-label-btn:active{background:#eef1f6;}
-/* 「部品」ボタンは足場・継手・ピンなどを実際に追加する操作なので、表示系ボタンと区別できるよう色を変える */
-.ov-label-btn.ov-primary{background:#0277bd;border-color:#0277bd;color:#ffffff;}
-.ov-label-btn.ov-primary:active{background:#025f96;}
-.ov-anchor{position:relative;}
-.ov-menu{
-  position:absolute;bottom:100%;right:0;margin-bottom:8px;
-  background:#ffffff;border:1px solid #d8dce3;border-radius:10px;
-  box-shadow:0 4px 16px rgba(0,0,0,0.18);padding:4px;min-width:160px;
-  display:none;flex-direction:column;gap:2px;z-index:70;
-}
-.ov-menu.open{display:flex;}
-.ov-menu-row{
-  padding:8px 10px;border-radius:7px;font-size:13px;color:#1a1d27;
-  cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent;
-}
-.ov-menu-row:active{background:#eef1f6;}
 /* ROTATE PANEL */
 .rot-title{font-size:var(--fs-3);color:#0277bd;font-weight:700;margin-bottom:6px;text-align:center;}
 .rot-btns{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;}
@@ -276,11 +215,19 @@ header{
 .bg-panel-close:active{color:#1a1d27;}
 .bg-panel.vis{display:block;}
 .bg-panel input[type=range]{width:100%;}
-.bg-panel select{
+/* 階の半透明重ね表示（位置合わせ用）パネル：背景パネルと同じ考え方 */
+.ghost-panel{
+  position:absolute;top:0;right:0;width:140px;
+  background:#ffffff;border-left:1px solid #d8dce3;
+  padding:8px;z-index:200;display:none;box-shadow:-2px 0 10px rgba(0,0,0,0.12);
+}
+.ghost-panel.vis{display:block;}
+.ghost-panel input[type=range]{width:100%;}
+.ghost-panel select{
   width:100%;padding:5px 4px;border-radius:6px;border:1.5px solid #d8dce3;
   background:#eef1f6;color:#1a1d27;font-size:var(--fs-3);margin-bottom:4px;
 }
-.bg-panel label{display:flex;align-items:center;gap:5px;font-size:var(--fs-2);color:#5c6b8a;margin-top:4px;}
+.ghost-panel label{display:flex;align-items:center;gap:5px;font-size:var(--fs-2);color:#5c6b8a;margin-top:4px;}
 /* ピン一覧パネル：足場・敷地一覧と同じ構造を流用 */
 .pin-list-panel{
   position:absolute;top:56px;right:8px;width:160px;
@@ -290,6 +237,12 @@ header{
 }
 .pin-list-panel.vis{display:block;}
 .pin-list-title{font-size:var(--fs-3);color:#0277bd;font-weight:700;margin-bottom:6px;text-align:center;}
+.pin-list-addbtn{
+  display:block;width:100%;box-sizing:border-box;padding:7px 4px;margin-bottom:7px;
+  border:none;border-radius:7px;background:#0277bd;color:#fff;font-weight:700;
+  font-size:var(--fs-3);cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+.pin-list-addbtn:active{background:#01579b;}
 .pin-list-row{
   display:flex;align-items:center;gap:5px;padding:3px 4px;border-radius:5px;
   background:#eef1f6;margin-bottom:3px;cursor:pointer;-webkit-tap-highlight-color:transparent;
@@ -308,41 +261,21 @@ header{
   background:#eef1f6;color:#1a1d27;font-size:14px;font-family:inherit;
 }
 .pin-editor-sheet textarea{resize:vertical;min-height:70px;}
-.pin-photo-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;border-radius:8px;transition:background 0.1s;}
-.pin-photo-row.drag-over{background:rgba(2,119,189,0.1);outline:2px dashed #0277bd;outline-offset:2px;}
-.pin-photo-thumb{position:relative;width:72px;height:72px;flex-shrink:0;cursor:pointer;}
+.pin-photo-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;}
+.pin-photo-thumb{position:relative;width:54px;height:54px;flex-shrink:0;}
 .pin-photo-thumb img{width:100%;height:100%;border-radius:8px;object-fit:cover;border:1px solid #d8dce3;display:block;}
 .pin-photo-thumb .pin-photo-del{
   position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;
   background:#d32f2f;color:#fff;font-size:12px;line-height:18px;text-align:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.25);
 }
 .pin-photo-add{
-  width:72px;height:72px;flex-shrink:0;border-radius:8px;border:1.5px dashed #d8dce3;
+  width:54px;height:54px;flex-shrink:0;border-radius:8px;border:1.5px dashed #d8dce3;
   background:#eef1f6;color:#0277bd;font-size:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;
-}
-/* 仕様書：写真とは別枠で保存するファイル添付（PDF/画像/Office文書など）。一覧はファイル名付きの横並びチップで表示する */
-.pin-spec-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;border-radius:8px;transition:background 0.1s;}
-.pin-spec-row.drag-over{background:rgba(2,119,189,0.1);outline:2px dashed #0277bd;outline-offset:2px;}
-.pin-spec-chip{
-  position:relative;display:flex;align-items:center;gap:5px;max-width:150px;
-  padding:6px 20px 6px 8px;border-radius:8px;border:1px solid #d8dce3;background:#eef1f6;
-  font-size:var(--fs-3);color:#1a1d27;cursor:pointer;-webkit-tap-highlight-color:transparent;
-}
-.pin-spec-chip .psic{font-size:15px;flex-shrink:0;}
-.pin-spec-chip .psname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.pin-spec-chip .pin-spec-del{
-  position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;
-  background:#d32f2f;color:#fff;font-size:12px;line-height:18px;text-align:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.25);
-}
-.pin-spec-add{
-  height:32px;padding:0 12px;flex-shrink:0;border-radius:8px;border:1.5px dashed #d8dce3;
-  background:#eef1f6;color:#0277bd;font-size:var(--fs-3);display:flex;align-items:center;justify-content:center;cursor:pointer;
 }
 .pin-color-row{display:flex;gap:6px;margin-bottom:4px;}
 .pin-color-sw{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer;flex-shrink:0;}
 .pin-color-sw.on{border-color:#1a1d27;}
 .pin-editor-btns{display:flex;gap:8px;margin-top:12px;}
-.pin-editor-btns.pin-editor-btns-top{margin-top:0;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #e3e7f0;}
 .pin-editor-btns button{flex:1;padding:10px;border-radius:var(--radius-md);border:none;font-size:14px;cursor:pointer;}
 .pin-editor-btns .pe-delete{background:rgba(211,47,47,0.08);color:#d32f2f;border:1px solid #d32f2f!important;}
 .pin-editor-btns .pe-cancel{background:#eef1f6;color:#5c6b8a;}
@@ -423,9 +356,9 @@ header{
 
 /* テキスト入力ポップアップ（軽量：画面を暗く覆わず、上の方にさっと出すカード） */
 .text-input-overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,0.32);
+  position:fixed;inset:0;
   z-index:600;display:none;align-items:flex-start;justify-content:center;
-  padding-top:54px;
+  padding-top:54px;pointer-events:none;
 }
 .text-input-overlay.vis{display:flex;}
 .text-input-box{
@@ -488,8 +421,6 @@ header{
   .bt .ic{font-size:14px;}
   .drawer{width:100px;}
   .ov{width:32px;height:32px;font-size:16px;}
-  .ov-label-btn{width:46px;min-height:38px;font-size:9px;}
-  .ov-label-btn .ic{font-size:15px;}
 }
 
 /* 右クリックコンテキストメニュー（PC向け） */
@@ -509,7 +440,7 @@ header{
 /* PRINT */
 @media print{
   body{background:#ffffff;color:#000000;}
-  header,.btbar,.sheet-tabbar,.ovl,.esc-btn,.drawer,.multisel-panel,.pipe-edit-panel,.scaff-edit-panel,.scaff-list-panel,.status,.toast,.text-input-overlay,.share-sheet-overlay,.ctx-menu,.bg-panel,.pipe-mode-switch,.angle-step-switch,.pin-list-panel{display:none!important;}
+  header,.btbar,.sheet-tabbar,.ovl,.esc-btn,.drawer,.multisel-panel,.pipe-edit-panel,.scaff-edit-panel,.scaff-list-panel,.status,.toast,.text-input-overlay,.share-sheet-overlay,.ctx-menu,.bg-panel,.pipe-mode-switch,.angle-step-switch,.ghost-panel,.pin-list-panel{display:none!important;}
   .canvas-wrap{position:static;width:100%;height:100vh;}
 }
 </style>
@@ -528,19 +459,15 @@ header{
 
 <header>
   <div class="logo">TSUKAI-yoi <small id="appVersionLabel"></small></div>
-  <button class="h-btn" id="btnOpenFile" onclick="triggerLoadFile()">📂開く</button>
+  <button class="h-btn" onclick="triggerLoadFile()">📂開く</button>
+  <button class="h-btn" onclick="triggerLoadPdf()">📄plot</button>
   <button class="h-btn" onclick="openShareSheet()">💾保存</button>
   <button class="h-btn" onclick="clearAll()">🗑全消去</button>
   <input type="file" id="loadFileInput" accept=".json,application/json,.pipeiso" style="display:none" onchange="handleLoadFile(event)">
   <input type="file" id="loadPdfInput" accept="application/pdf,image/*" style="display:none" onchange="handleLoadPdf(event)">
   <input type="file" id="loadPinListInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportPinList(event)">
   <input type="file" id="pinPhotoInput" accept="image/*" multiple style="display:none" onchange="handlePinPhotoAdd(event)">
-  <input type="file" id="pinSpecInput" accept="application/pdf,image/*,.doc,.docx,.xls,.xlsx,.pdf" multiple style="display:none" onchange="handlePinSpecAdd(event)">
 </header>
-<!-- Excel/CSVファイルをドラッグ中に表示するオーバーレイ（ピン一覧へ取込むことをドロップ前に示す） -->
-<div class="excel-drop-overlay" id="excelDropOverlay">
-  <div class="excel-drop-box">📥 ドロップしてExcel/CSVを取込</div>
-</div>
 
 <div class="body">
   <div class="canvas-wrap" id="wrap">
@@ -548,33 +475,23 @@ header{
     <div class="esc-btn" onclick="escapeToNeutral()" title="操作を中断してニュートラルに戻る">ESC</div>
     <div class="status" id="status">配管</div>
     <div class="ctx-menu" id="ctxMenu"></div>
-    <div class="angle-step-switch" id="angleStepSwitch" onclick="cycleAngleStep()" title="配管を描くときの角度固定（タップで15°/30°/45°/90°を切替）" style="display:none;">
+    <div class="angle-step-switch" id="angleStepSwitch" onclick="cycleAngleStep()" title="配管を描くときの角度固定（タップで15°/30°/45°/90°を切替）">
       <span id="angleStepSwitchLabel">30°固定</span>
     </div>
-    <div class="pipe-mode-switch" id="pipeModeSwitch" onclick="togglePipeDrawMode()" title="配管を描くときの角度・長さの合わせ方を切替" style="display:none;">
+    <div class="pipe-mode-switch" id="pipeModeSwitch" onclick="togglePipeDrawMode()" title="配管を描くときの角度・長さの合わせ方を切替">
       <span class="ic" id="pipeModeSwitchIcon">📐</span><span id="pipeModeSwitchLabel">アイソメ</span>
     </div>
 
     <div class="ovl">
-      <div class="ov-anchor">
-        <div class="ov-menu" id="displayMenu">
-          <div class="ov-menu-row" id="plotMenuRow" onclick="openDisplayMenuItem('plot')">📄 PLOTを開く（PDF/写真）</div>
-          <div class="ov-menu-row" id="removePlotMenuRow" onclick="openDisplayMenuItem('removePlot')" style="display:none;">🗑 プロットを削除</div>
-          <div class="ov-menu-row" id="plotSettingsMenuRow" onclick="openDisplayMenuItem('plotSettings')" style="display:none;">🌗👻 プロット設定（背景・重ね表示）</div>
-          <div class="ov-menu-row" id="scaffListMenuRow" onclick="openDisplayMenuItem('scaffList')" style="display:none;">📋 足場・敷地一覧</div>
-          <div class="ov-menu-row" id="pinListMenuRow" onclick="openDisplayMenuItem('pinList')" style="display:none;">📌 ピン一覧</div>
-        </div>
-        <div class="ov-label-btn" id="displayToggleBtn" onclick="toggleDisplayMenu()" title="プロット（PDF/写真）の取込・背景・階の重ね表示などをまとめて操作。ファイルをこの上にドラッグ&ドロップしても取込めます" style="display:none;">
-          <span class="ic">📄</span><span>プロット</span>
-        </div>
-      </div>
-      <div class="ov-label-btn ov-primary" onclick="setToolFitting()" title="継手・ピン・足場などの部品を選んで置く">
-        <span class="ic">🧰</span><span>部品</span>
-      </div>
+      <div class="ov" id="bgToggleBtn" onclick="toggleBgPanel()" title="背景の濃さ・回転・位置を調整" style="display:none;">🌗</div>
+      <div class="ov" id="scaffListToggleBtn" onclick="toggleScaffListPanel()" title="足場・敷地の一覧" style="display:none;">📋</div>
+      <div class="ov" id="ghostToggleBtn" onclick="toggleGhostPanel()" title="他の階を半透明で重ねて位置合わせ" style="display:none;">👻</div>
+      <div class="ov" id="pinListToggleBtn" onclick="togglePinListPanel()" title="ピン一覧" style="display:none;">📌</div>
+      <div class="ov" onclick="setToolFitting()" title="メニューを開く">☰</div>
     </div>
 
     <div class="multisel-panel" id="multiSelPanel">
-      <div class="rot-title drag-handle" id="multiSelTitle">0個選択中</div>
+      <div class="rot-title" id="multiSelTitle">0個選択中</div>
       <div class="rot-btns" id="multiColorTargetTabs" style="grid-template-columns:repeat(2,1fr);margin-top:2px;display:none;">
         <button class="rot-btn" id="multiTabPipeColorBtn" onclick="setMultiColorEditTarget('pipe')">配管</button>
         <button class="rot-btn" id="multiTabDimColorBtn" onclick="setMultiColorEditTarget('dim')">寸法</button>
@@ -586,18 +503,12 @@ header{
       <div class="rot-btns" style="grid-template-columns:repeat(2,1fr);margin-top:2px;" id="multiTextSizeBtns"></div>
       <div style="font-size:var(--fs-2);color:#5c6b8a;margin-top:6px;text-align:center;display:none;" id="multiCrossLabel">配管交差</div>
       <div class="rot-btns" style="grid-template-columns:repeat(2,1fr);margin-top:2px;display:none;" id="multiCrossBtns"></div>
-      <div class="div" style="margin:8px 0 6px;"></div>
-      <div class="rot-btns" style="grid-template-columns:repeat(2,1fr);">
-        <button class="rot-btn" onclick="rotateStep()">🔄 回転</button>
-        <button class="rot-btn" onclick="toggleMirror()">⇌ 鏡像</button>
-      </div>
-      <button class="rot-btn" style="width:100%;margin-top:3px;" onclick="scaleAction()">⤢ 尺度変更</button>
       <button class="rot-close" onclick="deleteMultiSel()" style="background:rgba(211,47,47,0.9);color:#fff;border-color:#d32f2f;margin-top:6px;">🗑 削除</button>
       <button class="rot-close" onclick="clearMultiSel()">選択解除</button>
     </div>
 
     <div class="pipe-edit-panel" id="pipeEditPanel">
-      <div class="rot-title drag-handle" id="pipeEditTitle">配管編集中</div>
+      <div class="rot-title" id="pipeEditTitle">配管編集中</div>
       <div class="rot-btns" id="colorTargetTabs" style="grid-template-columns:repeat(2,1fr);margin-top:2px;display:none;">
         <button class="rot-btn" id="tabPipeColorBtn" onclick="setColorEditTarget('pipe')">配管</button>
         <button class="rot-btn" id="tabDimColorBtn" onclick="setColorEditTarget('dim')">寸法</button>
@@ -610,17 +521,10 @@ header{
       <button class="rot-close" id="pipeDimEditBtn" onclick="editSelectedPipeDimension()" style="display:none;margin-top:6px;background:#0277bd;color:#fff;border-color:#0277bd;">🔢 寸法を編集</button>
       <div style="font-size:var(--fs-2);color:#5c6b8a;margin-top:6px;text-align:center;display:none;" id="pipeCrossLabel">他の配管との交差</div>
       <div class="rot-btns" style="grid-template-columns:repeat(2,1fr);margin-top:2px;display:none;" id="pipeCrossBtns"></div>
-      <div class="div" style="margin:8px 0 6px;"></div>
-      <div class="rot-btns" style="grid-template-columns:repeat(2,1fr);" id="pipeActionBtns">
-        <button class="rot-btn" id="pipeActRotate" onclick="rotateStep()">🔄 回転</button>
-        <button class="rot-btn" id="pipeActMirror" onclick="toggleMirror()">⇌ 鏡像</button>
-        <button class="rot-btn" id="pipeActScale" onclick="scaleAction()">⤢ 尺度変更</button>
-        <button class="rot-btn" id="pipeActDelete" onclick="eraseAction()" style="background:rgba(211,47,47,0.08);border-color:#d32f2f;color:#d32f2f;">🗑 削除</button>
-      </div>
     </div>
 
     <div class="scaff-edit-panel" id="scaffEditPanel">
-      <div class="rot-title drag-handle" id="scaffEditTitle">足場編集中</div>
+      <div class="rot-title" id="scaffEditTitle">足場編集中</div>
       <div style="font-size:var(--fs-2);color:#5c6b8a;">呼び名（空欄なら自動採番のまま）</div>
       <input type="text" id="scaffEditCustomLabel" oninput="applyScaffEditCustomLabel(this.value)"
         style="width:100%;box-sizing:border-box;padding:5px 6px;font-size:var(--fs-4);border:1px solid #d8dce3;border-radius:var(--radius-sm);margin-bottom:4px;">
@@ -662,65 +566,56 @@ header{
     </div>
 
     <div class="scaff-list-panel" id="scaffListPanel">
-      <div class="bg-panel-head drag-handle">
-        <div class="scaff-list-title" style="margin-bottom:0;text-align:left;">足場・敷地 一覧</div>
-        <div class="bg-panel-close" onclick="toggleScaffListPanel()" title="閉じる">✕</div>
-      </div>
+      <div class="scaff-list-title">足場・敷地 一覧</div>
       <div id="scaffListBody"></div>
     </div>
 
     <div class="pin-list-panel" id="pinListPanel">
-      <div class="bg-panel-head drag-handle">
-        <div class="pin-list-title" style="margin-bottom:0;text-align:left;">ピン一覧（<span id="pinListCount">0</span>）</div>
-        <div class="bg-panel-close" onclick="togglePinListPanel()" title="閉じる">✕</div>
-      </div>
+      <div class="pin-list-title">ピン一覧（<span id="pinListCount">0</span>）</div>
+      <button class="pin-list-addbtn" onclick="addPinFromListPanel()">＋ ピン追加</button>
       <div id="pinListBody"></div>
     </div>
 
-    <div class="bg-panel" id="plotPanel" title="プロット（背景PDF/写真・階の重ね表示）の設定" style="width:160px;">
-      <div class="bg-panel-head drag-handle">
-        <div class="rot-title" style="margin-bottom:0;">プロット設定</div>
-        <div class="bg-panel-close" onclick="togglePlotPanel()" title="閉じる">✕</div>
+    <div class="ghost-panel" id="ghostPanel" title="他の階を半透明で重ねて位置合わせ">
+      <div class="bg-panel-head">
+        <div class="rot-title" style="margin-bottom:0;">階を重ねて表示</div>
+        <div class="bg-panel-close" onclick="toggleGhostPanel()" title="閉じる">✕</div>
       </div>
+      <div style="font-size:var(--fs-2);color:#5c6b8a;">重ねる階</div>
+      <select id="ghostSheetSelect" onchange="setGhostSheet(this.value)"></select>
+      <div style="font-size:var(--fs-2);color:#5c6b8a;margin-top:4px;">濃さ</div>
+      <input type="range" id="ghostOpacitySlider" min="10" max="90" value="45" oninput="setGhostOpacity(this.value)">
+      <label><input type="checkbox" id="ghostPinsCheck" checked onchange="setGhostShowPins(this.checked)">ピンも重ねて表示する</label>
+    </div>
 
-      <div id="plotPanelBgSection">
-        <div style="font-size:var(--fs-2);color:#5c6b8a;font-weight:700;">🌗 背景（この階のPDF/写真）</div>
-        <div style="font-size:var(--fs-2);color:#5c6b8a;margin-top:4px;">透明度</div>
-        <input type="range" id="bgOpacitySlider" min="10" max="100" value="80" oninput="setBgOpacity(this.value)">
-        <div style="font-size:var(--fs-2);color:#5c6b8a;margin-top:4px;">サイズ</div>
-        <div class="rot-btns" style="grid-template-columns:repeat(3,1fr);">
-          <button class="rot-btn" onclick="scaleBg(0.9)">－</button>
-          <button class="rot-btn" onclick="resetBgScale()">既定</button>
-          <button class="rot-btn" onclick="scaleBg(1.1)">＋</button>
-        </div>
-        <div style="font-size:var(--fs-2);color:#5c6b8a;margin-top:4px;">回転</div>
-        <div class="rot-btns" style="grid-template-columns:repeat(3,1fr);">
-          <button class="rot-btn" onclick="rotateBg(-90)">－90°</button>
-          <button class="rot-btn" onclick="rotateBg(-1)">－1°</button>
-          <button class="rot-btn" onclick="resetBgAngle()">既定</button>
-          <button class="rot-btn" onclick="rotateBg(1)">＋1°</button>
-          <button class="rot-btn" onclick="rotateBg(90)">＋90°</button>
-        </div>
-        <button class="rot-btn" style="width:100%;margin-top:6px;" onclick="setTool('ruler')">📏 校正</button>
-        <button class="rot-btn" style="width:100%;margin-top:6px;" onclick="setTool('movebg')">✋ 位置を調整</button>
-        <button class="rot-close" onclick="removeBg()">背景を削除</button>
+    <div class="bg-panel" id="bgPanel" title="背景（PDF/写真・下敷き）の表示設定">
+      <div class="bg-panel-head">
+        <div class="rot-title" style="margin-bottom:0;">背景</div>
+        <div class="bg-panel-close" onclick="toggleBgPanel()" title="閉じる">✕</div>
       </div>
-
-      <div id="plotPanelDivider" style="margin:10px 0 6px;border-top:1px solid #eef1f6;"></div>
-
-      <div id="plotPanelGhostSection">
-        <div style="font-size:var(--fs-2);color:#5c6b8a;font-weight:700;">👻 階を重ねて表示</div>
-        <div style="font-size:var(--fs-2);color:#5c6b8a;margin-top:4px;">重ねて表示する階</div>
-        <select id="ghostSheetSelect" onchange="setGhostSheet(this.value)"></select>
-        <div style="font-size:var(--fs-2);color:#5c6b8a;margin-top:4px;">濃さ</div>
-        <input type="range" id="ghostOpacitySlider" min="0" max="100" value="100" oninput="setGhostOpacity(this.value)">
-        <label><input type="checkbox" id="ghostPinsCheck" checked onchange="setGhostShowPins(this.checked)">ピンも重ねて表示する</label>
+      <div style="font-size:var(--fs-2);color:#5c6b8a;">透明度</div>
+      <input type="range" id="bgOpacitySlider" min="10" max="100" value="80" oninput="setBgOpacity(this.value)">
+      <div style="font-size:var(--fs-2);color:#5c6b8a;margin-top:4px;">サイズ</div>
+      <div class="rot-btns" style="grid-template-columns:repeat(3,1fr);">
+        <button class="rot-btn" onclick="scaleBg(0.9)">－</button>
+        <button class="rot-btn" onclick="resetBgScale()">既定</button>
+        <button class="rot-btn" onclick="scaleBg(1.1)">＋</button>
       </div>
+      <div style="font-size:var(--fs-2);color:#5c6b8a;margin-top:4px;">回転</div>
+      <div class="rot-btns" style="grid-template-columns:repeat(3,1fr);">
+        <button class="rot-btn" onclick="rotateBg(-90)">－90°</button>
+        <button class="rot-btn" onclick="rotateBg(-1)">－1°</button>
+        <button class="rot-btn" onclick="resetBgAngle()">既定</button>
+        <button class="rot-btn" onclick="rotateBg(1)">＋1°</button>
+        <button class="rot-btn" onclick="rotateBg(90)">＋90°</button>
+      </div>
+      <button class="rot-btn" style="width:100%;margin-top:6px;" onclick="setTool('ruler')">📏 校正</button>
+      <button class="rot-btn" style="width:100%;margin-top:6px;" onclick="setTool('movebg')">✋ 位置を調整</button>
+      <button class="rot-close" onclick="removeBg()">背景を削除</button>
     </div>
   </div>
 
   <div class="drawer" id="drawer">
-    <div class="drawer-resize-handle" id="drawerResizeHandle" title="ドラッグして幅を変更（ダブルタップで既定幅）"></div>
     <div class="drawer-tabs">
       <div class="drawer-tab" id="drawerTabBtnPin" onclick="setDrawerTab('pin')">ピン</div>
       <div class="drawer-tab" id="drawerTabBtnScaff" onclick="setDrawerTab('scaff')">足場</div>
@@ -746,9 +641,9 @@ header{
     <!-- ■ ピン記録：バルブ等の対象物に印を付け、名称・サイズ・メモ・写真を紐付ける -->
     <div class="dsec">
       <div class="dg c1">
-        <button class="di" id="bPin" draggable="false" onclick="setTool('addpin')" style="touch-action:none;user-select:none;-webkit-user-drag:none;" ondragstart="return false;" title="タップした位置にピンを設置。既存ピンはこのツール中はドラッグで、他のツール中は配管・継手と同じく長押しでつかんで移動できます。ボタンを押したまま指をキャンバスまでスライドさせて離しても設置できます">📌 ピン追加</button>
+        <button class="di" id="bPin" onclick="setTool('addpin')" title="タップした位置にピンを設置、既存ピンはドラッグで移動">📌 ピン追加</button>
         <button class="di" onclick="togglePinListPanel()" style="margin-top:4px;" title="設置済みのピン一覧を表示">📋 ピン一覧</button>
-        <button class="di" id="btnImportExcel" onclick="triggerImportPinList()" style="margin-top:4px;" title="Excel(.xlsx/.csv)の名称・ITEM・整備・レーティング・サイズ・TYPE・ガスケット・適用法規・流体・備考の各列を読み込み、名称が一致するピンへ反映します。画面へファイルをドラッグ&ドロップしても取込めます">📥 Excelから取込（D&D可）</button>
+        <button class="di" onclick="triggerImportPinList()" style="margin-top:4px;" title="Excel(.xlsx/.csv)の名称・ITEM・整備・レーティング・サイズ・TYPE・ガスケット・適用法規・流体・備考の各列を読み込み、名称が一致するピンへ反映します">📥 Excelから取込</button>
       </div>
     </div>
 
@@ -918,23 +813,15 @@ header{
 </div>
 
 <div class="btbar">
-  <div class="bt-group">
-    <button class="bt on" id="bPipe" onclick="setTool('pipe')"><span class="ic">╱</span>配管</button>
-    <button class="bt"    id="bSel"  onclick="setTool('rangesel')"><span class="ic">⬚</span>選択/寸法</button>
-    <button class="bt"    id="bTxt"  onclick="setTool('text')"><span class="ic">Ａ</span>文字</button>
-  </div>
-  <div class="bt-divider"></div>
-  <div class="bt-group">
-    <button class="bt"    id="bRot"  onclick="rotateStep()"><span class="ic">🔄</span>回転</button>
-    <button class="bt"    id="bMir"  onclick="toggleMirror()"><span class="ic">⇌</span>鏡像</button>
-    <button class="bt"    id="bScale" onclick="scaleAction()"><span class="ic">⤢</span>尺度変更</button>
-    <button class="bt"    id="bErs"  onclick="eraseAction()"><span class="ic">✕</span>消去</button>
-  </div>
-  <div class="bt-divider"></div>
-  <div class="bt-group">
-    <button class="bt"    id="bUndo" onclick="undoAct()"><span class="ic">↩</span>元に戻す</button>
-    <button class="bt"    id="bRedo" onclick="redoAct()"><span class="ic">↪</span>やり直し</button>
-  </div>
+  <button class="bt on" id="bPipe" onclick="setTool('pipe')"><span class="ic">╱</span>配管</button>
+  <button class="bt"    id="bRot"  onclick="rotateStep()"><span class="ic">🔄</span>回転</button>
+  <button class="bt"    id="bMir"  onclick="toggleMirror()"><span class="ic">⇌</span>鏡像</button>
+  <button class="bt"    id="bSel"  onclick="setTool('rangesel')"><span class="ic">⬚</span>選択/寸法</button>
+  <button class="bt"    id="bScale" onclick="scaleAction()"><span class="ic">⤢</span>尺度変更</button>
+  <button class="bt"    id="bTxt"  onclick="setTool('text')"><span class="ic">Ａ</span>文字</button>
+  <button class="bt"    id="bErs"  onclick="eraseAction()"><span class="ic">✕</span>消去</button>
+  <button class="bt"    id="bUndo" onclick="undoAct()"><span class="ic">↩</span>元に戻す</button>
+  <button class="bt"    id="bRedo" onclick="redoAct()"><span class="ic">↪</span>やり直し</button>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -986,7 +873,7 @@ header{
       <span class="ssic">📨</span>SVGをメールで送付
     </button>
     <button class="share-sheet-item" onclick="saveProjectFile(); closeShareSheet();">
-      <span class="ssic">💾</span>作図データを保存
+      <span class="ssic">💾</span>作図データを保存（このアプリの「開く」で続きから編集）
     </button>
     <div style="height:1px;background:#e3e7f0;margin:8px 0;"></div>
     <button class="share-sheet-item" onclick="startExportFlow('pdf'); closeShareSheet();">
@@ -1002,16 +889,10 @@ header{
 <div class="share-sheet-overlay" id="pinEditorOverlay" onclick="if(event.target===this)cancelPinEditor();">
   <div class="share-sheet pin-editor-sheet">
     <div class="share-sheet-title" id="pinEditorTitle" style="text-align:left;color:#0277bd;font-size:var(--fs-6);">ピン情報</div>
-    <div class="pin-editor-btns pin-editor-btns-top">
-      <button class="pe-cancel" onclick="cancelPinEditor()">キャンセル</button>
-      <button class="pe-save" onclick="savePinEditor()">保存</button>
-    </div>
     <div class="pin-editor-label">写真（複数枚保存できます）</div>
     <div class="pin-photo-row" id="pinPhotoRow"></div>
-    <div class="pin-editor-label">仕様書（PDF・画像・Office文書を写真とは別に保存できます）</div>
-    <div class="pin-spec-row" id="pinSpecRow"></div>
-    <div class="pin-editor-label">タイトル</div>
-    <input type="text" id="pinNameField" placeholder="例：V-1">
+    <div class="pin-editor-label">名称</div>
+    <input type="text" id="pinNameField" placeholder="例：ゲートバルブ #1">
     <div class="pin-editor-label">ITEM</div>
     <input type="text" id="pinItemField" list="pinItemOptions" placeholder="品名（手入力）">
     <datalist id="pinItemOptions"></datalist>
@@ -1095,6 +976,8 @@ header{
     <textarea id="pinMemoField" placeholder="詳細・状態・作業内容など"></textarea>
     <div class="pin-editor-btns">
       <button class="pe-delete" id="pinDeleteBtn" onclick="deletePinFromEditor()">削除</button>
+      <button class="pe-cancel" onclick="cancelPinEditor()">キャンセル</button>
+      <button class="pe-save" onclick="savePinEditor()">保存</button>
     </div>
   </div>
 </div>
@@ -1120,47 +1003,19 @@ header{
   </div>
 </div>
 
-<!-- 変更点：PDF/Excelの読込・出力ライブラリは起動時に一括で読み込むのをやめ、
-     実際にその機能を使うタイミングまで遅延読み込みするようにした（起動速度のムラ対策）。
-     各ライブラリのURLとPromiseキャッシュは下のloadScriptOnce/ensure〜関数にまとめてある。 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-var CDN_BASE = 'https://cdnjs.cloudflare.com/ajax/libs/';
-var LIB_URLS = {
-  pdfjs:  CDN_BASE + 'pdf.js/3.11.174/pdf.min.js',
-  pdfjsWorker: CDN_BASE + 'pdf.js/3.11.174/pdf.worker.min.js',
-  jspdf:  CDN_BASE + 'jspdf/2.5.1/jspdf.umd.min.js',
-  jszip:  CDN_BASE + 'jszip/3.10.1/jszip.min.js',
-  xlsx:   CDN_BASE + 'xlsx/0.18.5/xlsx.full.min.js'
-};
-var _scriptLoadPromises = {};
-function loadScriptOnce(url){
-  if(_scriptLoadPromises[url]) return _scriptLoadPromises[url];
-  _scriptLoadPromises[url] = new Promise(function(resolve, reject){
-    var s = document.createElement('script');
-    s.src = url;
-    s.onload = function(){ resolve(); };
-    s.onerror = function(){ delete _scriptLoadPromises[url]; reject(new Error('load failed: '+url)); };
-    document.head.appendChild(s);
-  });
-  return _scriptLoadPromises[url];
+if(window.pdfjsLib){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 }
-// PDF取込・PDF出力・Excel取込・Excel出力、それぞれの直前で呼び出す想定。
-// 既に読み込み済みなら即resolveされるので、複数回呼んでも問題ない。
-function ensurePdfjs(){
-  return loadScriptOnce(LIB_URLS.pdfjs).then(function(){
-    if(window.pdfjsLib && !pdfjsLib.GlobalWorkerOptions.workerSrc){
-      pdfjsLib.GlobalWorkerOptions.workerSrc = LIB_URLS.pdfjsWorker;
-    }
-  });
-}
-function ensureJspdf(){ return loadScriptOnce(LIB_URLS.jspdf); }
-function ensureJszip(){ return loadScriptOnce(LIB_URLS.jszip); }
-function ensureXlsx(){ return loadScriptOnce(LIB_URLS.xlsx); }
 </script>
 <script>
 // ── 定数 ──────────────────────────────────────
 // アプリのバージョン番号。改修（機能追加・修正）を行うたびに1ずつ増やすこと。
-var APP_VERSION  = 19;
+var APP_VERSION  = 9;
 var GRID_M       = 0.1;
 var PX_PER_M     = 80;
 var SNAP_DIST_PX = 28;  // スナップ精度向上のため拡大
@@ -1271,7 +1126,7 @@ var S = {
   panning:false, panStart:null,
   pinchDist:0, touches:[], pinching:false,
   // ドラッグモード
-  dragMode:null, dragIsPin:false,
+  dragMode:null,
   dragEl:null, dragEnd:0,
   dragOffX:0, dragOffY:0, dragEntryTime:0, dragSubMode:null, dragEnd:null,
   dragging:false,
@@ -1300,7 +1155,7 @@ var S = {
   pinDragging:false, pinDragTarget:null, pinDragStart:null, pinDragOrig:null, pinDragMoved:false,
   pinListOpen:false,
   // ── 階の半透明重ね表示（位置合わせ用） ──
-  ghostSheet:0, ghostOpacity:1, ghostShowPins:true, plotPanelOpen:false,
+  ghostSheet:0, ghostOpacity:0.45, ghostShowPins:true, ghostPanelOpen:false,
 };
 var PIN_COLORS = ['#0277bd','#d32f2f','#2e7d32','#f9a825','#6a1b9a','#546e7a'];
 var LONG_PRESS_MS = 480;
@@ -1430,13 +1285,13 @@ function snapIso(ssx,ssy,sex,sey){
   var sn=Math.round(len/PIPE_LEN_SNAP_M)*PIPE_LEN_SNAP_M; if(sn<PIPE_LEN_SNAP_M) sn=PIPE_LEN_SNAP_M;
   return {x:ws.x+sn*Math.cos(rad), y:ws.y+sn*Math.sin(rad)};
 }
-// 物差し（校正）専用：角度だけ90°刻みに固定し、長さは実測のため丸めずそのまま使う
+// 物差し（校正）専用：角度だけ30°刻みに固定し、長さは実測のため丸めずそのまま使う
 function snapRulerAngle(wsx,wsy,wex,wey){
   var dx=wex-wsx, dy=wey-wsy;
   var len=Math.sqrt(dx*dx+dy*dy);
   if(len<0.0001) return {x:wex, y:wey};
   var ang=Math.atan2(dy,dx)*180/Math.PI;
-  var s90=Math.round(ang/90)*90, rad=s90*Math.PI/180;
+  var s30=Math.round(ang/30)*30, rad=s30*Math.PI/180;
   return {x:wsx+len*Math.cos(rad), y:wsy+len*Math.sin(rad)};
 }
 
@@ -1552,23 +1407,15 @@ function drawPipeLineWithGaps(p1,p2,cutTs){
 
 function render(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  if(S.bg && S.bg.img && S.bg.img.complete){
+  if(S.bg && S.bg.img){
     var bgW = S.bg.baseW*S.bg.scale, bgH = S.bg.baseH*S.bg.scale;
     var bgCenterScr = w2s(S.bg.wx, S.bg.wy);
     var bgPxW = bgW*PX_PER_M*S.zoom, bgPxH = bgH*PX_PER_M*S.zoom;
-    // 縮小表示時にPDF/写真がにじんで見づらくならないよう、段階的に縮小したミップマップから
-    // 表示サイズに最も近いものを選んで描画する（拡大表示時は元画像のまま高品質に描画される）。
-    if(!S.bg._mips || S.bg._mipsSrc!==S.bg.img.src){
-      S.bg._mips = buildGhostMip(S.bg.img);
-      S.bg._mipsSrc = S.bg.img.src;
-    }
-    var bgMip = pickGhostMip(S.bg._mips, Math.max(bgPxW,bgPxH));
     ctx.save();
     ctx.globalAlpha = S.bg.opacity;
-    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
     ctx.translate(bgCenterScr.x, bgCenterScr.y);
     ctx.rotate((S.bg.angle||0) * Math.PI/180);
-    ctx.drawImage(bgMip.canvas, -bgPxW/2, -bgPxH/2, bgPxW, bgPxH);
+    ctx.drawImage(S.bg.img, -bgPxW/2, -bgPxH/2, bgPxW, bgPxH);
     ctx.restore();
   }
   if(S.showGrid) drawGrid();
@@ -1649,13 +1496,6 @@ function render(){
     ctx.restore();
   }
   drawPins();
-  if(S.pinPaletteDragging && S.pinDragGhostPos){
-    ctx.save();
-    ctx.globalAlpha = 0.75;
-    var ghostNum = (S.pins ? S.pins.length : 0) + 1;
-    drawPinIcon(S.pinDragGhostPos.x, S.pinDragGhostPos.y, PIN_COLORS[0], ghostNum, false, false, 2.2);
-    ctx.restore();
-  }
   updateSt(); updateMirrorButton(); updateMultiSelPanel(); updatePipeEditPanel(); updateScaffEditPanel(); updateScaffListPanel(); updatePinListPanel();
 }
 
@@ -1687,16 +1527,10 @@ function drawGrid(){
 }
 
 // ── ピン（現場記録：バルブ等の対象物に立てる目印） ─────────────
-function drawPinIcon(sx,sy,color,label,ghost,grabbed,scale){
-  var R=13*(scale||1), cy=-R*1.5;
+function drawPinIcon(sx,sy,color,label,ghost){
+  var R=13, cy=-R*1.5;
   ctx.save();
   ctx.translate(sx,sy);
-  if(grabbed){
-    // 長押しでつかんで移動中のピンを分かりやすくするための強調リング
-    ctx.beginPath();
-    ctx.arc(0,cy,R+6,0,Math.PI*2);
-    ctx.strokeStyle='#0277bd'; ctx.lineWidth=2.5; ctx.setLineDash([3,3]); ctx.stroke(); ctx.setLineDash([]);
-  }
   ctx.beginPath();
   ctx.moveTo(-R*0.55, cy+R*0.75);
   ctx.lineTo(R*0.55, cy+R*0.75);
@@ -1708,7 +1542,7 @@ function drawPinIcon(sx,sy,color,label,ghost,grabbed,scale){
   ctx.fillStyle=color; ctx.fill();
   ctx.lineWidth=2; ctx.strokeStyle='#ffffff'; ctx.stroke();
   if(!ghost){
-    ctx.fillStyle='#ffffff'; ctx.font='bold '+Math.round(11*(scale||1))+'px system-ui,sans-serif';
+    ctx.fillStyle='#ffffff'; ctx.font='bold 11px system-ui,sans-serif';
     ctx.textAlign='center'; ctx.textBaseline='middle';
     ctx.fillText(String(label), 0, cy);
   }
@@ -1718,42 +1552,8 @@ function drawPins(){
   if(!S.pins) return;
   S.pins.forEach(function(p,i){
     var pos=w2s(p.wx,p.wy);
-    var grabbed = !!(S.dragMode==='move' && S.dragIsPin && S.dragEl===p);
-    drawPinIcon(pos.x,pos.y,p.color||PIN_COLORS[0], i+1, false, grabbed);
-    if(p.name) drawPinNameLabel(pos.x,pos.y,p.name);
+    drawPinIcon(pos.x,pos.y,p.color||PIN_COLORS[0], i+1);
   });
-}
-// 角丸四角形のパス（ctx.roundRectが無い環境でも描けるように自前で用意）
-function roundRectPath(x,y,w,h,r){
-  if(ctx.roundRect){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); return; }
-  ctx.beginPath();
-  ctx.moveTo(x+r,y);
-  ctx.arcTo(x+w,y,x+w,y+h,r);
-  ctx.arcTo(x+w,y+h,x,y+h,r);
-  ctx.arcTo(x,y+h,x,y,r);
-  ctx.arcTo(x,y,x+w,y,r);
-  ctx.closePath();
-}
-// ピンにタイトル（名称）が設定されている場合、アイコンの右側に名前ラベルを表示する
-// （アイコン内の数字はピン一覧との対応用に残し、実際の名前は別途ラベルで見せる）
-function drawPinNameLabel(sx,sy,name){
-  var R=13, cy=-R*1.5;
-  var disp = name.length>18 ? (name.slice(0,18)+'…') : name;
-  ctx.save();
-  ctx.translate(sx,sy);
-  ctx.font='bold 11px system-ui,sans-serif';
-  var padX=5, padY=3;
-  var tw = ctx.measureText(disp).width;
-  var boxW = tw+padX*2, boxH=15+padY;
-  var bx = R+4, by = cy-boxH/2;
-  ctx.fillStyle='rgba(255,255,255,0.92)';
-  roundRectPath(bx,by,boxW,boxH,5);
-  ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=1; ctx.stroke();
-  ctx.fillStyle='#1a1d27';
-  ctx.textAlign='left'; ctx.textBaseline='middle';
-  ctx.fillText(disp, bx+padX, cy+1);
-  ctx.restore();
 }
 // タップ位置に最も近いピンを探す（アイコン全体を覆う程度の当たり判定にする）
 function hitTestPin(sx,sy){
@@ -1819,7 +1619,7 @@ function getGhostTintedCanvas(bg){
 function drawGhost(){
   if(S.ghostSheet==null || S.ghostSheet<0 || S.ghostSheet===S.activeSheet) return;
   var sh=S.sheets[S.ghostSheet]; if(!sh) return;
-  var op=(S.ghostOpacity!=null)?S.ghostOpacity:1;
+  var op=(S.ghostOpacity!=null)?S.ghostOpacity:0.45;
   if(sh.bg && sh.bg.img && sh.bg.img.complete){
     var b=sh.bg;
     var bgW=b.baseW*b.scale, bgH=b.baseH*b.scale;
@@ -2031,9 +1831,9 @@ function drawAngleGrp(el, sel, ghost){
   // 補助線（三角形の2辺）
   ctx.beginPath(); ctx.moveTo(pA.x,pA.y); ctx.lineTo(pV.x,pV.y); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(pB.x,pB.y); ctx.lineTo(pV.x,pV.y); ctx.stroke();
-  // ハッチング（本数は三角形の大きさから自動計算。角度は el.hatchAngle で調整可能。既定は本線と平行）
+  // ハッチング（本数は el.hatchCount、角度は el.hatchAngle で調整可能。既定は本線と平行・4本＝粗め）
   var hatchAngle = (el.hatchAngle!=null) ? el.hatchAngle : Math.atan2(pB.y-pA.y, pB.x-pA.x)*180/Math.PI;
-  var hLines = hatchLinesInTriangle(pA,pB,pV, hatchAngle);
+  var hLines = hatchLinesInTriangle(pA,pB,pV, hatchAngle, el.hatchCount||4);
   ctx.lineWidth = ghost ? Math.max(0.7, 0.7*S.zoom) : Math.max(0.5, 0.6*S.zoom);
   hLines.forEach(function(seg){
     ctx.beginPath(); ctx.moveTo(seg[0].x,seg[0].y); ctx.lineTo(seg[1].x,seg[1].y); ctx.stroke();
@@ -2071,24 +1871,16 @@ function pointInTriangle(px,py, x1,y1,x2,y2,x3,y3){
   var hasPos=(d1>0)||(d2>0)||(d3>0);
   return !(hasNeg && hasPos);
 }
-// 三角形p0-p1-p2の内部を、指定角度(度)の平行線でクリッピングして分割線分の配列を返す
+// 三角形p0-p1-p2の内部を、指定角度(度)の平行線count-1本でクリッピングして分割線分の配列を返す
 // （どんな角度でも三角形の内側だけに収まるハッチングを描けるようにするための汎用関数）
-// count省略時は三角形の大きさ（投影幅）から間隔が見やすくなるよう自動で本数を決める（手動での本数調整は廃止）
 function hatchLinesInTriangle(p0,p1,p2, angleDeg, count){
   var rad = angleDeg*Math.PI/180;
   var nx = -Math.sin(rad), ny = Math.cos(rad); // ハッチング方向に垂直な法線ベクトル
   var verts=[p0,p1,p2];
   var projs = verts.map(function(p){ return p.x*nx+p.y*ny; });
   var minP=Math.min.apply(null,projs), maxP=Math.max.apply(null,projs);
-  var n;
-  if(count){
-    n = Math.max(2, count);
-  } else {
-    var span = maxP-minP;
-    var TARGET_SPACING_PX = 14; // 線と線の間隔がだいたいこのくらいになるよう自動調整する
-    n = Math.max(3, Math.min(20, Math.round(span/TARGET_SPACING_PX)));
-  }
   var edges=[[p0,p1],[p1,p2],[p2,p0]];
+  var n = Math.max(2, count||4);
   var lines=[];
   for(var k=1;k<n;k++){
     var offset = minP + (maxP-minP)*k/n;
@@ -2116,15 +1908,23 @@ function computeAnglePreview(pos){
   var angB = angleSnapDeg(Bx,By,tapW.x,tapW.y);
   var V = angleVertexFromDeg(Ax,Ay,Bx,By,angA,angB);
   if(!V) return null;
-  return {kind:'anglegrp', ax:Ax,ay:Ay,bx:Bx,by:By,vx:V.x,vy:V.y,angA:angA,angB:angB,
+  return {kind:'anglegrp', ax:Ax,ay:Ay,bx:Bx,by:By,vx:V.x,vy:V.y,hatchCount:4,angA:angA,angB:angB,
           hatchAngle: Math.atan2(By-Ay,Bx-Ax)*180/Math.PI};
 }
 // 作成済みの補助三角形をタップした時の処理：
+// ・頂点付近 → ハッチング本数を編集
 // ・辺(A側/B側)付近 → その辺の角度を30°ずつ回転（三角形の形自体が変わる）
 // ・上記以外（三角形の内側） → ハッチングの角度だけを30°ずつ回転（三角形の形はそのまま）
-// ※ハッチング本数は三角形の大きさから自動計算されるため、手動編集の操作は廃止した
 function handleAngleGrpTap(el, pos){
   var pA=w2s(el.ax,el.ay), pB=w2s(el.bx,el.by), pV=w2s(el.vx,el.vy);
+  if(dist2(pos.x,pos.y,pV.x,pV.y) < 16){
+    openTextInput('ハッチング本数を編集', String(el.hatchCount||4), function(t){
+      var num = parseInt(t,10);
+      if(!isNaN(num) && num>=2 && num<=30){ saveH(); el.hatchCount=num; render(); }
+      else showToast('2〜30の範囲で入力してください');
+    }, true, '1', false);
+    return;
+  }
   var LEG_HIT = 12;
   var dA = segD({x:pos.x,y:pos.y}, pA, pV);
   var dB = segD({x:pos.x,y:pos.y}, pB, pV);
@@ -4120,18 +3920,8 @@ function startPress(pos){
     return;
   }
 
-  // ピン追加ツール：既存ピンの上を押したらそのままドラッグで移動できるようにする（長押し判定は挟まない）
-  if(S.tool==='addpin'){
-    var hpDown = hitTestPin(pos.x,pos.y);
-    if(hpDown){
-      S.pinDragging = true;
-      S.pinDragTarget = hpDown;
-      S.pinDragStart = s2w(pos.x,pos.y);
-      S.pinDragOrig = {x:hpDown.wx, y:hpDown.wy};
-      S.pinDragMoved = false;
-      return;
-    }
-  }
+  // ピン追加ツール：既存ピンの上は、他の要素と同じく「長押しで掴んでドラッグ移動」「軽いタップで詳細を開く」
+  // という挙動にしたいため、ここでは特別扱いせず下の長押し判定（cancelLongPress以降）に合流させる。
 
   // トリム／延長ツール：2回のタップで基準配管→対象配管を選ぶ操作なので、
   // 長押しによる「つかんで移動」判定を挟まない（挟むと選択タップが移動操作に化けてしまうため）
@@ -4256,12 +4046,7 @@ function movePress(pos){
     render(); return;
   }
   if(S.dragMode==='move'&&S.dragEl&&S.dragging){
-    if(S.dragIsPin){
-      // ピン：配管・継手と同じ移動操作だが、グリッドスナップはせず指の位置にそのまま追従させる
-      var wwPinM=s2w(pos.x,pos.y);
-      S.dragEl.wx = wwPinM.x-S.dragOffX;
-      S.dragEl.wy = wwPinM.y-S.dragOffY;
-    } else if(S.dragEl.kind==='pipe'){
+    if(S.dragEl.kind==='pipe'){
       // 固定モードではなく、指の「今の位置」が端に近いか中央寄りかを毎回判定する
       var pEp1=w2s(S.dragEl.wx1,S.dragEl.wy1), pEp2=w2s(S.dragEl.wx2,S.dragEl.wy2);
       var dEp0=dist2(pos.x,pos.y,pEp1.x,pEp1.y), dEp1=dist2(pos.x,pos.y,pEp2.x,pEp2.y);
@@ -4410,7 +4195,7 @@ function endPress(pos){
     S.anglePrev = null;
     if(fin){
       saveH();
-      S.els.push({kind:'anglegrp', ax:fin.ax, ay:fin.ay, bx:fin.bx, by:fin.by, vx:fin.vx, vy:fin.vy, angA:fin.angA, angB:fin.angB, hatchAngle:fin.hatchAngle});
+      S.els.push({kind:'anglegrp', ax:fin.ax, ay:fin.ay, bx:fin.bx, by:fin.by, vx:fin.vx, vy:fin.vy, hatchCount:fin.hatchCount, angA:fin.angA, angB:fin.angB, hatchAngle:fin.hatchAngle});
       showToast('補助三角形を作成しました（三角形の頂点タップで本数調整／辺タップで角度調整）');
     } else {
       showToast('頂点が求まりませんでした（2辺が平行）。もう一度お試しください');
@@ -4649,20 +4434,6 @@ function endPress(pos){
 // 長押し（activateLongPress）と、選択ツールでのタップ（endPress側）の両方から呼ばれる。
 // 対象の上でなければ何もせず false を返す。
 function grabElementAt(pos){
-  // ピンは他の要素より上に描画されるため、配管・継手などと同じ「長押しでつかんで移動」の対象として最初に判定する
-  var hp = hitTestPin(pos.x,pos.y);
-  if(hp){
-    S.justGrabbed = true;
-    saveH();
-    S.dragMode='move'; S.dragEl=hp; S.dragging=true; S.dragEntryTime=Date.now();
-    S.dragIsPin = true;
-    S.sel=null; S.lastFit=null;
-    S.dragSubMode=null; S.dragEnd=null; S.dragPart=null;
-    var wwPin=s2w(pos.x,pos.y); S.dragOffX=wwPin.x-hp.wx; S.dragOffY=wwPin.y-hp.wy;
-    showToast('↔ ドラッグで移動 — タップで確定');
-    render();
-    return true;
-  }
   var h=hitTest(pos.x,pos.y);
   if(!h){ return false; }
 
@@ -4726,11 +4497,25 @@ function activateLongPress(pos){
       return;
     }
   }
+  // ピン追加ツール：既存ピンの上で長押ししたらつかんでドラッグ移動を開始する（短いタップは詳細画面を開く＝endPress側で処理）
+  if(S.tool==='addpin'){
+    var hpLong = hitTestPin(pos.x,pos.y);
+    if(hpLong){
+      S.pinDragging = true;
+      S.pinDragTarget = hpLong;
+      S.pinDragStart = s2w(pos.x,pos.y);
+      S.pinDragOrig = {x:hpLong.wx, y:hpLong.wy};
+      S.pinDragMoved = false;
+      showToast('📌 ドラッグしてピンを移動できます');
+      render();
+      return;
+    }
+  }
   grabElementAt(pos);
 }
 
 function endDragMode(){
-  S.dragMode=null; S.dragEl=null; S.dragging=false; S.snapPt=null; S.justGrabbed=false; S.dragSubMode=null; S.dragEnd=null; S.dragPart=null; S.scaffRotateGuideShow=false; S.scaffResize=null; S.dragIsPin=false;
+  S.dragMode=null; S.dragEl=null; S.dragging=false; S.snapPt=null; S.justGrabbed=false; S.dragSubMode=null; S.dragEnd=null; S.dragPart=null; S.scaffRotateGuideShow=false; S.scaffResize=null;
   showToast('✅ 確定'); updateMirrorButton(); render();
 }
 
@@ -4775,18 +4560,6 @@ function endGroupMove(){
 // 移動モードでつかんでいる対象があれば、その場で削除する。
 // 何もつかんでいなければ通常の消去ツールに切り替える。
 function eraseAction(){
-  if(S.dragMode==='move' && S.dragEl && S.dragIsPin){
-    var pinTarget = S.dragEl;
-    if(!confirm('このピン（'+(pinTarget.name||'名称未設定')+'）を削除しますか？')){
-      return;
-    }
-    S.pins = (S.pins||[]).filter(function(x){ return x!==pinTarget; });
-    S.dragMode=null; S.dragEl=null; S.dragging=false; S.snapPt=null; S.justGrabbed=false; S.dragSubMode=null; S.dragEnd=null; S.dragIsPin=false;
-    updatePinListPanel();
-    showToast('🗑 ピンを削除しました');
-    render();
-    return;
-  }
   if(S.dragMode==='move' && S.dragEl){
     saveH();
     var target = S.dragEl;
@@ -4829,7 +4602,7 @@ function handleDown(pos){
     var hpTap = hitTestPin(pos.x,pos.y);
     if(hpTap){ openPinEditor(hpTap, false); return; }
     var wp = s2w(pos.x,pos.y);
-    var newPin = {id:'pin_'+Date.now()+'_'+Math.floor(Math.random()*10000), wx:wp.x, wy:wp.y, name:'', item:'', seibi:'', rating:'', size:'', type:'', gasket:'', law:'', fluid:'', memo:'', photos:[], specs:[], color:PIN_COLORS[0]};
+    var newPin = {id:'pin_'+Date.now()+'_'+Math.floor(Math.random()*10000), wx:wp.x, wy:wp.y, name:'', item:'', seibi:'', rating:'', size:'', type:'', gasket:'', law:'', fluid:'', memo:'', photos:[], color:PIN_COLORS[0]};
     openPinEditor(newPin, true);
     return;
   }
@@ -5286,14 +5059,6 @@ function deleteMultiSel(){
 // ── 右クリックコンテキストメニュー（PC向け） ────────────
 // 単体要素の削除（消去ツールと同じ挙動：継手を削除した箇所は自動で配管を結合）
 function deleteSingleElement(el){
-  // ピン（S.pinsに属するオブジェクト）は配管・継手などとは別配列のため、専用の削除処理を行う
-  if(S.pins && S.pins.indexOf(el)>=0){
-    S.pins = S.pins.filter(function(p){ return p!==el; });
-    updatePinListPanel();
-    showToast('ピンを削除しました');
-    render();
-    return;
-  }
   saveH();
   var mergePt = (el.kind==='fitting') ? {x:el.wx, y:el.wy} : null;
   S.els = S.els.filter(function(e){ return e!==el; });
@@ -5333,7 +5098,6 @@ function openContextMenu(pos){
       var cnt=S.multiSel.length;
       items.push({label:'グループ移動 開始',fn:function(){ startGroupMove(pos); }});
       items.push({label:'グループ回転',fn:function(){ rotateStep(); }});
-      items.push({label:'グループ鏡像反転',fn:function(){ toggleMirror(); }});
       items.push({label:'グループ尺度変更',fn:function(){ applyScaleToTargets(S.multiSel.slice()); }});
       items.push({sep:true});
       items.push({label:'グループ削除（'+cnt+'個）',fn:deleteMultiSel});
@@ -5349,9 +5113,6 @@ function openContextMenu(pos){
     items.push({label:'移動 開始',fn:function(){ activateLongPress(pos); }});
     if(h.el.kind==='fitting' || h.el.kind==='pipe' || h.el.kind==='northarrow'){
       items.push({label:'回転',fn:function(){ S.sel=h.el; S.lastFit=(h.el.kind==='fitting')?h.el:null; rotateStep(); }});
-    }
-    if(h.el.kind==='fitting'){
-      items.push({label:'鏡像反転',fn:function(){ S.sel=h.el; S.lastFit=h.el; toggleMirror(); }});
     }
     items.push({label:'尺度変更',fn:function(){ applyScaleToTargets([h.el]); }});
     items.push({sep:true});
@@ -5413,7 +5174,7 @@ document.addEventListener('keydown',function(e){
         deleteMultiSel();
       } else if(S.dragEl){
         deleteSingleElement(S.dragEl);
-        S.dragEl=null; S.dragMode=null; S.dragIsPin=false;
+        S.dragEl=null; S.dragMode=null;
         updatePipeEditPanel();
         render();
       }
@@ -5540,19 +5301,6 @@ function buildPipeEditPanel(isPipe, isHose, isFitting, el){
       });
     }
   }
-
-  // 長押し（掴んでいる）状態でも、右クリックメニューや下部ツールバーと同じ操作を
-  // その場で行えるよう、回転・鏡像・尺度変更・削除ボタンをパネル内にも用意する（種類に応じて出し分け）
-  var kind = el && el.kind;
-  var canRotate = (kind==='pipe' || kind==='fitting' || kind==='northarrow');
-  var canMirror = (kind==='fitting');
-  var canScale = (kind==='pipe' || kind==='fitting' || kind==='northarrow' || kind==='text');
-  var btnRotate = document.getElementById('pipeActRotate');
-  var btnMirror = document.getElementById('pipeActMirror');
-  var btnScale = document.getElementById('pipeActScale');
-  if(btnRotate) btnRotate.style.display = canRotate ? '' : 'none';
-  if(btnMirror) btnMirror.style.display = canMirror ? '' : 'none';
-  if(btnScale) btnScale.style.display = canScale ? '' : 'none';
 }
 // 「配管」／「寸法」タブの見た目（選択中を強調）とラベル文言を更新する
 function updateColorTabsUI(isHose, isPipe, showDimCtrls, fitLabel2){
@@ -5764,12 +5512,11 @@ function toggleScaffListPanel(){
   updateScaffListPanel();
 }
 function updateScaffListPanel(){
-  var toggleBtn = document.getElementById('scaffListMenuRow');
+  var toggleBtn = document.getElementById('scaffListToggleBtn');
   var panel = document.getElementById('scaffListPanel');
   if(!toggleBtn || !panel) return;
   var items = S.els.filter(function(e){ return e.kind==='scaffold'; });
-  toggleBtn.style.display = items.length ? 'block' : 'none';
-  refreshDisplayMenuButton();
+  toggleBtn.style.display = items.length ? 'flex' : 'none';
   if(!items.length){ S.scaffListOpen=false; }
   panel.classList.toggle('vis', !!S.scaffListOpen && items.length>0);
   if(!S.scaffListOpen || !items.length) return;
@@ -5813,17 +5560,28 @@ function deleteScaffByUid(uid){
 // ══════════════════════════════════════════════════════════════
 // ── ピン記録（バルブ等の対象物に打つ現場記録：名称・サイズ・メモ・複数写真） ──
 // ══════════════════════════════════════════════════════════════
+// ピン一覧パネル上部の「＋ ピン追加」ボタン：画面中央付近に仮配置し、そのまま詳細編集画面を開く
+// （保存前にキャンセルすれば追加されない。位置は後でドラッグして正しい場所へ動かせる）
+function addPinFromListPanel(){
+  var centerW = s2w(canvas.width/2, canvas.height/2);
+  var newPin = {
+    id:'pin_'+Date.now()+'_'+Math.floor(Math.random()*10000),
+    wx:centerW.x, wy:centerW.y,
+    name:'', item:'', seibi:'', rating:'', size:'', type:'', gasket:'', law:'', fluid:'', memo:'',
+    photos:[], color:PIN_COLORS[0]
+  };
+  openPinEditor(newPin, true);
+}
 function togglePinListPanel(){
   S.pinListOpen = !S.pinListOpen;
   updatePinListPanel();
 }
 function updatePinListPanel(){
-  var toggleBtn = document.getElementById('pinListMenuRow');
+  var toggleBtn = document.getElementById('pinListToggleBtn');
   var panel = document.getElementById('pinListPanel');
   if(!toggleBtn || !panel) return;
   var items = S.pins || [];
-  toggleBtn.style.display = items.length ? 'block' : 'none';
-  refreshDisplayMenuButton();
+  toggleBtn.style.display = items.length ? 'flex' : 'none';
   if(!items.length){ S.pinListOpen=false; }
   panel.classList.toggle('vis', !!S.pinListOpen && items.length>0);
   var countLabel = document.getElementById('pinListCount');
@@ -5887,164 +5645,16 @@ function renderPinPhotoRow(){
   var photos = S.currentEditPin.photos || [];
   var html='';
   photos.forEach(function(url, idx){
-    html += '<div class="pin-photo-thumb" onclick="openPinPhoto('+idx+')" title="タップして拡大表示"><img src="'+url+'"><div class="pin-photo-del" onclick="event.stopPropagation();removePinPhoto('+idx+')">✕</div></div>';
+    html += '<div class="pin-photo-thumb"><img src="'+url+'"><div class="pin-photo-del" onclick="removePinPhoto('+idx+')">✕</div></div>';
   });
   html += '<div class="pin-photo-add" onclick="document.getElementById(\'pinPhotoInput\').click();" title="写真を追加">＋</div>';
   host.innerHTML = html;
 }
-// 写真サムネイルは小さいため、タップすると新しいタブに原寸大で表示する
-function openPinPhoto(idx){
-  var photos = S.currentEditPin && S.currentEditPin.photos;
-  if(!photos || !photos[idx]) return;
-  var w = window.open();
-  if(!w){ showToast('ポップアップがブロックされました。ブラウザの設定をご確認ください'); return; }
-  w.document.write('<title>写真</title><body style="margin:0;background:#222;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="'+photos[idx]+'" style="max-width:100%;max-height:100vh;"></body>');
-}
-// ピン編集：写真・仕様書欄へのドラッグ&ドロップ対応
-// （windowレベルのExcel取込用ドロップ処理と競合しないよう、要素自身で処理してstopPropagationする）
-function initPinFileDragDrop(){
-  function wire(elId, onFiles){
-    var el = document.getElementById(elId);
-    if(!el) return;
-    el.addEventListener('dragenter', function(e){
-      if(!e.dataTransfer || !e.dataTransfer.types || e.dataTransfer.types.indexOf('Files')===-1) return;
-      e.preventDefault(); e.stopPropagation();
-      el.classList.add('drag-over');
-    });
-    el.addEventListener('dragover', function(e){
-      if(!e.dataTransfer || !e.dataTransfer.types || e.dataTransfer.types.indexOf('Files')===-1) return;
-      e.preventDefault(); e.stopPropagation();
-    });
-    el.addEventListener('dragleave', function(e){
-      e.stopPropagation();
-      el.classList.remove('drag-over');
-    });
-    el.addEventListener('drop', function(e){
-      if(!e.dataTransfer || !e.dataTransfer.types || e.dataTransfer.types.indexOf('Files')===-1) return;
-      e.preventDefault(); e.stopPropagation();
-      el.classList.remove('drag-over');
-      onFiles(e.dataTransfer.files);
-    });
-  }
-  wire('pinPhotoRow', addPinPhotoFiles);
-  wire('pinSpecRow', addPinSpecFiles);
-}
-
-// 「📌 ピン追加」ボタンを押したまま指をスライドしてキャンバス上まで動かし、
-// 好きな位置でパッと離してピンを置けるようにする（従来のタップでの設置はそのまま残す）。
-// ドラッグ中はゴースト（半透明のピン）が指の位置に追従して表示される。
-// 「開く」「plot」「Excelから取込」の各ボタンに、ファイルを直接ドラッグ&ドロップしても
-// （メニューを開かずワンステップで）取り込めるようにする。windowレベルのExcel取込用ドロップ処理と
-// 競合しないよう、ボタン自身で処理してstopPropagationする。
-function initFileDropButtons(){
-  function wireBtn(elId, onFile){
-    var el = document.getElementById(elId);
-    if(!el) return;
-    // ボタン内部にアイコン・文字などの子要素があると、その上を通過するたびに
-    // dragleave→dragenterが連続発生し点線表示がチラつくため、深さカウンタで
-    // 「本当にボタンの外に出たとき」だけ点線を消すようにする。
-    var dragDepth = 0;
-    el.addEventListener('dragenter', function(e){
-      if(!e.dataTransfer || !e.dataTransfer.types || e.dataTransfer.types.indexOf('Files')===-1) return;
-      e.preventDefault(); e.stopPropagation();
-      dragDepth++;
-      el.classList.add('drag-over-btn');
-    });
-    el.addEventListener('dragover', function(e){
-      if(!e.dataTransfer || !e.dataTransfer.types || e.dataTransfer.types.indexOf('Files')===-1) return;
-      e.preventDefault(); e.stopPropagation();
-    });
-    el.addEventListener('dragleave', function(e){
-      e.stopPropagation();
-      dragDepth = Math.max(0, dragDepth-1);
-      if(dragDepth===0) el.classList.remove('drag-over-btn');
-    });
-    el.addEventListener('drop', function(e){
-      if(!e.dataTransfer || !e.dataTransfer.types || e.dataTransfer.types.indexOf('Files')===-1) return;
-      e.preventDefault(); e.stopPropagation();
-      dragDepth = 0;
-      el.classList.remove('drag-over-btn');
-      var files = e.dataTransfer.files;
-      if(!files || !files.length) return;
-      onFile(files[0]);
-    });
-  }
-  wireBtn('btnOpenFile', function(file){
-    handleLoadFile({target:{files:[file]}});
-  });
-  wireBtn('plotMenuRow', function(file){
-    handleLoadPdf({target:{files:[file]}});
-  });
-  wireBtn('displayToggleBtn', function(file){
-    handleLoadPdf({target:{files:[file]}});
-  });
-  wireBtn('btnImportExcel', function(file){
-    if(!isPinListFile(file)){ showToast('Excel(.xlsx/.xls)またはCSVファイルをドロップしてください'); return; }
-    importPinListFile(file);
-  });
-}
-
-function initPinAddDrag(){
-  var btn = document.getElementById('bPin');
-  if(!btn) return;
-  var MOVE_ARM_PX = 8; // これ未満の移動は「タップのつもりでの微振動」とみなし、まだドラッグ確定扱いにしない
-  var downPos = null;
-  btn.addEventListener('pointerdown', function(e){
-    if(S.tool!=='addpin' && isPlacementInProgress()){
-      if(!confirm('⚠️ 現在、設置・作図の途中です。\n中断して別の操作に切り替えますか？（入力中の内容は失われます）')) return;
-    }
-    S.pinPaletteDragging = true;
-    S.pinPaletteDragMoved = false;
-    S.pinDragGhostPos = null;
-    downPos = {x:e.clientX, y:e.clientY};
-    setTool('addpin', true); // 確認は上ですでに済んでいるため、setTool内では二重に確認しない
-    try{ btn.setPointerCapture(e.pointerId); }catch(err){}
-    e.preventDefault(); // ブラウザ標準のスクロール／長押しメニュー判定でドラッグが中断されないようにする
-  });
-  btn.addEventListener('pointermove', function(e){
-    if(!S.pinPaletteDragging) return;
-    e.preventDefault();
-    if(!S.pinPaletteDragMoved && downPos){
-      var moved = Math.hypot(e.clientX-downPos.x, e.clientY-downPos.y);
-      if(moved < MOVE_ARM_PX) return; // まだしきい値未満：ゴーストを出さずタップ扱いの余地を残す
-    }
-    var rect = canvas.getBoundingClientRect();
-    var x = e.clientX - rect.left, y = e.clientY - rect.top;
-    var overCanvas = (x>=0 && y>=0 && x<=rect.width && y<=rect.height);
-    S.pinPaletteDragMoved = true;
-    S.pinDragGhostPos = overCanvas ? {x:x, y:y} : null;
-    render();
-  });
-  // 指を離した＝設置を確定する
-  btn.addEventListener('pointerup', function(e){
-    if(!S.pinPaletteDragging) return;
-    S.pinPaletteDragging = false;
-    var ghost = S.pinDragGhostPos;
-    S.pinDragGhostPos = null;
-    if(S.pinPaletteDragMoved && ghost){
-      var wp = s2w(ghost.x, ghost.y);
-      var newPin = {id:'pin_'+Date.now()+'_'+Math.floor(Math.random()*10000), wx:wp.x, wy:wp.y, name:'', item:'', seibi:'', rating:'', size:'', type:'', gasket:'', law:'', fluid:'', memo:'', photos:[], specs:[], color:PIN_COLORS[0]};
-      openPinEditor(newPin, true);
-    }
-    render();
-  });
-  // OS側の割り込み等でジェスチャーが中断された場合は、置かずに何もしなかったことにする
-  btn.addEventListener('pointercancel', function(){
-    S.pinPaletteDragging = false;
-    S.pinDragGhostPos = null;
-    render();
-  });
-}
-
 function handlePinPhotoAdd(evt){
-  addPinPhotoFiles(evt.target.files);
-  evt.target.value = '';
-}
-// input選択・ドラッグ&ドロップの両方から呼べる共通処理
-function addPinPhotoFiles(files){
+  var files = evt.target.files;
   if(!files || !files.length || !S.currentEditPin) return;
+  var remaining = files.length;
   Array.prototype.forEach.call(files, function(file){
-    if(file.type && file.type.indexOf('image/')!==0) return; // 写真欄には画像以外を入れない
     var reader = new FileReader();
     reader.onload = function(e){
       if(!S.currentEditPin.photos) S.currentEditPin.photos=[];
@@ -6053,82 +5663,12 @@ function addPinPhotoFiles(files){
     };
     reader.readAsDataURL(file);
   });
+  evt.target.value = '';
 }
 function removePinPhoto(idx){
   if(!S.currentEditPin || !S.currentEditPin.photos) return;
   S.currentEditPin.photos.splice(idx,1);
   renderPinPhotoRow();
-}
-// 仕様書：写真とは別枠でファイル（PDF・画像・Office文書など）を保存する一覧
-var PIN_SPEC_ICONS = {pdf:'📄', doc:'📝', docx:'📝', xls:'📊', xlsx:'📊', image:'🖼️'};
-function pinSpecIcon(spec){
-  if(spec.type && spec.type.indexOf('image/')===0) return PIN_SPEC_ICONS.image;
-  var ext = (spec.name||'').split('.').pop().toLowerCase();
-  return PIN_SPEC_ICONS[ext] || '📎';
-}
-function renderPinSpecRow(){
-  var host = document.getElementById('pinSpecRow');
-  if(!host || !S.currentEditPin) return;
-  var specs = S.currentEditPin.specs || [];
-  var html='';
-  specs.forEach(function(spec, idx){
-    html += '<div class="pin-spec-chip" onclick="openPinSpec('+idx+')" title="タップして表示／保存">'
-      +'<span class="psic">'+pinSpecIcon(spec)+'</span><span class="psname">'+escapeHtml(spec.name||'仕様書')+'</span>'
-      +'<div class="pin-spec-del" onclick="event.stopPropagation();removePinSpec('+idx+')">✕</div></div>';
-  });
-  html += '<div class="pin-spec-add" onclick="document.getElementById(\'pinSpecInput\').click();" title="仕様書を追加">＋ 仕様書を追加</div>';
-  host.innerHTML = html;
-}
-function handlePinSpecAdd(evt){
-  addPinSpecFiles(evt.target.files);
-  evt.target.value = '';
-}
-// input選択・ドラッグ&ドロップの両方から呼べる共通処理
-function addPinSpecFiles(files){
-  if(!files || !files.length || !S.currentEditPin) return;
-  Array.prototype.forEach.call(files, function(file){
-    var reader = new FileReader();
-    reader.onload = function(e){
-      if(!S.currentEditPin.specs) S.currentEditPin.specs=[];
-      S.currentEditPin.specs.push({name:file.name, type:file.type||'', dataUrl:e.target.result});
-      renderPinSpecRow();
-    };
-    reader.readAsDataURL(file);
-  });
-}
-function removePinSpec(idx){
-  if(!S.currentEditPin || !S.currentEditPin.specs) return;
-  S.currentEditPin.specs.splice(idx,1);
-  renderPinSpecRow();
-}
-// 仕様書を表示する。画像はプレビュー表示、PDFはiframeに埋め込んで表示（data:URLへの直接ナビゲーションは
-// ブラウザにブロックされ「開いても真っ白/確認できない」原因になるため、iframe埋め込みで回避する）。
-// Word/Excel等プレビューできない形式は、ブラウザで確認できないためそのままダウンロードする。
-function openPinSpec(idx){
-  var specs = S.currentEditPin && S.currentEditPin.specs;
-  if(!specs || !specs[idx]) return;
-  var spec = specs[idx];
-  var type = spec.type || '';
-  if(type.indexOf('image/')===0){
-    var w = window.open();
-    if(!w){ showToast('ポップアップがブロックされました。ブラウザの設定をご確認ください'); return; }
-    w.document.write('<title>'+escapeHtml(spec.name||'仕様書')+'</title><body style="margin:0;background:#222;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="'+spec.dataUrl+'" style="max-width:100%;max-height:100vh;"></body>');
-    return;
-  }
-  if(type==='application/pdf'){
-    var w2 = window.open();
-    if(!w2){ showToast('ポップアップがブロックされました。ブラウザの設定をご確認ください'); return; }
-    w2.document.write('<title>'+escapeHtml(spec.name||'仕様書')+'</title><style>html,body{margin:0;height:100%;}iframe{border:0;width:100%;height:100%;}</style><iframe src="'+spec.dataUrl+'"></iframe>');
-    return;
-  }
-  // Word/Excel/PowerPointなどはブラウザ上でプレビューできないため、ダウンロードして開いてもらう
-  var a = document.createElement('a');
-  a.href = spec.dataUrl;
-  a.download = spec.name || '仕様書';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  showToast('この形式（'+(spec.name||'')+'）はブラウザ内でプレビューできないため、ダウンロードしました。お手持ちのアプリで開いてご確認ください');
 }
 function openPinEditor(pin, isNew){
   S.currentEditPin = pin;
@@ -6146,10 +5686,8 @@ function openPinEditor(pin, isNew){
   document.getElementById('pinMemoField').value = pin.memo || '';
   document.getElementById('pinDeleteBtn').style.display = isNew ? 'none' : 'block';
   if(!pin.photos) pin.photos=[];
-  if(!pin.specs) pin.specs=[];
   buildPinColorRow();
   renderPinPhotoRow();
-  renderPinSpecRow();
   document.getElementById('pinEditorOverlay').classList.add('vis');
 }
 function closePinEditorUI(){
@@ -6198,14 +5736,41 @@ function deletePinFromEditor(){
 }
 
 // ── 階の半透明重ね表示（ゴースト）：他の階の図面を薄く重ねて位置ズレを確認し、手動で配置する ──
-// パネルの開閉・表示更新は「背景」パネルと統合し、togglePlotPanel()/updatePlotPanel()で行う。
+function toggleGhostPanel(){
+  S.ghostPanelOpen = !S.ghostPanelOpen;
+  updateGhostPanel();
+}
+function updateGhostPanel(){
+  var toggleBtn = document.getElementById('ghostToggleBtn');
+  var panel = document.getElementById('ghostPanel');
+  if(!toggleBtn || !panel) return;
+  toggleBtn.style.display = (S.sheets.length>1) ? 'flex' : 'none';
+  if(S.sheets.length<=1){ S.ghostPanelOpen=false; S.ghostSheet=-1; }
+  panel.classList.toggle('vis', !!S.ghostPanelOpen);
+  if(!S.ghostPanelOpen) return;
+  var sel = document.getElementById('ghostSheetSelect');
+  if(sel){
+    var html = '<option value="-1">重ねない</option>';
+    S.sheets.forEach(function(sh, idx){
+      if(idx===S.activeSheet) return;
+      html += '<option value="'+idx+'"'+(idx===S.ghostSheet?' selected':'')+'>'+escapeHtml(sh.name)+'</option>';
+    });
+    sel.innerHTML = html;
+    if(S.ghostSheet>=0 && S.ghostSheet!==S.activeSheet){ sel.value = String(S.ghostSheet); }
+    else { sel.value = '-1'; }
+  }
+  var op = document.getElementById('ghostOpacitySlider');
+  if(op) op.value = Math.round((S.ghostOpacity!=null?S.ghostOpacity:0.45)*100);
+  var pinChk = document.getElementById('ghostPinsCheck');
+  if(pinChk) pinChk.checked = (S.ghostShowPins!==false);
+}
 function setGhostSheet(v){
   S.ghostSheet = parseInt(v,10);
   if(isNaN(S.ghostSheet)) S.ghostSheet=-1;
   render();
 }
 function setGhostOpacity(v){
-  S.ghostOpacity = Math.max(0, Math.min(1, v/100));
+  S.ghostOpacity = Math.max(0.1, Math.min(1, v/100));
   render();
 }
 function setGhostShowPins(v){
@@ -6223,20 +5788,8 @@ function handleImportPinList(evt){
   var file = evt.target.files && evt.target.files[0];
   evt.target.value = '';
   if(!file) return;
-  importPinListFile(file);
-}
-// Excel(.xlsx/.xls)/CSVファイルを読み込んでピンへ反映する共通処理。
-// 「Excelから取込」ボタン（ファイル選択）と、画面へのドラッグ&ドロップの両方から呼ばれる。
-function importPinListFile(file){
-  if(!file) return;
+  if(typeof XLSX==='undefined'){ showToast('Excel読込機能を利用できません（通信環境をご確認ください）'); return; }
   showToast('読み込んでいます…');
-  ensureXlsx().then(function(){
-    importPinListFileInner(file);
-  }).catch(function(){
-    showToast('Excel読込機能を利用できません（通信環境をご確認ください）');
-  });
-}
-function importPinListFileInner(file){
   var reader = new FileReader();
   reader.onload = function(e){
     try{
@@ -6251,44 +5804,6 @@ function importPinListFileInner(file){
   };
   reader.onerror = function(){ showToast('ファイルの読み込みに失敗しました'); };
   reader.readAsArrayBuffer(file);
-}
-// ファイル名の拡張子がExcel/CSVかどうか判定する
-function isPinListFile(file){
-  if(!file || !file.name) return false;
-  return /\.(xlsx|xls|csv)$/i.test(file.name);
-}
-// ── ドラッグ&ドロップでのExcel(.xlsx/.xls/.csv)取込 ──
-// 画面上のどこにファイルをドラッグしてもよい。ドラッグ中は取込可能であることを示すオーバーレイを表示する。
-var dragCounter = 0;
-function initExcelDragDrop(){
-  var overlay = document.getElementById('excelDropOverlay');
-  window.addEventListener('dragenter', function(e){
-    if(!e.dataTransfer || !e.dataTransfer.types || e.dataTransfer.types.indexOf('Files')===-1) return;
-    e.preventDefault();
-    dragCounter++;
-    if(overlay) overlay.classList.add('vis');
-  });
-  window.addEventListener('dragover', function(e){
-    if(!e.dataTransfer || !e.dataTransfer.types || e.dataTransfer.types.indexOf('Files')===-1) return;
-    e.preventDefault();
-  });
-  window.addEventListener('dragleave', function(e){
-    if(!e.dataTransfer || !e.dataTransfer.types || e.dataTransfer.types.indexOf('Files')===-1) return;
-    dragCounter = Math.max(0, dragCounter-1);
-    if(dragCounter===0 && overlay) overlay.classList.remove('vis');
-  });
-  window.addEventListener('drop', function(e){
-    if(!e.dataTransfer || !e.dataTransfer.types || e.dataTransfer.types.indexOf('Files')===-1) return;
-    e.preventDefault();
-    dragCounter = 0;
-    if(overlay) overlay.classList.remove('vis');
-    var files = e.dataTransfer.files;
-    if(!files || !files.length) return;
-    var target = null;
-    for(var i=0;i<files.length;i++){ if(isPinListFile(files[i])){ target = files[i]; break; } }
-    if(!target){ showToast('Excel(.xlsx/.xls)またはCSVファイルをドロップしてください'); return; }
-    importPinListFile(target);
-  });
 }
 function pinFieldFromRow(row, keys){
   for(var i=0;i<keys.length;i++){
@@ -6333,7 +5848,7 @@ function applyImportedPinRows(rows){
         name:name||('取込ピン'+(added+1)),
         item:item||'', seibi:seibi||'', rating:rating||'', size:size||'',
         type:type||'', gasket:gasket||'', law:law||'', fluid:fluid||'', memo:memo||'',
-        photos:[], specs:[], color:PIN_COLORS[0]
+        photos:[], color:PIN_COLORS[0]
       });
       addIdx++; added++;
     }
@@ -6592,12 +6107,6 @@ function toggleDimVisible(){
 // ツール切替時や、指がキャンバス外に外れて操作が中断された時（pointercancel/touchcancel）に呼ぶ。
 // これを呼ばずにツールだけ切り替えると、描きかけの配管のゴースト（半透明プレビュー）が
 // 消えないまま残り続け、後で範囲選択などをした際に表示され続けてしまう。
-// 足場・配管・ホース・角度計測・校正など、途中まで点を打っている最中かどうかを判定する。
-// これがtrueの間に別のツールへ切り替えると、入力中の内容が失われてしまうため、
-// setTool()側で確認ポップアップを出す判断に使う。
-function isPlacementInProgress(){
-  return !!S.dragMode || S.drawing || S.drawingLeader || S.rangeSelecting || S.hoseDrawing || S.pendingScale || S.bgDragging || S.angleDrawing || S.scaffDrawing || S.rulerDrawing;
-}
 function cancelInProgressDrawing(){
   S.drawing=false; S.drawStart=null; S.prev=null; S.snapPt=null;
   S.drawingLeader=false; S.leaderStart=null; S.leaderPrev=null;
@@ -6610,10 +6119,7 @@ function cancelInProgressDrawing(){
   S.rulerDrawing=false; S.rulerPrev=null; S.rulerStart=null;
   S.bgDragging=false;
 }
-function setTool(t, silent){
-  if(!silent && t!==S.tool && isPlacementInProgress()){
-    if(!confirm('⚠️ 現在、設置・作図の途中です。\n中断して別の操作に切り替えますか？（入力中の内容は失われます）')) return;
-  }
+function setTool(t){
   if(S.dragMode==='groupmove') endGroupMove();
   else if(S.dragMode) endDragMode();
   S.tool=t;
@@ -6634,7 +6140,7 @@ function setTool(t, silent){
   }
   var keepDrawerOpen = ['fitting','stampExisting','stampNew','split','join','hose','headerPlan','headerIso','trim','extend','scaff'];
   if(keepDrawerOpen.indexOf(t)===-1) closeDrawer();
-  updateSt(); updateMirrorButton(); updateMultiSelPanel(); updatePipeEditPanel(); updateScaffEditPanel(); updatePipeModeSwitch(); updateAngleStepSwitch(); updatePlotPanel();
+  updateSt(); updateMirrorButton(); updateMultiSelPanel(); updatePipeEditPanel(); updateScaffEditPanel(); updatePipeModeSwitch(); updateBgPanel();
 }
 // ── 配管の描画モード切替（アイソメ／平面図） ─────────────
 // 角度の合わせ単位は角度固定ボタン（15°/30°/45°/90°）でアイソメ・平面図共通に切り替える。長さはどちらも0.01m単位。
@@ -6655,7 +6161,7 @@ function togglePipeDrawMode(){
 function updatePipeModeSwitch(){
   var sw=document.getElementById('pipeModeSwitch');
   if(!sw) return;
-  sw.style.display = (S.tool==='pipe') ? 'flex' : 'none'; // 配管ツール使用中のみ表示（描画モードに関係するボタンのため）
+  sw.style.display = 'flex'; // 常に表示（以前は配管ツール使用中のみ表示していた）
   sw.classList.toggle('plan', S.pipeDrawMode==='plan');
   var icon=document.getElementById('pipeModeSwitchIcon'), label=document.getElementById('pipeModeSwitchLabel');
   if(S.pipeDrawMode==='plan'){ if(icon) icon.textContent='📏'; if(label) label.textContent='平面図'; }
@@ -6683,8 +6189,6 @@ function setAngleStep(deg){
   showToast('角度固定：'+deg+'°刻みに切り替えました');
 }
 function updateAngleStepSwitch(){
-  var sw = document.getElementById('angleStepSwitch');
-  if(sw) sw.style.display = (S.tool==='pipe') ? 'flex' : 'none'; // 配管ツール使用中のみ表示（角度固定は配管を描く時にしか使わないため）
   var label = document.getElementById('angleStepSwitchLabel');
   if(label) label.textContent = (S.angleStepDeg||30)+'°固定';
 }
@@ -6714,7 +6218,7 @@ function escapeToNeutral(){
   S.drawingLeader=false; S.leaderStart=null; S.leaderPrev=null;
   S.rangeSelecting=false; S.rangeStart=null; S.rangeEnd=null;
   S.sel=null; S.lastFit=null; S.pendingScale=false;
-  setTool('rangesel', true); // 内部でドラッグ・グループ移動モードの終了と選択解除も行われる（Escによる中断は既に確定済みの操作なので確認は不要）
+  setTool('rangesel'); // 内部でドラッグ・グループ移動モードの終了と選択解除も行われる
   showToast('⏹ 操作を中断しました');
   render();
 }
@@ -6751,7 +6255,8 @@ function loadSheetIntoState(idx){
   S.pins = sh.pins;
   S.sel=null; S.multiSel=[]; hidePop();
   rebuildScaffCounters();
-  updatePlotPanel();
+  updateBgPanel();
+  updateGhostPanel();
   updatePinListPanel();
 }
 function ensureAtLeastOneSheet(){
@@ -6772,7 +6277,6 @@ function switchSheet(idx){
 }
 function addSheet(){
   syncActiveSheetFromState();
-  var prevIdx = S.activeSheet;
   var n = S.sheets.length+1;
   var name = n+'階';
   var used = {}; S.sheets.forEach(function(s){ used[s.name]=true; });
@@ -6780,14 +6284,9 @@ function addSheet(){
   S.sheets.push(makeSheet(name));
   cancelInProgressDrawing();
   loadSheetIntoState(S.sheets.length-1);
-  // 新しい階を開いたときは、直前にいた階（下の階など）を濃さMAXで自動的に重ねて表示する。
-  // 配置合わせがしやすいようにまず濃く表示し、位置合わせが済んだらユーザーが自分で濃さを調整する想定。
-  S.ghostSheet = prevIdx;
-  S.ghostOpacity = 1;
-  updatePlotPanel();
   renderSheetTabs();
   render();
-  showToast('シートを追加しました（下の階を濃く重ねて表示中）');
+  showToast('シートを追加しました');
 }
 function renameSheet(idx){
   var sh = S.sheets[idx]; if(!sh) return;
@@ -6801,13 +6300,7 @@ function renameSheet(idx){
 function deleteSheet(idx){
   var sh = S.sheets[idx]; if(!sh) return;
   if(S.sheets.length<=1){ showToast('シートは1つ以上必要です'); return; }
-  var pinCount = (sh.pins||[]).length;
-  var hasBg = !!sh.bg;
-  var detail = 'この階の配管・ピン';
-  if(pinCount) detail += '（'+pinCount+'件）';
-  if(hasBg) detail += '・PLOT（PDF/写真）';
-  detail += 'もすべて削除されます。';
-  if(!confirm('⚠️ シート「'+sh.name+'」を削除しますか？\n'+detail+'\nこの操作は元に戻せません。')) return;
+  if(!confirm('シート「'+sh.name+'」を削除しますか？（元に戻せません）')) return;
   var wasActive = (idx===S.activeSheet);
   S.sheets.splice(idx,1);
   if(wasActive){
@@ -6818,7 +6311,7 @@ function deleteSheet(idx){
   }
   renderSheetTabs();
   render();
-  showToast('シート「'+sh.name+'」を削除しました');
+  showToast('シートを削除しました');
 }
 function renderSheetTabs(){
   var wrap = document.getElementById('sheetTabs');
@@ -6838,7 +6331,7 @@ function renderSheetTabs(){
       tab.appendChild(ren);
       if(S.sheets.length>1){
         var del = document.createElement('span');
-        del.className='stbtn stbtn-close'; del.textContent='×'; del.title='シートを削除';
+        del.className='stbtn'; del.textContent='×'; del.title='シートを削除';
         del.onclick = function(ev){ ev.stopPropagation(); deleteSheet(idx); };
         tab.appendChild(del);
       }
@@ -7521,7 +7014,7 @@ function startExportFlow(type){
   S.exportPending = {type:type, rect:null};
   S.prevTool = S.tool;
   S.multiSel = [];
-  setTool('rangesel', true);
+  setTool('rangesel');
   document.getElementById('exportRangeBar').style.display = 'block';
   document.getElementById('exportRangeMsg').textContent = '出力したい範囲を指でドラッグして選択してください（未選択の場合は画面全体を出力します）';
   render();
@@ -7531,7 +7024,7 @@ function cancelExportFlow(){
   document.getElementById('exportPreviewOverlay').classList.remove('vis');
   var prevTool = S.prevTool || 'pipe';
   S.exportPending = null;
-  setTool(prevTool, true);
+  setTool(prevTool);
   render();
 }
 // 範囲選択の確定：ここではまだ出力せず、プレビュー画面を挟む
@@ -7541,7 +7034,7 @@ function confirmExportFlow(){
   S.exportPending.rect = rect;
   document.getElementById('exportRangeBar').style.display = 'none';
   // プレビュー表示中に背面キャンバスをドラッグして範囲が変わってしまわないよう、一旦ツールを戻す
-  setTool(S.prevTool || 'pipe', true);
+  setTool(S.prevTool || 'pipe');
   showExportPreview(rect);
 }
 // 選択範囲を画面キャンバスから切り出してプレビュー画像として表示する
@@ -7560,7 +7053,7 @@ function backFromExportPreview(){
   document.getElementById('exportPreviewOverlay').classList.remove('vis');
   if(!S.exportPending) return;
   S.prevTool = S.tool;
-  setTool('rangesel', true);
+  setTool('rangesel');
   document.getElementById('exportRangeBar').style.display = 'block';
   document.getElementById('exportRangeMsg').textContent = S.exportPending.rect ? '選択した範囲を出力します（引き直すと変更できます）' : '出力範囲：画面全体（ドラッグすると範囲を指定できます）';
   render();
@@ -7591,9 +7084,6 @@ async function proceedExportAfterPreview(){
 // プラグインの読み込みに失敗する環境があり「doc.svg is not a function」エラーの原因になっていた。
 // Excel出力で実績のあるラスター化方式（svgStringToPngDataUrl）に統一し、外部プラグイン依存をなくす。
 async function exportPdfA3(rect){
-  try{
-    await ensureJspdf();
-  }catch(e){}
   if(!window.jspdf || !window.jspdf.jsPDF){
     showToast('PDF出力ライブラリの読み込みに失敗しました。通信環境をご確認のうえもう一度お試しください。');
     return;
@@ -7896,9 +7386,6 @@ function xlsxScaffoldShapeXml(el, rect, emuPerPx, shapeId){
 }
 // Excel出力本体：配管線・足場はExcelのネイティブ図形として、それ以外（継手・文字・寸法など）は1枚の画像として重ねて出力する
 async function exportXlsxWithShapes(rect){
-  try{
-    await ensureJszip();
-  }catch(e){}
   if(!window.JSZip){
     showToast('Excel出力ライブラリの読み込みに失敗しました。通信環境をご確認のうえもう一度お試しください。');
     return;
@@ -8144,15 +7631,8 @@ function handleLoadPdf(evt){
     loadImageFileToBg(file);
     return;
   }
-  showToast('PDFを読み込んでいます…');
-  ensurePdfjs().then(function(){
-    handleLoadPdfInner(file);
-  }).catch(function(){
-    showToast('PDF読込ライブラリの読み込みに失敗しました。通信環境をご確認ください。');
-  });
-}
-function handleLoadPdfInner(file){
   if(!window.pdfjsLib){ showToast('PDF読込ライブラリの読み込みに失敗しました。通信環境をご確認ください。'); return; }
+  showToast('PDFを読み込んでいます…');
   var reader = new FileReader();
   reader.onload = function(e){
     var buf = e.target.result;
@@ -8184,9 +7664,9 @@ function loadImageFileToBg(file){
       var baseW = img.naturalWidth/300, baseH = img.naturalHeight/300;
       S.bg = {img:img, wx:centerScr.x, wy:centerScr.y, baseW:baseW, baseH:baseH, scale:2.594, opacity:0.8, angle:0};
       document.getElementById('bgOpacitySlider').value = 80;
-      S.plotPanelOpen = true;
-      setTool('ruler', true); // 写真取込に続けて校正モードを自動で起動する（不要な場合は背景メニューの「校正をキャンセル」で戻れる）
-      updatePlotPanel();
+      S.bgPanelOpen = true;
+      setTool('ruler'); // 写真取込に続けて校正モードを自動で起動する（不要な場合は背景メニューの「校正をキャンセル」で戻れる）
+      updateBgPanel();
       render();
       showToast('写真を読み込みました。続けて校正を行ってください（不要なら背景メニューでキャンセルできます）');
     };
@@ -8211,9 +7691,9 @@ function renderPdfPageToBg(pdf, pageNum){
         var baseW = viewport.width/300, baseH = viewport.height/300;
         S.bg = {img:img, wx:centerScr.x, wy:centerScr.y, baseW:baseW, baseH:baseH, scale:2.594, opacity:0.8, angle:0};
         document.getElementById('bgOpacitySlider').value = 80;
-        S.plotPanelOpen = true;
-        updatePlotPanel();
-        setTool('ruler', true); // PDF取込に続けて校正モードを自動で起動する（不要な場合は背景メニューの「校正をキャンセル」で戻れる）
+        S.bgPanelOpen = true;
+        updateBgPanel();
+        setTool('ruler'); // PDF取込に続けて校正モードを自動で起動する（不要な場合は背景メニューの「校正をキャンセル」で戻れる）
         render();
         showToast('PDF（'+pageNum+'ページ目）を読み込みました。続けて校正を行ってください（不要なら背景メニューでキャンセルできます）');
       };
@@ -8250,15 +7730,16 @@ function resetBgScale(){
 }
 function removeBg(){
   if(!S.bg) return;
-  if(S.tool==='movebg') setTool('pipe', true);
+  if(S.tool==='movebg') setTool('pipe');
   S.bg = null;
-  updatePlotPanel();
+  S.bgPanelOpen = false;
+  updateBgPanel();
   render();
-  showToast('プロットを削除しました');
 }
-function togglePlotPanel(){
-  S.plotPanelOpen = !S.plotPanelOpen;
-  updatePlotPanel();
+function toggleBgPanel(){
+  if(!S.bg) return;
+  S.bgPanelOpen = !S.bgPanelOpen;
+  updateBgPanel();
 }
 // 校正モードの開始／キャンセルをこのボタン1つで切り替える。
 // 校正するつもりがない時は、これを押せばすぐ配管ツールに戻れる。
@@ -8271,28 +7752,10 @@ function toggleBgCalibration(){
     showToast('背景上の既知の寸法区間をなぞってください');
   }
 }
-// ── プロット設定パネル：背景（PDF/写真）の濃さ・回転と、階を重ねて表示（ゴースト）を
-//    1つのパネルにまとめて操作できるようにする ──
-function updatePlotPanel(){
-  var panel = document.getElementById('plotPanel');
-  var bgSection = document.getElementById('plotPanelBgSection');
-  var ghostSection = document.getElementById('plotPanelGhostSection');
-  var divider = document.getElementById('plotPanelDivider');
-  var menuRow = document.getElementById('plotSettingsMenuRow');
-  var removeBtn = document.getElementById('removePlotMenuRow');
-
-  var hasBg = !!S.bg;
-  var hasGhost = S.sheets.length>1;
-  if(!hasGhost) S.ghostSheet = -1;
-
-  if(bgSection) bgSection.style.display = hasBg ? '' : 'none';
-  if(ghostSection) ghostSection.style.display = hasGhost ? '' : 'none';
-  if(divider) divider.style.display = (hasBg && hasGhost) ? '' : 'none';
-  if(removeBtn) removeBtn.style.display = hasBg ? 'block' : 'none';
-  if(menuRow) menuRow.style.display = (hasBg || hasGhost) ? 'block' : 'none';
-
-  refreshDisplayMenuButton();
-
+function updateBgPanel(){
+  var panel = document.getElementById('bgPanel');
+  var btn = document.getElementById('bgToggleBtn');
+  if(btn) btn.style.display = S.bg ? 'flex' : 'none';
   var calibBtn = document.getElementById('bgCalibBtn');
   if(calibBtn){
     if(S.tool==='ruler'){
@@ -8303,33 +7766,8 @@ function updatePlotPanel(){
       calibBtn.classList.remove('on');
     }
   }
-
   if(!panel) return;
-  var shouldShow = !!S.plotPanelOpen && (hasBg || hasGhost);
-  panel.classList.toggle('vis', shouldShow);
-  if(!shouldShow) return;
-
-  if(hasBg){
-    var bgOp = document.getElementById('bgOpacitySlider');
-    if(bgOp) bgOp.value = Math.round((S.bg.opacity!=null?S.bg.opacity:0.8)*100);
-  }
-  if(hasGhost){
-    var sel = document.getElementById('ghostSheetSelect');
-    if(sel){
-      var html = '<option value="-1">－ 選択なし －</option>';
-      S.sheets.forEach(function(sh, idx){
-        if(idx===S.activeSheet) return;
-        html += '<option value="'+idx+'"'+(idx===S.ghostSheet?' selected':'')+'>'+escapeHtml(sh.name)+'</option>';
-      });
-      sel.innerHTML = html;
-      if(S.ghostSheet>=0 && S.ghostSheet!==S.activeSheet){ sel.value = String(S.ghostSheet); }
-      else { sel.value = '-1'; }
-    }
-    var op = document.getElementById('ghostOpacitySlider');
-    if(op) op.value = Math.round((S.ghostOpacity!=null?S.ghostOpacity:1)*100);
-    var pinChk = document.getElementById('ghostPinsCheck');
-    if(pinChk) pinChk.checked = (S.ghostShowPins!==false);
-  }
+  panel.classList.toggle('vis', !!S.bg && !!S.bgPanelOpen);
 }
 
 var AUTOSAVE_KEY = 'pipeiso_autosave_v1';
@@ -8346,12 +7784,8 @@ function scheduleAutosave(){
         localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ savedAt:Date.now(), sheets:sheetsOut, activeSheet:S.activeSheet }));
       }catch(quotaErr){
         // 背景画像・写真を含めると容量超過する場合は、それらを省いて作図データだけでも自動保存する
-        var slimOut = S.sheets.map(function(s){ return {name:s.name, els:s.els, pins:(s.pins||[]).map(function(p){ return {id:p.id,wx:p.wx,wy:p.wy,name:p.name,item:p.item,seibi:p.seibi,rating:p.rating,size:p.size,type:p.type,gasket:p.gasket,law:p.law,fluid:p.fluid,memo:p.memo,color:p.color,photos:[],specs:[]}; }), bg:null}; });
+        var slimOut = S.sheets.map(function(s){ return {name:s.name, els:s.els, pins:(s.pins||[]).map(function(p){ return {id:p.id,wx:p.wx,wy:p.wy,name:p.name,item:p.item,seibi:p.seibi,rating:p.rating,size:p.size,type:p.type,gasket:p.gasket,law:p.law,fluid:p.fluid,memo:p.memo,color:p.color,photos:[]}; }), bg:null}; });
         try{ localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ savedAt:Date.now(), sheets:slimOut, activeSheet:S.activeSheet, slim:true })); }catch(e2){ /* それでも保存できない環境では諦める */ }
-        if(!S._slimAutosaveWarned){
-          S._slimAutosaveWarned = true;
-          showToast('端末の保存容量の都合で、自動保存にはPLOT（PDF/写真）を含められません。データを別のPCでも使う場合は「💾保存」でファイルとして保存してください');
-        }
       }
     }catch(e){ /* 保存できない環境（プライベートモード等）では何もしない */ }
   }, 600);
@@ -8371,16 +7805,13 @@ function tryRestoreAutosave(then){
   var hasOldEls = Array.isArray(data.els) && data.els.length;
   if(!hasSheets && !hasOldEls){ then(); return; }
   var when = data.savedAt ? new Date(data.savedAt).toLocaleString('ja-JP') : '';
-  var confirmMsg = '前回の続き（自動保存 '+when+'）を復元しますか？\n「キャンセル」で新規作成します。';
-  if(data.slim) confirmMsg += '\n※端末の保存容量の都合で、自動保存にはPLOT（PDF/写真）が含まれていません。配管・ピンなどの線のみ復元されます。';
-  if(confirm(confirmMsg)){
+  if(confirm('前回の続き（自動保存 '+when+'）を復元しますか？\n「キャンセル」で新規作成します。')){
     if(hasSheets){
       loadSheetsFromSaveArray(data.sheets, function(sheets){
         S.sheets = sheets;
         var startIdx = (typeof data.activeSheet==='number' && data.activeSheet>=0 && data.activeSheet<S.sheets.length) ? data.activeSheet : 0;
         S.activeSheet = startIdx;
         then();
-        if(data.slim) showToast('PLOT（PDF/写真）は自動保存に含まれていなかったため復元されていません。必要な場合はプロットから開き直してください');
       });
     } else {
       S.sheets = [makeSheet('1階')];
@@ -8394,167 +7825,6 @@ function tryRestoreAutosave(then){
   }
 }
 
-// ── 右上「表示」メニュー（背景・足場一覧・階重ね・ピン一覧をまとめたフライアウト） ──
-function toggleDisplayMenu(){
-  var m = document.getElementById('displayMenu');
-  if(!m) return;
-  m.classList.toggle('open');
-}
-function closeDisplayMenu(){
-  var m = document.getElementById('displayMenu');
-  if(m) m.classList.remove('open');
-}
-// メニューから選んだ項目は必ず「開く」動作にする（すでに開いている場合は何もしない）
-function openDisplayMenuItem(which){
-  closeDisplayMenu();
-  if(which==='plot'){ triggerLoadPdf(); }
-  else if(which==='removePlot'){
-    if(!S.bg) return;
-    if(confirm('配置したプロット（背景のPDF/写真）を削除しますか？')) removeBg();
-  }
-  else if(which==='plotSettings'){ if(!S.plotPanelOpen) togglePlotPanel(); }
-  else if(which==='scaffList'){ if(!S.scaffListOpen) toggleScaffListPanel(); }
-  else if(which==='pinList'){ if(!S.pinListOpen) togglePinListPanel(); }
-}
-// 4項目のうち1つでも使える状態なら「表示」ボタン自体を表示する。1つも無ければボタンごと隠す。
-// （「PLOTを開く」は常に使えるため、この判定に関わらず「表示」ボタンは常時表示される）
-function refreshDisplayMenuButton(){
-  var rowIds = ['plotMenuRow','removePlotMenuRow','plotSettingsMenuRow','scaffListMenuRow','pinListMenuRow'];
-  var anyVisible = rowIds.some(function(id){
-    var el = document.getElementById(id);
-    return el && el.style.display!=='none';
-  });
-  var btn = document.getElementById('displayToggleBtn');
-  if(btn) btn.style.display = anyVisible ? 'flex' : 'none';
-  if(!anyVisible) closeDisplayMenu();
-}
-
-// メニュー外をタップ／クリックした時に「表示」フライアウトを自動で閉じる
-function initDisplayMenuOutsideClose(){
-  document.addEventListener('pointerdown', function(e){
-    var anchor = document.querySelector('.ov-anchor');
-    if(!anchor) return;
-    if(anchor.contains(e.target)) return;
-    closeDisplayMenu();
-  });
-}
-
-// ── 右メニュー（ドロワー）の幅変更／各パネルの移動 ──────────────
-// ドロワーは幅、各パネルは画面内位置をlocalStorageに保存し、次回起動時も復元する。
-var DRAWER_WIDTH_KEY = 'ui_drawerWidth';
-var DRAWER_WIDTH_DEFAULT = 112;
-var DRAWER_WIDTH_MIN = 88;
-var DRAWER_WIDTH_MAX = 280;
-var PANEL_POS_KEY_PREFIX = 'ui_panelPos_';
-
-function initDrawerResize(){
-  var handle = document.getElementById('drawerResizeHandle');
-  var drawer = document.getElementById('drawer');
-  if(!handle || !drawer) return;
-  var dragging=false, startX=0, startW=0, lastTapTime=0;
-
-  var savedW;
-  try{ savedW = parseFloat(localStorage.getItem(DRAWER_WIDTH_KEY)); }catch(e){}
-  if(savedW && savedW>=DRAWER_WIDTH_MIN && savedW<=DRAWER_WIDTH_MAX){
-    drawer.style.width = savedW+'px';
-  }
-
-  handle.addEventListener('pointerdown', function(e){
-    dragging = true;
-    startX = e.clientX;
-    startW = drawer.getBoundingClientRect().width;
-    handle.setPointerCapture(e.pointerId);
-    e.preventDefault();
-  });
-  handle.addEventListener('pointermove', function(e){
-    if(!dragging) return;
-    var dx = e.clientX - startX; // 左ハンドルを左にドラッグ(dx<0)すると幅が増える
-    var w = startW - dx;
-    w = Math.max(DRAWER_WIDTH_MIN, Math.min(DRAWER_WIDTH_MAX, w));
-    drawer.style.width = w+'px';
-  });
-  function endDrag(e){
-    if(!dragging) return;
-    dragging = false;
-    try{ localStorage.setItem(DRAWER_WIDTH_KEY, parseFloat(drawer.style.width)); }catch(err){}
-  }
-  handle.addEventListener('pointerup', endDrag);
-  handle.addEventListener('pointercancel', endDrag);
-  // ダブルタップ／ダブルクリックで既定幅に戻す
-  handle.addEventListener('dblclick', function(){
-    drawer.style.width = DRAWER_WIDTH_DEFAULT+'px';
-    try{ localStorage.setItem(DRAWER_WIDTH_KEY, DRAWER_WIDTH_DEFAULT); }catch(e){}
-  });
-}
-
-// panelId: 移動させたい要素のid／handleSelector: その中でつまみにするヘッダーのCSSセレクタ
-function makeDraggable(panelId, handleSelector){
-  var panel = document.getElementById(panelId);
-  if(!panel) return;
-  var handle = panel.querySelector(handleSelector);
-  if(!handle) return;
-  var wrap = document.getElementById('wrap');
-  var dragging=false, wrapRect=null, panelW=0, panelH=0, startX=0, startY=0, startLeft=0, startTop=0;
-  var storeKey = PANEL_POS_KEY_PREFIX+panelId;
-
-  function applyPos(left, top){
-    panel.style.left = left+'px';
-    panel.style.top = top+'px';
-    panel.style.right = 'auto';
-  }
-
-  // 保存済みの位置があれば復元（パネルが表示された時にサイズが確定するまで待つ必要はなく、
-  // left/top指定は表示状態でなくても効くのでこの時点で適用してよい）
-  try{
-    var saved = JSON.parse(localStorage.getItem(storeKey) || 'null');
-    if(saved && typeof saved.left==='number' && typeof saved.top==='number'){
-      applyPos(saved.left, saved.top);
-    }
-  }catch(e){}
-
-  handle.addEventListener('pointerdown', function(e){
-    // ✕（閉じる）ボタンなど、つまみの中にある操作ボタンをタップした時はドラッグを開始しない
-    if(e.target.closest && e.target.closest('.bg-panel-close')) return;
-    wrapRect = wrap.getBoundingClientRect();
-    var pr = panel.getBoundingClientRect();
-    panelW = pr.width; panelH = pr.height;
-    startLeft = pr.left - wrapRect.left;
-    startTop = pr.top - wrapRect.top;
-    applyPos(startLeft, startTop);
-    dragging = true;
-    startX = e.clientX; startY = e.clientY;
-    handle.setPointerCapture(e.pointerId);
-    e.preventDefault();
-  });
-  handle.addEventListener('pointermove', function(e){
-    if(!dragging) return;
-    var dx = e.clientX - startX, dy = e.clientY - startY;
-    var nl = startLeft + dx, nt = startTop + dy;
-    nl = Math.max(0, Math.min(wrapRect.width - panelW, nl));
-    nt = Math.max(0, Math.min(wrapRect.height - panelH, nt));
-    applyPos(nl, nt);
-  });
-  function endDrag(e){
-    if(!dragging) return;
-    dragging = false;
-    try{
-      var left = parseFloat(panel.style.left), top = parseFloat(panel.style.top);
-      localStorage.setItem(storeKey, JSON.stringify({left:left, top:top}));
-    }catch(err){}
-  }
-  handle.addEventListener('pointerup', endDrag);
-  handle.addEventListener('pointercancel', endDrag);
-}
-
-function initPanelDragging(){
-  makeDraggable('multiSelPanel', '.drag-handle');
-  makeDraggable('pipeEditPanel', '.drag-handle');
-  makeDraggable('scaffEditPanel', '.drag-handle');
-  makeDraggable('scaffListPanel', '.drag-handle');
-  makeDraggable('pinListPanel', '.drag-handle');
-  makeDraggable('plotPanel', '.drag-handle');
-}
-
 // ── INIT ───────────────────────────────────────
 function initApp(){
   resize();
@@ -8564,12 +7834,6 @@ function initApp(){
   initDrawStyle();
   initPipeDrawMode();
   initAngleStep();
-  initDrawerResize();
-  initPanelDragging();
-  initDisplayMenuOutsideClose();
-  initPinFileDragDrop();
-  initPinAddDrag();
-  initFileDropButtons();
   document.getElementById('appVersionLabel').textContent = 'v'+APP_VERSION;
   document.getElementById('bDimToggle').classList.add('on');
   S.px=canvas.width/2 - 2*PX_PER_M;
