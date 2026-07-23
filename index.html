@@ -423,9 +423,9 @@ header{
 
 /* テキスト入力ポップアップ（軽量：画面を暗く覆わず、上の方にさっと出すカード） */
 .text-input-overlay{
-  position:fixed;inset:0;
+  position:fixed;inset:0;background:rgba(0,0,0,0.32);
   z-index:600;display:none;align-items:flex-start;justify-content:center;
-  padding-top:54px;pointer-events:none;
+  padding-top:54px;
 }
 .text-input-overlay.vis{display:flex;}
 .text-input-box{
@@ -1552,15 +1552,23 @@ function drawPipeLineWithGaps(p1,p2,cutTs){
 
 function render(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  if(S.bg && S.bg.img){
+  if(S.bg && S.bg.img && S.bg.img.complete){
     var bgW = S.bg.baseW*S.bg.scale, bgH = S.bg.baseH*S.bg.scale;
     var bgCenterScr = w2s(S.bg.wx, S.bg.wy);
     var bgPxW = bgW*PX_PER_M*S.zoom, bgPxH = bgH*PX_PER_M*S.zoom;
+    // 縮小表示時にPDF/写真がにじんで見づらくならないよう、段階的に縮小したミップマップから
+    // 表示サイズに最も近いものを選んで描画する（拡大表示時は元画像のまま高品質に描画される）。
+    if(!S.bg._mips || S.bg._mipsSrc!==S.bg.img.src){
+      S.bg._mips = buildGhostMip(S.bg.img);
+      S.bg._mipsSrc = S.bg.img.src;
+    }
+    var bgMip = pickGhostMip(S.bg._mips, Math.max(bgPxW,bgPxH));
     ctx.save();
     ctx.globalAlpha = S.bg.opacity;
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
     ctx.translate(bgCenterScr.x, bgCenterScr.y);
     ctx.rotate((S.bg.angle||0) * Math.PI/180);
-    ctx.drawImage(S.bg.img, -bgPxW/2, -bgPxH/2, bgPxW, bgPxH);
+    ctx.drawImage(bgMip.canvas, -bgPxW/2, -bgPxH/2, bgPxW, bgPxH);
     ctx.restore();
   }
   if(S.showGrid) drawGrid();
@@ -5982,11 +5990,14 @@ function initPinAddDrag(){
   var MOVE_ARM_PX = 8; // これ未満の移動は「タップのつもりでの微振動」とみなし、まだドラッグ確定扱いにしない
   var downPos = null;
   btn.addEventListener('pointerdown', function(e){
+    if(S.tool!=='addpin' && isPlacementInProgress()){
+      if(!confirm('⚠️ 現在、設置・作図の途中です。\n中断して別の操作に切り替えますか？（入力中の内容は失われます）')) return;
+    }
     S.pinPaletteDragging = true;
     S.pinPaletteDragMoved = false;
     S.pinDragGhostPos = null;
     downPos = {x:e.clientX, y:e.clientY};
-    setTool('addpin'); // 押した時点でピン追加ツールに切替（ドロワーも自動で閉じ、キャンバス全体が見えるようになる）
+    setTool('addpin', true); // 確認は上ですでに済んでいるため、setTool内では二重に確認しない
     try{ btn.setPointerCapture(e.pointerId); }catch(err){}
     e.preventDefault(); // ブラウザ標準のスクロール／長押しメニュー判定でドラッグが中断されないようにする
   });
@@ -6581,6 +6592,12 @@ function toggleDimVisible(){
 // ツール切替時や、指がキャンバス外に外れて操作が中断された時（pointercancel/touchcancel）に呼ぶ。
 // これを呼ばずにツールだけ切り替えると、描きかけの配管のゴースト（半透明プレビュー）が
 // 消えないまま残り続け、後で範囲選択などをした際に表示され続けてしまう。
+// 足場・配管・ホース・角度計測・校正など、途中まで点を打っている最中かどうかを判定する。
+// これがtrueの間に別のツールへ切り替えると、入力中の内容が失われてしまうため、
+// setTool()側で確認ポップアップを出す判断に使う。
+function isPlacementInProgress(){
+  return !!S.dragMode || S.drawing || S.drawingLeader || S.rangeSelecting || S.hoseDrawing || S.pendingScale || S.bgDragging || S.angleDrawing || S.scaffDrawing || S.rulerDrawing;
+}
 function cancelInProgressDrawing(){
   S.drawing=false; S.drawStart=null; S.prev=null; S.snapPt=null;
   S.drawingLeader=false; S.leaderStart=null; S.leaderPrev=null;
@@ -6593,7 +6610,10 @@ function cancelInProgressDrawing(){
   S.rulerDrawing=false; S.rulerPrev=null; S.rulerStart=null;
   S.bgDragging=false;
 }
-function setTool(t){
+function setTool(t, silent){
+  if(!silent && t!==S.tool && isPlacementInProgress()){
+    if(!confirm('⚠️ 現在、設置・作図の途中です。\n中断して別の操作に切り替えますか？（入力中の内容は失われます）')) return;
+  }
   if(S.dragMode==='groupmove') endGroupMove();
   else if(S.dragMode) endDragMode();
   S.tool=t;
@@ -6694,7 +6714,7 @@ function escapeToNeutral(){
   S.drawingLeader=false; S.leaderStart=null; S.leaderPrev=null;
   S.rangeSelecting=false; S.rangeStart=null; S.rangeEnd=null;
   S.sel=null; S.lastFit=null; S.pendingScale=false;
-  setTool('rangesel'); // 内部でドラッグ・グループ移動モードの終了と選択解除も行われる
+  setTool('rangesel', true); // 内部でドラッグ・グループ移動モードの終了と選択解除も行われる（Escによる中断は既に確定済みの操作なので確認は不要）
   showToast('⏹ 操作を中断しました');
   render();
 }
@@ -7501,7 +7521,7 @@ function startExportFlow(type){
   S.exportPending = {type:type, rect:null};
   S.prevTool = S.tool;
   S.multiSel = [];
-  setTool('rangesel');
+  setTool('rangesel', true);
   document.getElementById('exportRangeBar').style.display = 'block';
   document.getElementById('exportRangeMsg').textContent = '出力したい範囲を指でドラッグして選択してください（未選択の場合は画面全体を出力します）';
   render();
@@ -7511,7 +7531,7 @@ function cancelExportFlow(){
   document.getElementById('exportPreviewOverlay').classList.remove('vis');
   var prevTool = S.prevTool || 'pipe';
   S.exportPending = null;
-  setTool(prevTool);
+  setTool(prevTool, true);
   render();
 }
 // 範囲選択の確定：ここではまだ出力せず、プレビュー画面を挟む
@@ -7521,7 +7541,7 @@ function confirmExportFlow(){
   S.exportPending.rect = rect;
   document.getElementById('exportRangeBar').style.display = 'none';
   // プレビュー表示中に背面キャンバスをドラッグして範囲が変わってしまわないよう、一旦ツールを戻す
-  setTool(S.prevTool || 'pipe');
+  setTool(S.prevTool || 'pipe', true);
   showExportPreview(rect);
 }
 // 選択範囲を画面キャンバスから切り出してプレビュー画像として表示する
@@ -7540,7 +7560,7 @@ function backFromExportPreview(){
   document.getElementById('exportPreviewOverlay').classList.remove('vis');
   if(!S.exportPending) return;
   S.prevTool = S.tool;
-  setTool('rangesel');
+  setTool('rangesel', true);
   document.getElementById('exportRangeBar').style.display = 'block';
   document.getElementById('exportRangeMsg').textContent = S.exportPending.rect ? '選択した範囲を出力します（引き直すと変更できます）' : '出力範囲：画面全体（ドラッグすると範囲を指定できます）';
   render();
@@ -8165,7 +8185,7 @@ function loadImageFileToBg(file){
       S.bg = {img:img, wx:centerScr.x, wy:centerScr.y, baseW:baseW, baseH:baseH, scale:2.594, opacity:0.8, angle:0};
       document.getElementById('bgOpacitySlider').value = 80;
       S.plotPanelOpen = true;
-      setTool('ruler'); // 写真取込に続けて校正モードを自動で起動する（不要な場合は背景メニューの「校正をキャンセル」で戻れる）
+      setTool('ruler', true); // 写真取込に続けて校正モードを自動で起動する（不要な場合は背景メニューの「校正をキャンセル」で戻れる）
       updatePlotPanel();
       render();
       showToast('写真を読み込みました。続けて校正を行ってください（不要なら背景メニューでキャンセルできます）');
@@ -8193,7 +8213,7 @@ function renderPdfPageToBg(pdf, pageNum){
         document.getElementById('bgOpacitySlider').value = 80;
         S.plotPanelOpen = true;
         updatePlotPanel();
-        setTool('ruler'); // PDF取込に続けて校正モードを自動で起動する（不要な場合は背景メニューの「校正をキャンセル」で戻れる）
+        setTool('ruler', true); // PDF取込に続けて校正モードを自動で起動する（不要な場合は背景メニューの「校正をキャンセル」で戻れる）
         render();
         showToast('PDF（'+pageNum+'ページ目）を読み込みました。続けて校正を行ってください（不要なら背景メニューでキャンセルできます）');
       };
@@ -8230,7 +8250,7 @@ function resetBgScale(){
 }
 function removeBg(){
   if(!S.bg) return;
-  if(S.tool==='movebg') setTool('pipe');
+  if(S.tool==='movebg') setTool('pipe', true);
   S.bg = null;
   updatePlotPanel();
   render();
