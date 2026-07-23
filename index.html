@@ -310,14 +310,14 @@ header{
 .pin-editor-sheet textarea{resize:vertical;min-height:70px;}
 .pin-photo-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;border-radius:8px;transition:background 0.1s;}
 .pin-photo-row.drag-over{background:rgba(2,119,189,0.1);outline:2px dashed #0277bd;outline-offset:2px;}
-.pin-photo-thumb{position:relative;width:54px;height:54px;flex-shrink:0;}
+.pin-photo-thumb{position:relative;width:72px;height:72px;flex-shrink:0;cursor:pointer;}
 .pin-photo-thumb img{width:100%;height:100%;border-radius:8px;object-fit:cover;border:1px solid #d8dce3;display:block;}
 .pin-photo-thumb .pin-photo-del{
   position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;
   background:#d32f2f;color:#fff;font-size:12px;line-height:18px;text-align:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.25);
 }
 .pin-photo-add{
-  width:54px;height:54px;flex-shrink:0;border-radius:8px;border:1.5px dashed #d8dce3;
+  width:72px;height:72px;flex-shrink:0;border-radius:8px;border:1.5px dashed #d8dce3;
   background:#eef1f6;color:#0277bd;font-size:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;
 }
 /* 仕様書：写真とは別枠で保存するファイル添付（PDF/画像/Office文書など）。一覧はファイル名付きの横並びチップで表示する */
@@ -5879,10 +5879,18 @@ function renderPinPhotoRow(){
   var photos = S.currentEditPin.photos || [];
   var html='';
   photos.forEach(function(url, idx){
-    html += '<div class="pin-photo-thumb"><img src="'+url+'"><div class="pin-photo-del" onclick="removePinPhoto('+idx+')">✕</div></div>';
+    html += '<div class="pin-photo-thumb" onclick="openPinPhoto('+idx+')" title="タップして拡大表示"><img src="'+url+'"><div class="pin-photo-del" onclick="event.stopPropagation();removePinPhoto('+idx+')">✕</div></div>';
   });
   html += '<div class="pin-photo-add" onclick="document.getElementById(\'pinPhotoInput\').click();" title="写真を追加">＋</div>';
   host.innerHTML = html;
+}
+// 写真サムネイルは小さいため、タップすると新しいタブに原寸大で表示する
+function openPinPhoto(idx){
+  var photos = S.currentEditPin && S.currentEditPin.photos;
+  if(!photos || !photos[idx]) return;
+  var w = window.open();
+  if(!w){ showToast('ポップアップがブロックされました。ブラウザの設定をご確認ください'); return; }
+  w.document.write('<title>写真</title><body style="margin:0;background:#222;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="'+photos[idx]+'" style="max-width:100%;max-height:100vh;"></body>');
 }
 // ピン編集：写真・仕様書欄へのドラッグ&ドロップ対応
 // （windowレベルのExcel取込用ドロップ処理と競合しないよう、要素自身で処理してstopPropagationする）
@@ -6082,18 +6090,34 @@ function removePinSpec(idx){
   S.currentEditPin.specs.splice(idx,1);
   renderPinSpecRow();
 }
-// 仕様書を新しいタブで開く（画像はプレビュー表示、PDF等はブラウザの既定動作で表示／ダウンロード）
+// 仕様書を表示する。画像はプレビュー表示、PDFはiframeに埋め込んで表示（data:URLへの直接ナビゲーションは
+// ブラウザにブロックされ「開いても真っ白/確認できない」原因になるため、iframe埋め込みで回避する）。
+// Word/Excel等プレビューできない形式は、ブラウザで確認できないためそのままダウンロードする。
 function openPinSpec(idx){
   var specs = S.currentEditPin && S.currentEditPin.specs;
   if(!specs || !specs[idx]) return;
   var spec = specs[idx];
-  var w = window.open();
-  if(!w){ showToast('ポップアップがブロックされました。ブラウザの設定をご確認ください'); return; }
-  if(spec.type && spec.type.indexOf('image/')===0){
+  var type = spec.type || '';
+  if(type.indexOf('image/')===0){
+    var w = window.open();
+    if(!w){ showToast('ポップアップがブロックされました。ブラウザの設定をご確認ください'); return; }
     w.document.write('<title>'+escapeHtml(spec.name||'仕様書')+'</title><body style="margin:0;background:#222;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="'+spec.dataUrl+'" style="max-width:100%;max-height:100vh;"></body>');
-  } else {
-    w.location.href = spec.dataUrl;
+    return;
   }
+  if(type==='application/pdf'){
+    var w2 = window.open();
+    if(!w2){ showToast('ポップアップがブロックされました。ブラウザの設定をご確認ください'); return; }
+    w2.document.write('<title>'+escapeHtml(spec.name||'仕様書')+'</title><style>html,body{margin:0;height:100%;}iframe{border:0;width:100%;height:100%;}</style><iframe src="'+spec.dataUrl+'"></iframe>');
+    return;
+  }
+  // Word/Excel/PowerPointなどはブラウザ上でプレビューできないため、ダウンロードして開いてもらう
+  var a = document.createElement('a');
+  a.href = spec.dataUrl;
+  a.download = spec.name || '仕様書';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  showToast('この形式（'+(spec.name||'')+'）はブラウザ内でプレビューできないため、ダウンロードしました。お手持ちのアプリで開いてご確認ください');
 }
 function openPinEditor(pin, isNew){
   S.currentEditPin = pin;
