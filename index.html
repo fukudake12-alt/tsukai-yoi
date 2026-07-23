@@ -71,14 +71,15 @@ header{
 .sheet-tabs{flex:1;display:flex;align-items:stretch;overflow-x:auto;scrollbar-width:none;}
 .sheet-tabs::-webkit-scrollbar{display:none;}
 .sheet-tab{
-  display:flex;align-items:center;gap:4px;padding:0 10px;white-space:nowrap;
+  display:flex;align-items:center;gap:6px;padding:0 8px;white-space:nowrap;
   font-size:var(--fs-4);color:#5c6b8a;border-right:1px solid #d8dce3;cursor:pointer;
   -webkit-tap-highlight-color:transparent;max-width:150px;
 }
 .sheet-tab .stlabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .sheet-tab.on{background:#ffffff;color:#0277bd;font-weight:700;}
-.sheet-tab .stbtn{color:#8a93a3;font-size:var(--fs-4);padding:2px;line-height:1;}
-.sheet-tab.on .stbtn:active{color:#1a1d27;}
+.sheet-tab .stbtn{color:#8a93a3;font-size:var(--fs-4);padding:4px 5px;line-height:1;border-radius:4px;}
+.sheet-tab .stbtn.stbtn-close{margin-left:1px;}
+.sheet-tab.on .stbtn:active{color:#1a1d27;background:#e3e7f0;}
 .sheet-tab-add{
   width:36px;display:flex;align-items:center;justify-content:center;
   color:#5c6b8a;font-size:var(--fs-6);cursor:pointer;border-left:1px solid #d8dce3;
@@ -709,7 +710,7 @@ header{
 
       <div id="plotPanelGhostSection">
         <div style="font-size:var(--fs-2);color:#5c6b8a;font-weight:700;">👻 階を重ねて表示</div>
-        <div style="font-size:var(--fs-2);color:#5c6b8a;margin-top:4px;">重ねる階</div>
+        <div style="font-size:var(--fs-2);color:#5c6b8a;margin-top:4px;">重ねて表示する階</div>
         <select id="ghostSheetSelect" onchange="setGhostSheet(this.value)"></select>
         <div style="font-size:var(--fs-2);color:#5c6b8a;margin-top:4px;">濃さ</div>
         <input type="range" id="ghostOpacitySlider" min="0" max="100" value="100" oninput="setGhostOpacity(this.value)">
@@ -6756,7 +6757,13 @@ function renameSheet(idx){
 function deleteSheet(idx){
   var sh = S.sheets[idx]; if(!sh) return;
   if(S.sheets.length<=1){ showToast('シートは1つ以上必要です'); return; }
-  if(!confirm('シート「'+sh.name+'」を削除しますか？（元に戻せません）')) return;
+  var pinCount = (sh.pins||[]).length;
+  var hasBg = !!sh.bg;
+  var detail = 'この階の配管・ピン';
+  if(pinCount) detail += '（'+pinCount+'件）';
+  if(hasBg) detail += '・PLOT（PDF/写真）';
+  detail += 'もすべて削除されます。';
+  if(!confirm('⚠️ シート「'+sh.name+'」を削除しますか？\n'+detail+'\nこの操作は元に戻せません。')) return;
   var wasActive = (idx===S.activeSheet);
   S.sheets.splice(idx,1);
   if(wasActive){
@@ -6767,7 +6774,7 @@ function deleteSheet(idx){
   }
   renderSheetTabs();
   render();
-  showToast('シートを削除しました');
+  showToast('シート「'+sh.name+'」を削除しました');
 }
 function renderSheetTabs(){
   var wrap = document.getElementById('sheetTabs');
@@ -6787,7 +6794,7 @@ function renderSheetTabs(){
       tab.appendChild(ren);
       if(S.sheets.length>1){
         var del = document.createElement('span');
-        del.className='stbtn'; del.textContent='×'; del.title='シートを削除';
+        del.className='stbtn stbtn-close'; del.textContent='×'; del.title='シートを削除';
         del.onclick = function(ev){ ev.stopPropagation(); deleteSheet(idx); };
         tab.appendChild(del);
       }
@@ -8265,7 +8272,7 @@ function updatePlotPanel(){
   if(hasGhost){
     var sel = document.getElementById('ghostSheetSelect');
     if(sel){
-      var html = '<option value="-1">重ねない</option>';
+      var html = '<option value="-1">－ 選択なし －</option>';
       S.sheets.forEach(function(sh, idx){
         if(idx===S.activeSheet) return;
         html += '<option value="'+idx+'"'+(idx===S.ghostSheet?' selected':'')+'>'+escapeHtml(sh.name)+'</option>';
