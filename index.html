@@ -1100,7 +1100,7 @@ header{
 </div>
 
 <div class="export-range-bar" id="exportRangeBar" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:5000;background:#1b2436;color:#fff;padding:10px 12px;padding-bottom:calc(10px + env(safe-area-inset-bottom));box-shadow:0 -2px 10px rgba(0,0,0,0.25);">
-  <div style="font-size:12px;text-align:center;margin-bottom:8px;" id="exportRangeMsg">出力したい範囲を指でドラッグして選択してください（未選択の場合は画面全体を出力します）</div>
+  <div style="font-size:12px;text-align:center;margin-bottom:8px;" id="exportRangeMsg">出力したい範囲を指でドラッグして選択してください（未選択の場合は図面全体を出力します）</div>
   <div style="display:flex;gap:8px;">
     <button style="flex:1;padding:10px;border:none;border-radius:var(--radius-md);background:#37415a;color:#fff;font-size:var(--fs-5);" onclick="cancelExportFlow()">キャンセル</button>
     <button style="flex:2;padding:10px;border:none;border-radius:var(--radius-md);background:#2e7d32;color:#fff;font-size:var(--fs-5);font-weight:700;" onclick="confirmExportFlow()">プレビューを見る</button>
@@ -2756,6 +2756,13 @@ function setDrawerTab(tab){
     if(pane) pane.style.display = (key===tab) ? '' : 'none';
     if(btn) btn.classList.toggle('on', key===tab);
   });
+  // 足場・ピンタブを開いた直後は、まだ「本足場」「ピン追加」など具体的な種類を選んでいない段階。
+  // それなのに配管ツールのままだと、キャンバスをタップした際に誤って配管を引いてしまうため、
+  // まだ何も選んでいない状態は「選択」にしておき、誤操作を防ぐ。
+  var neededTool = {scaff:'scaff', pin:'addpin'};
+  if(neededTool[tab] && S.tool!==neededTool[tab] && S.tool!=='rangesel'){
+    setTool('rangesel');
+  }
   try{ localStorage.setItem(DRAWER_TAB_STORAGE_KEY, tab); }catch(e){}
 }
 function initDrawerTab(){
@@ -5225,7 +5232,7 @@ function finalizeRangeSelect(pos){
     // 出力範囲選択モード中：通常の要素選択は行わず、ドラッグした矩形を出力範囲として記憶する
     if(x1-x0<8 || y1-y0<8){
       S.exportPending.rect = null; // ほぼ動かしていない場合は「範囲未指定＝全体」として扱う
-      document.getElementById('exportRangeMsg').textContent = '出力範囲：画面全体（ドラッグすると範囲を指定できます）';
+      document.getElementById('exportRangeMsg').textContent = '出力範囲：図面全体（ドラッグすると範囲を指定できます）';
     } else {
       S.exportPending.rect = {x:x0, y:y0, w:x1-x0, h:y1-y0};
       document.getElementById('exportRangeMsg').textContent = '選択した範囲を出力します（引き直すと変更できます）';
@@ -7515,6 +7522,46 @@ function buildExportSvg(rect){
 }
 
 
+// 出力範囲を手動選択しなかった場合の既定範囲：現在の画面（ブラウザの表示範囲）だけを使うと、
+// 図面が画面より大きい（スクロール／パンしないと全体が見えない）場合に一部が出力から漏れてしまう。
+// そのため、配管・足場・ピン・背景など全要素のワールド座標での外接範囲を求め、
+// 現在のズームでスクリーン座標に変換したものを既定の出力範囲とする（画面に映っているかどうかに関係なく全体が入る）。
+function computeFullContentScreenRect(){
+  var minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+  function addWorldPt(wx,wy){
+    if(wx<minX)minX=wx; if(wx>maxX)maxX=wx;
+    if(wy<minY)minY=wy; if(wy>maxY)maxY=wy;
+  }
+  function addRotatedRect(cx,cy,w,h,angleDeg){
+    var rad=(angleDeg||0)*Math.PI/180;
+    var hw=w/2, hh=h/2;
+    [[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]].forEach(function(c){
+      var rx = c[0]*Math.cos(rad) - c[1]*Math.sin(rad);
+      var ry = c[0]*Math.sin(rad) + c[1]*Math.cos(rad);
+      addWorldPt(cx+rx, cy+ry);
+    });
+  }
+  S.els.forEach(function(el){
+    if(el.kind==='pipe'){ addWorldPt(el.wx1,el.wy1); addWorldPt(el.wx2,el.wy2); }
+    else if(el.kind==='scaffold'){ addRotatedRect(el.wx, el.wy, el.w, el.d, el.angle||0); }
+    else if(typeof el.wx==='number' && typeof el.wy==='number'){ addWorldPt(el.wx, el.wy); }
+  });
+  (S.pins||[]).forEach(function(p){ addWorldPt(p.wx,p.wy); });
+  if(S.bg && S.bg.img){
+    addRotatedRect(S.bg.wx, S.bg.wy, S.bg.baseW*S.bg.scale, S.bg.baseH*S.bg.scale, S.bg.angle||0);
+  }
+  if(!isFinite(minX)) return null; // 何も描かれていない場合は既定（画面全体）にフォールバックする
+  var p1 = w2s(minX, minY), p2 = w2s(maxX, maxY);
+  var x0 = Math.min(p1.x,p2.x), y0 = Math.min(p1.y,p2.y);
+  var x1 = Math.max(p1.x,p2.x), y1 = Math.max(p1.y,p2.y);
+  var PAD = 60; // 継手アイコン・寸法文字・ラベルがはみ出さないよう、画面px単位で余白を持たせる
+  return {x:x0-PAD, y:y0-PAD, w:(x1-x0)+PAD*2, h:(y1-y0)+PAD*2};
+}
+// 出力範囲が未選択の場合に使う既定値：まず図面全体の外接範囲を試し、それも無ければ画面全体にする
+function getDefaultExportRect(){
+  return computeFullContentScreenRect() || {x:0, y:0, w:canvas.width, h:canvas.height};
+}
+
 // ── 出力（PDF・Excel）：出力範囲の選択フロー ─────────────
 // 「選択」ツールのドラッグ機構を流用し、出力したい範囲を指定してもらう。
 function startExportFlow(type){
@@ -7523,7 +7570,7 @@ function startExportFlow(type){
   S.multiSel = [];
   setTool('rangesel', true);
   document.getElementById('exportRangeBar').style.display = 'block';
-  document.getElementById('exportRangeMsg').textContent = '出力したい範囲を指でドラッグして選択してください（未選択の場合は画面全体を出力します）';
+  document.getElementById('exportRangeMsg').textContent = '出力したい範囲を指でドラッグして選択してください（未選択の場合は図面全体を出力します）';
   render();
 }
 function cancelExportFlow(){
@@ -7537,23 +7584,30 @@ function cancelExportFlow(){
 // 範囲選択の確定：ここではまだ出力せず、プレビュー画面を挟む
 function confirmExportFlow(){
   if(!S.exportPending) return;
-  var rect = S.exportPending.rect || {x:0, y:0, w:canvas.width, h:canvas.height};
+  var rect = S.exportPending.rect || getDefaultExportRect();
   S.exportPending.rect = rect;
   document.getElementById('exportRangeBar').style.display = 'none';
   // プレビュー表示中に背面キャンバスをドラッグして範囲が変わってしまわないよう、一旦ツールを戻す
   setTool(S.prevTool || 'pipe', true);
   showExportPreview(rect);
 }
-// 選択範囲を画面キャンバスから切り出してプレビュー画像として表示する
+// 出力範囲のプレビュー画像を生成する。実際の出力（buildExportSvg）と同じ内容から作ることで、
+// 画面に映っていない部分（スクロールしないと見えない範囲）も含めて正しくプレビューできるようにする。
+// （以前はキャンバスの見た目をそのまま切り出していたため、画面外の内容がプレビューに映らなかった）
 function showExportPreview(rect){
   var img = document.getElementById('exportPreviewImg');
-  var tmp = document.createElement('canvas');
-  tmp.width = Math.max(1, Math.round(rect.w));
-  tmp.height = Math.max(1, Math.round(rect.h));
-  var tctx = tmp.getContext('2d');
-  tctx.drawImage(canvas, rect.x, rect.y, rect.w, rect.h, 0, 0, tmp.width, tmp.height);
-  img.src = tmp.toDataURL('image/png');
-  document.getElementById('exportPreviewOverlay').classList.add('vis');
+  var overlay = document.getElementById('exportPreviewOverlay');
+  img.src = '';
+  overlay.classList.add('vis');
+  var svgStr = buildExportSvg(rect);
+  var pxW = Math.max(1, Math.round(rect.w));
+  var pxH = Math.max(1, Math.round(rect.h * (pxW/Math.max(1,rect.w))));
+  if(pxW>2000){ pxH = Math.round(pxH*2000/pxW); pxW = 2000; } // プレビューは軽量な解像度で十分
+  svgStringToPngDataUrl(svgStr, pxW, pxH, false).then(function(dataUrl){
+    img.src = dataUrl;
+  }).catch(function(){
+    showToast('プレビューの生成に失敗しました（このまま出力は続行できます）');
+  });
 }
 // プレビューから「戻る」：範囲選択に戻り、引き直せるようにする
 function backFromExportPreview(){
@@ -7562,14 +7616,14 @@ function backFromExportPreview(){
   S.prevTool = S.tool;
   setTool('rangesel', true);
   document.getElementById('exportRangeBar').style.display = 'block';
-  document.getElementById('exportRangeMsg').textContent = S.exportPending.rect ? '選択した範囲を出力します（引き直すと変更できます）' : '出力範囲：画面全体（ドラッグすると範囲を指定できます）';
+  document.getElementById('exportRangeMsg').textContent = S.exportPending.rect ? '選択した範囲を出力します（引き直すと変更できます）' : '出力範囲：図面全体（ドラッグすると範囲を指定できます）';
   render();
 }
 // プレビューで確認後、実際にPDF/Excelを生成する
 async function proceedExportAfterPreview(){
   if(!S.exportPending) return;
   var type = S.exportPending.type;
-  var rect = S.exportPending.rect || {x:0, y:0, w:canvas.width, h:canvas.height};
+  var rect = S.exportPending.rect || getDefaultExportRect();
   document.getElementById('exportPreviewOverlay').classList.remove('vis');
   S.exportPending = null;
   try{
@@ -8332,6 +8386,57 @@ function updatePlotPanel(){
   }
 }
 
+// ── 自動保存の保存先：IndexedDB ──
+// localStorageは容量が数MB程度しかなく、PDF/写真を含む自動保存がすぐ容量超過してしまっていた。
+// IndexedDBはブラウザが確保できる空き容量までずっと大きく保存できるため、PLOTごと確実に
+// 自動保存できるようにする（IndexedDBが使えない環境向けにlocalStorageへのフォールバックも残す）。
+var IDB_NAME = 'pipeiso_autosave_db';
+var IDB_STORE = 'kv';
+function openAutosaveDB(cb){
+  if(!window.indexedDB){ cb(null); return; }
+  var req;
+  try{ req = indexedDB.open(IDB_NAME, 1); }catch(e){ cb(null); return; }
+  req.onupgradeneeded = function(e){
+    var db = e.target.result;
+    if(!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+  };
+  req.onsuccess = function(e){ cb(e.target.result); };
+  req.onerror = function(){ cb(null); };
+}
+function idbSetAutosave(value, cb){
+  openAutosaveDB(function(db){
+    if(!db){ if(cb) cb(false); return; }
+    try{
+      var tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).put(value, 'autosave');
+      tx.oncomplete = function(){ if(cb) cb(true); };
+      tx.onerror = function(){ if(cb) cb(false); };
+    }catch(e){ if(cb) cb(false); }
+  });
+}
+function idbGetAutosave(cb){
+  openAutosaveDB(function(db){
+    if(!db){ cb(null); return; }
+    try{
+      var tx = db.transaction(IDB_STORE, 'readonly');
+      var req = tx.objectStore(IDB_STORE).get('autosave');
+      req.onsuccess = function(){ cb(req.result || null); };
+      req.onerror = function(){ cb(null); };
+    }catch(e){ cb(null); }
+  });
+}
+function idbDeleteAutosave(cb){
+  openAutosaveDB(function(db){
+    if(!db){ if(cb) cb(); return; }
+    try{
+      var tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).delete('autosave');
+      tx.oncomplete = function(){ if(cb) cb(); };
+      tx.onerror = function(){ if(cb) cb(); };
+    }catch(e){ if(cb) cb(); }
+  });
+}
+
 var AUTOSAVE_KEY = 'pipeiso_autosave_v1';
 var autosaveTimer=null;
 function scheduleAutosave(){
@@ -8340,19 +8445,32 @@ function scheduleAutosave(){
     try{
       syncActiveSheetFromState();
       var hasContent = S.sheets.some(function(s){ return (s.els && s.els.length) || (s.pins && s.pins.length) || s.bg; });
-      if(!hasContent){ localStorage.removeItem(AUTOSAVE_KEY); return; }
-      var sheetsOut = S.sheets.map(sheetToSaveObj);
-      try{
-        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ savedAt:Date.now(), sheets:sheetsOut, activeSheet:S.activeSheet }));
-      }catch(quotaErr){
-        // 背景画像・写真を含めると容量超過する場合は、それらを省いて作図データだけでも自動保存する
-        var slimOut = S.sheets.map(function(s){ return {name:s.name, els:s.els, pins:(s.pins||[]).map(function(p){ return {id:p.id,wx:p.wx,wy:p.wy,name:p.name,item:p.item,seibi:p.seibi,rating:p.rating,size:p.size,type:p.type,gasket:p.gasket,law:p.law,fluid:p.fluid,memo:p.memo,color:p.color,photos:[],specs:[]}; }), bg:null}; });
-        try{ localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ savedAt:Date.now(), sheets:slimOut, activeSheet:S.activeSheet, slim:true })); }catch(e2){ /* それでも保存できない環境では諦める */ }
-        if(!S._slimAutosaveWarned){
-          S._slimAutosaveWarned = true;
-          showToast('端末の保存容量の都合で、自動保存にはPLOT（PDF/写真）を含められません。データを別のPCでも使う場合は「💾保存」でファイルとして保存してください');
-        }
+      if(!hasContent){
+        idbDeleteAutosave();
+        try{ localStorage.removeItem(AUTOSAVE_KEY); }catch(e){}
+        return;
       }
+      var sheetsOut = S.sheets.map(sheetToSaveObj);
+      var payload = { savedAt:Date.now(), sheets:sheetsOut, activeSheet:S.activeSheet };
+      idbSetAutosave(payload, function(ok){
+        if(ok){
+          // IndexedDBへの保存に成功したら、旧方式（localStorage）の自動保存は片付けておく
+          try{ localStorage.removeItem(AUTOSAVE_KEY); }catch(e){}
+          return;
+        }
+        // IndexedDBが使えない環境（一部のプライベートブラウジング等）向けのフォールバック
+        try{
+          localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(payload));
+        }catch(quotaErr){
+          // 背景画像・写真を含めると容量超過する場合は、それらを省いて作図データだけでも自動保存する
+          var slimOut = S.sheets.map(function(s){ return {name:s.name, els:s.els, pins:(s.pins||[]).map(function(p){ return {id:p.id,wx:p.wx,wy:p.wy,name:p.name,item:p.item,seibi:p.seibi,rating:p.rating,size:p.size,type:p.type,gasket:p.gasket,law:p.law,fluid:p.fluid,memo:p.memo,color:p.color,photos:[],specs:[]}; }), bg:null}; });
+          try{ localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ savedAt:Date.now(), sheets:slimOut, activeSheet:S.activeSheet, slim:true })); }catch(e2){ /* それでも保存できない環境では諦める */ }
+          if(!S._slimAutosaveWarned){
+            S._slimAutosaveWarned = true;
+            showToast('端末の保存容量の都合で、自動保存にはPLOT（PDF/写真）を含められません。データを別のPCでも使う場合は「💾保存」でファイルとして保存してください');
+          }
+        }
+      });
     }catch(e){ /* 保存できない環境（プライベートモード等）では何もしない */ }
   }, 600);
 }
@@ -8361,12 +8479,19 @@ var _renderOrig = render;
 render = function(){ _renderOrig(); scheduleAutosave(); };
 
 function tryRestoreAutosave(then){
-  var raw;
-  try{ raw = localStorage.getItem(AUTOSAVE_KEY); }catch(e){ then(); return; }
-  if(!raw){ then(); return; }
-  var data;
-  try{ data = JSON.parse(raw); }catch(e){ then(); return; }
-  if(!data){ then(); return; }
+  idbGetAutosave(function(idbData){
+    if(idbData){ restoreAutosavePayload(idbData, then); return; }
+    // IndexedDBに保存が無い場合は、旧方式（localStorage）の自動保存を確認する
+    var raw;
+    try{ raw = localStorage.getItem(AUTOSAVE_KEY); }catch(e){ then(); return; }
+    if(!raw){ then(); return; }
+    var data;
+    try{ data = JSON.parse(raw); }catch(e){ then(); return; }
+    if(!data){ then(); return; }
+    restoreAutosavePayload(data, then);
+  });
+}
+function restoreAutosavePayload(data, then){
   var hasSheets = Array.isArray(data.sheets) && data.sheets.some(function(s){ return (s.els&&s.els.length) || (s.pins&&s.pins.length) || s.bg; });
   var hasOldEls = Array.isArray(data.els) && data.els.length;
   if(!hasSheets && !hasOldEls){ then(); return; }
@@ -8389,6 +8514,7 @@ function tryRestoreAutosave(then){
       then();
     }
   } else {
+    idbDeleteAutosave();
     try{ localStorage.removeItem(AUTOSAVE_KEY); }catch(e){}
     then();
   }
