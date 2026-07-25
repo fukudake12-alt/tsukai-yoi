@@ -191,7 +191,7 @@ header{
 .ov-label-btn.ov-primary:active{background:#025f96;}
 .ov-anchor{position:relative;}
 .ov-menu{
-  position:absolute;bottom:100%;right:0;margin-bottom:8px;
+  position:absolute;top:100%;left:0;margin-top:8px;
   background:#ffffff;border:1px solid #d8dce3;border-radius:10px;
   box-shadow:0 4px 16px rgba(0,0,0,0.18);padding:4px;min-width:160px;
   display:none;flex-direction:column;gap:2px;z-index:70;
@@ -308,21 +308,35 @@ header{
   background:#eef1f6;color:#1a1d27;font-size:14px;font-family:inherit;
 }
 .pin-editor-sheet textarea{resize:vertical;min-height:70px;}
-.pin-photo-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;border-radius:8px;transition:background 0.1s;}
+.pin-photo-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;border-radius:8px;transition:background 0.1s;min-height:52px;align-items:center;}
 .pin-photo-row.drag-over{background:rgba(2,119,189,0.1);outline:2px dashed #0277bd;outline-offset:2px;}
-.pin-photo-thumb{position:relative;width:72px;height:72px;flex-shrink:0;cursor:pointer;}
+.pin-photo-section{border-radius:10px;transition:background 0.1s;margin-bottom:4px;}
+.pin-photo-section.drag-over{background:rgba(2,119,189,0.1);outline:2px dashed #0277bd;outline-offset:2px;}
+.pin-photo-section.drag-over .pin-photo-row{background:transparent;outline:none;}
+.pin-photo-thumb{position:relative;width:52px;height:52px;flex-shrink:0;cursor:pointer;}
 .pin-photo-thumb img{width:100%;height:100%;border-radius:8px;object-fit:cover;border:1px solid #d8dce3;display:block;}
 .pin-photo-thumb .pin-photo-del{
-  position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;
-  background:#d32f2f;color:#fff;font-size:12px;line-height:18px;text-align:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.25);
+  position:absolute;top:-5px;right:-5px;width:16px;height:16px;border-radius:50%;
+  background:#d32f2f;color:#fff;font-size:10px;line-height:16px;text-align:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.25);
 }
 .pin-photo-add{
-  width:72px;height:72px;flex-shrink:0;border-radius:8px;border:1.5px dashed #d8dce3;
-  background:#eef1f6;color:#0277bd;font-size:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  width:52px;height:52px;flex-shrink:0;border-radius:8px;border:1.5px dashed #c3cbd8;
+  background:#f7f9fb;color:#0277bd;font-size:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;
+}
+.pin-photo-thumb .pin-photo-size{
+  position:absolute;left:2px;bottom:2px;background:rgba(0,0,0,0.55);color:#fff;font-size:8px;line-height:1.3;
+  padding:1px 3px;border-radius:4px;pointer-events:none;
+}
+.pin-photo-thumb .pin-photo-recompress{
+  position:absolute;right:-5px;bottom:-5px;width:16px;height:16px;border-radius:50%;
+  background:#0277bd;color:#fff;font-size:9px;line-height:16px;text-align:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.25);
 }
 /* 仕様書：写真とは別枠で保存するファイル添付（PDF/画像/Office文書など）。一覧はファイル名付きの横並びチップで表示する */
-.pin-spec-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;border-radius:8px;transition:background 0.1s;}
+.pin-spec-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;border-radius:8px;transition:background 0.1s;min-height:32px;align-items:center;}
 .pin-spec-row.drag-over{background:rgba(2,119,189,0.1);outline:2px dashed #0277bd;outline-offset:2px;}
+.pin-spec-section{border-radius:10px;transition:background 0.1s;margin-bottom:4px;}
+.pin-spec-section.drag-over{background:rgba(2,119,189,0.1);outline:2px dashed #0277bd;outline-offset:2px;}
+.pin-spec-section.drag-over .pin-spec-row{background:transparent;outline:none;}
 .pin-spec-chip{
   position:relative;display:flex;align-items:center;gap:5px;max-width:150px;
   padding:6px 20px 6px 8px;border-radius:8px;border:1px solid #d8dce3;background:#eef1f6;
@@ -335,12 +349,17 @@ header{
   background:#d32f2f;color:#fff;font-size:12px;line-height:18px;text-align:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.25);
 }
 .pin-spec-add{
-  height:32px;padding:0 12px;flex-shrink:0;border-radius:8px;border:1.5px dashed #d8dce3;
-  background:#eef1f6;color:#0277bd;font-size:var(--fs-3);display:flex;align-items:center;justify-content:center;cursor:pointer;
+  width:32px;height:32px;flex-shrink:0;border-radius:8px;border:1.5px dashed #c3cbd8;
+  background:#f7f9fb;color:#0277bd;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;
 }
 .pin-color-row{display:flex;gap:6px;margin-bottom:4px;}
 .pin-color-sw{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer;flex-shrink:0;}
 .pin-color-sw.on{border-color:#1a1d27;}
+/* ピン編集フォームの詳細項目（タイトル直下～色/メモの手前まで）を2列にまとめて縦の高さを圧縮する */
+.pin-field-grid{display:grid;grid-template-columns:1fr 1fr;column-gap:8px;}
+.pin-field-grid .pin-field{min-width:0;}
+.pin-field-grid .pin-editor-label{margin:8px 0 4px;}
+.pin-field-grid input[type=text]{width:100%;}
 .pin-editor-btns{display:flex;gap:8px;margin-top:12px;}
 .pin-editor-btns.pin-editor-btns-top{margin-top:0;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #e3e7f0;}
 .pin-editor-btns button{flex:1;padding:10px;border-radius:var(--radius-md);border:none;font-size:14px;cursor:pointer;}
@@ -475,6 +494,104 @@ header{
 }
 
 
+/* 写真トリミング */
+.crop-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.75);
+  z-index:700;display:none;align-items:center;justify-content:center;flex-direction:column;
+}
+.crop-overlay.vis{display:flex;}
+.crop-stage{position:relative;touch-action:none;user-select:none;line-height:0;display:inline-block;}
+.crop-stage img{display:block;max-width:86vw;max-height:66vh;pointer-events:none;}
+.crop-box{
+  position:absolute;border:2px solid #29b6f6;box-shadow:0 0 0 2000px rgba(0,0,0,0.45);
+  cursor:move;box-sizing:border-box;
+}
+.crop-handle{
+  position:absolute;width:20px;height:20px;background:#29b6f6;border:2px solid #fff;border-radius:50%;
+  box-shadow:0 1px 4px rgba(0,0,0,0.3);
+}
+.crop-handle.tl{left:-11px;top:-11px;cursor:nwse-resize;}
+.crop-handle.tr{right:-11px;top:-11px;cursor:nesw-resize;}
+.crop-handle.bl{left:-11px;bottom:-11px;cursor:nesw-resize;}
+.crop-handle.br{right:-11px;bottom:-11px;cursor:nwse-resize;}
+.crop-btns{display:flex;gap:10px;margin-top:14px;}
+.crop-btns button{
+  padding:10px 20px;border-radius:var(--radius-lg);border:none;font-size:var(--fs-5);cursor:pointer;
+}
+.crop-btn-cancel{background:#eef1f6;color:#1a1d27;}
+.crop-btn-ok{background:#0277bd;color:#fff;font-weight:700;}
+.crop-hint{color:#cfd8dc;font-size:var(--fs-2);margin-bottom:10px;}
+
+/* 写真／仕様書の拡大表示（スワイプ・クリックで前後移動・ピンチ／ダブルタップで拡大） */
+.view-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.85);
+  z-index:700;display:none;flex-direction:column;align-items:stretch;justify-content:center;
+}
+.view-overlay.vis{display:flex;}
+.view-top{
+  position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;
+  padding:calc(10px + env(safe-area-inset-top)) 14px 10px;color:#fff;font-size:var(--fs-3);z-index:3;
+}
+.view-count{background:rgba(255,255,255,0.15);padding:3px 10px;border-radius:20px;}
+.view-close{
+  width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.15);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;
+  -webkit-tap-highlight-color:transparent;
+}
+.view-stage{
+  position:relative;flex:1;width:100%;display:flex;align-items:center;justify-content:center;
+  touch-action:none;user-select:none;-webkit-tap-highlight-color:transparent;overflow:hidden;
+}
+.view-stage img{max-width:92vw;max-height:76vh;pointer-events:none;border-radius:4px;transform:translate(0,0) scale(1);}
+/* 矢印は表示画面の縁にはっきり見える半透明の丸ボタンとして常設し、
+   タップ／スワイプで写真が切り替えられることが一目で分かるようにする */
+.view-nav{
+  position:absolute;top:50%;transform:translateY(-50%);
+  width:42px;height:42px;border-radius:50%;
+  background:rgba(255,255,255,0.28);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;line-height:1;pointer-events:none;z-index:2;
+  box-shadow:0 2px 10px rgba(0,0,0,0.3);backdrop-filter:blur(2px);
+  transition:opacity 0.15s;
+}
+.view-nav.prev{left:10px;}
+.view-nav.next{right:10px;}
+.view-nav.hide{opacity:0;}
+.view-zoom-hint{
+  position:absolute;left:50%;bottom:10px;transform:translateX(-50%);
+  background:rgba(255,255,255,0.18);color:#fff;font-size:11px;padding:3px 10px;border-radius:20px;
+  pointer-events:none;z-index:2;white-space:nowrap;transition:opacity 0.3s;
+}
+.view-btns{padding:14px 0 calc(18px + env(safe-area-inset-bottom));display:flex;gap:10px;justify-content:center;}
+.view-btns button{
+  padding:10px 22px;border-radius:var(--radius-lg);border:none;font-size:var(--fs-5);cursor:pointer;font-weight:700;
+}
+.view-btn-trim{background:#0277bd;color:#fff;}
+
+/* 仕様書ページ一覧 */
+.spec-page-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.4);
+  z-index:650;display:none;align-items:flex-end;justify-content:center;
+}
+.spec-page-overlay.vis{display:flex;}
+.spec-page-sheet{
+  background:#ffffff;border-radius:16px 16px 0 0;padding:14px;width:100%;max-width:480px;max-height:80vh;overflow:auto;
+  box-shadow:0 -4px 24px rgba(0,0,0,0.25);
+}
+.spec-page-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+.spec-page-thumb{
+  position:relative;width:88px;height:88px;border-radius:8px;overflow:hidden;
+  border:1px solid #d8dce3;cursor:pointer;background:#eef1f6;display:flex;align-items:center;justify-content:center;
+}
+.spec-page-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.spec-page-thumb .spec-page-num{
+  position:absolute;left:2px;bottom:2px;background:rgba(0,0,0,0.55);color:#fff;font-size:9px;padding:1px 4px;border-radius:4px;
+}
+.spec-page-thumb .spec-page-del{
+  position:absolute;top:3px;right:3px;width:17px;height:17px;border-radius:50%;
+  background:rgba(211,47,47,0.92);color:#fff;font-size:10px;line-height:17px;text-align:center;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.3);
+}
+
 /* 横画面（スマホを横向きにした場合）：高さが狭くなる分、ヘッダーと下部メニューを詰めて
    キャンバス（作図エリア）をできるだけ広く確保する */
 @media (orientation: landscape) and (max-height: 500px){
@@ -529,9 +646,19 @@ header{
 <header>
   <div class="logo">TSUKAI-yoi <small id="appVersionLabel"></small></div>
   <button class="h-btn" id="btnOpenFile" onclick="triggerLoadFile()">📂開く</button>
+  <div class="ov-anchor">
+    <div class="ov-menu" id="displayMenu">
+      <div class="ov-menu-row" id="plotMenuRow" onclick="openDisplayMenuItem('plot')">📄 PLOTを開く（PDF/写真）</div>
+      <div class="ov-menu-row" id="removePlotMenuRow" onclick="openDisplayMenuItem('removePlot')" style="display:none;">🗑 プロットを削除</div>
+      <div class="ov-menu-row" id="plotSettingsMenuRow" onclick="openDisplayMenuItem('plotSettings')" style="display:none;">🌗👻 プロット設定（背景・重ね表示）</div>
+      <div class="ov-menu-row" id="scaffListMenuRow" onclick="openDisplayMenuItem('scaffList')" style="display:none;">📋 足場・敷地一覧</div>
+      <div class="ov-menu-row" id="pinListMenuRow" onclick="openDisplayMenuItem('pinList')" style="display:none;">📌 ピン一覧</div>
+    </div>
+    <button class="h-btn" id="displayToggleBtn" onclick="toggleDisplayMenu()" title="プロット（PDF/写真）の取込・背景・階の重ね表示などをまとめて操作。ファイルをこの上にドラッグ&ドロップしても取込めます" style="display:none;">📄プロット</button>
+  </div>
   <button class="h-btn" onclick="openShareSheet()">💾保存</button>
   <button class="h-btn" onclick="clearAll()">🗑全消去</button>
-  <input type="file" id="loadFileInput" accept=".json,application/json,.pipeiso" style="display:none" onchange="handleLoadFile(event)">
+  <input type="file" id="loadFileInput" accept=".json,application/json,.pipeiso,.html,text/html" style="display:none" onchange="handleLoadFile(event)">
   <input type="file" id="loadPdfInput" accept="application/pdf,image/*" style="display:none" onchange="handleLoadPdf(event)">
   <input type="file" id="loadPinListInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportPinList(event)">
   <input type="file" id="pinPhotoInput" accept="image/*" multiple style="display:none" onchange="handlePinPhotoAdd(event)">
@@ -556,18 +683,6 @@ header{
     </div>
 
     <div class="ovl">
-      <div class="ov-anchor">
-        <div class="ov-menu" id="displayMenu">
-          <div class="ov-menu-row" id="plotMenuRow" onclick="openDisplayMenuItem('plot')">📄 PLOTを開く（PDF/写真）</div>
-          <div class="ov-menu-row" id="removePlotMenuRow" onclick="openDisplayMenuItem('removePlot')" style="display:none;">🗑 プロットを削除</div>
-          <div class="ov-menu-row" id="plotSettingsMenuRow" onclick="openDisplayMenuItem('plotSettings')" style="display:none;">🌗👻 プロット設定（背景・重ね表示）</div>
-          <div class="ov-menu-row" id="scaffListMenuRow" onclick="openDisplayMenuItem('scaffList')" style="display:none;">📋 足場・敷地一覧</div>
-          <div class="ov-menu-row" id="pinListMenuRow" onclick="openDisplayMenuItem('pinList')" style="display:none;">📌 ピン一覧</div>
-        </div>
-        <div class="ov-label-btn" id="displayToggleBtn" onclick="toggleDisplayMenu()" title="プロット（PDF/写真）の取込・背景・階の重ね表示などをまとめて操作。ファイルをこの上にドラッグ&ドロップしても取込めます" style="display:none;">
-          <span class="ic">📄</span><span>プロット</span>
-        </div>
-      </div>
       <div class="ov-label-btn ov-primary" onclick="setToolFitting()" title="継手・ピン・足場などの部品を選んで置く">
         <span class="ic">🧰</span><span>部品</span>
       </div>
@@ -985,8 +1100,12 @@ header{
     <button class="share-sheet-item" onclick="shareSvgFile(); closeShareSheet();">
       <span class="ssic">📨</span>SVGをメールで送付
     </button>
-    <button class="share-sheet-item" onclick="saveProjectFile(); closeShareSheet();">
-      <span class="ssic">💾</span>作図データを保存
+    <button class="share-sheet-item" onclick="saveProjectAsHtml(); closeShareSheet();">
+      <span class="ssic">💾</span>作図データを保存（.html／ダブルクリックで開ける）
+    </button>
+    <div style="height:1px;background:#e3e7f0;margin:8px 0;"></div>
+    <button class="share-sheet-item" onclick="bulkRecompressAllPhotos(); closeShareSheet();">
+      <span class="ssic">🗜</span>写真を一括再圧縮（全階・全ピン）
     </button>
     <div style="height:1px;background:#e3e7f0;margin:8px 0;"></div>
     <button class="share-sheet-item" onclick="startExportFlow('pdf'); closeShareSheet();">
@@ -1006,89 +1125,111 @@ header{
       <button class="pe-cancel" onclick="cancelPinEditor()">キャンセル</button>
       <button class="pe-save" onclick="savePinEditor()">保存</button>
     </div>
-    <div class="pin-editor-label">写真（複数枚保存できます）</div>
-    <div class="pin-photo-row" id="pinPhotoRow"></div>
-    <div class="pin-editor-label">仕様書（PDF・画像・Office文書を写真とは別に保存できます）</div>
-    <div class="pin-spec-row" id="pinSpecRow"></div>
+    <div class="pin-editor-label">写真</div>
+    <div class="pin-photo-section" id="pinPhotoSection">
+      <div class="pin-photo-row" id="pinPhotoRow"></div>
+    </div>
+    <div class="pin-editor-label">仕様書（PDF・画像・Office文書）</div>
+    <div class="pin-spec-section" id="pinSpecSection">
+      <div class="pin-spec-row" id="pinSpecRow"></div>
+    </div>
     <div class="pin-editor-label">タイトル</div>
     <input type="text" id="pinNameField" placeholder="例：V-1">
-    <div class="pin-editor-label">ITEM</div>
-    <input type="text" id="pinItemField" list="pinItemOptions" placeholder="品名（手入力）">
-    <datalist id="pinItemOptions"></datalist>
-    <div class="pin-editor-label">整備</div>
-    <input type="text" id="pinSeibiField" list="pinSeibiOptions" placeholder="整備／更新など">
-    <datalist id="pinSeibiOptions">
-      <option value="整備"></option>
-      <option value="更新"></option>
-    </datalist>
-    <div class="pin-editor-label">レーティング</div>
-    <input type="text" id="pinRatingField" list="pinRatingOptions" placeholder="例：JIS10k">
-    <datalist id="pinRatingOptions">
-      <option value="JIS10k"></option>
-      <option value="JIS20k"></option>
-      <option value="JPI#150"></option>
-      <option value="JPI#300"></option>
-    </datalist>
-    <div class="pin-editor-label">サイズ</div>
-    <input type="text" id="pinSizeField" list="pinSizeOptions" placeholder="例：100A、4B">
-    <datalist id="pinSizeOptions">
-      <option value="10A"></option>
-      <option value="15A"></option>
-      <option value="20A"></option>
-      <option value="25A"></option>
-      <option value="32A"></option>
-      <option value="40A"></option>
-      <option value="50A"></option>
-      <option value="65A"></option>
-      <option value="80A"></option>
-      <option value="100A"></option>
-      <option value="125A"></option>
-      <option value="150A"></option>
-      <option value="200A"></option>
-      <option value="250A"></option>
-      <option value="300A"></option>
-      <option value="350A"></option>
-      <option value="400A"></option>
-      <option value="450A"></option>
-      <option value="500A"></option>
-      <option value="550A"></option>
-      <option value="600A"></option>
-    </datalist>
-    <div class="pin-editor-label">TYPE</div>
-    <input type="text" id="pinTypeField" list="pinTypeOptions" placeholder="例：ｹﾞｰﾄ弁">
-    <datalist id="pinTypeOptions">
-      <option value="ｹﾞｰﾄ弁"></option>
-      <option value="ｸﾞﾛｰﾌﾞ弁"></option>
-      <option value="ﾎﾞｰﾙ弁"></option>
-      <option value="ﾁｪｯｷ弁"></option>
-      <option value="ﾊﾞﾀﾌﾗｲ弁"></option>
-      <option value="ﾀﾞｲﾔﾌﾗﾑ弁"></option>
-      <option value="ﾆｰﾄﾞﾙ弁"></option>
-    </datalist>
-    <div class="pin-editor-label">ガスケット</div>
-    <input type="text" id="pinGasketField" list="pinGasketOptions" placeholder="例：V6500">
-    <datalist id="pinGasketOptions">
-      <option value="V6500"></option>
-      <option value="V6500AC"></option>
-      <option value="GF300"></option>
-      <option value="V7026"></option>
-      <option value="V7010"></option>
-      <option value="V7020"></option>
-      <option value="V6596 EEE"></option>
-      <option value="V7596 EEE"></option>
-      <option value="V8596 EEE"></option>
-    </datalist>
-    <div class="pin-editor-label">適用法規</div>
-    <input type="text" id="pinLawField" list="pinLawOptions" placeholder="例：NONE">
-    <datalist id="pinLawOptions">
-      <option value="NONE"></option>
-      <option value="消防"></option>
-      <option value="高圧ガス"></option>
-      <option value="低圧ガス"></option>
-    </datalist>
-    <div class="pin-editor-label">流体</div>
-    <input type="text" id="pinFluidField" list="pinFluidOptions" placeholder="流体（手入力）">
-    <datalist id="pinFluidOptions"></datalist>
+    <div class="pin-field-grid">
+    <div class="pin-field">
+      <div class="pin-editor-label">ITEM</div>
+      <input type="text" id="pinItemField" list="pinItemOptions" placeholder="品名（手入力）">
+      <datalist id="pinItemOptions"></datalist>
+    </div>
+    <div class="pin-field">
+      <div class="pin-editor-label">整備</div>
+      <input type="text" id="pinSeibiField" list="pinSeibiOptions" placeholder="整備／更新など">
+      <datalist id="pinSeibiOptions">
+        <option value="整備"></option>
+        <option value="更新"></option>
+      </datalist>
+    </div>
+    <div class="pin-field">
+      <div class="pin-editor-label">レーティング</div>
+      <input type="text" id="pinRatingField" list="pinRatingOptions" placeholder="例：JIS10k">
+      <datalist id="pinRatingOptions">
+        <option value="JIS10k"></option>
+        <option value="JIS20k"></option>
+        <option value="JPI#150"></option>
+        <option value="JPI#300"></option>
+      </datalist>
+    </div>
+    <div class="pin-field">
+      <div class="pin-editor-label">サイズ</div>
+      <input type="text" id="pinSizeField" list="pinSizeOptions" placeholder="例：100A、4B">
+      <datalist id="pinSizeOptions">
+        <option value="10A"></option>
+        <option value="15A"></option>
+        <option value="20A"></option>
+        <option value="25A"></option>
+        <option value="32A"></option>
+        <option value="40A"></option>
+        <option value="50A"></option>
+        <option value="65A"></option>
+        <option value="80A"></option>
+        <option value="100A"></option>
+        <option value="125A"></option>
+        <option value="150A"></option>
+        <option value="200A"></option>
+        <option value="250A"></option>
+        <option value="300A"></option>
+        <option value="350A"></option>
+        <option value="400A"></option>
+        <option value="450A"></option>
+        <option value="500A"></option>
+        <option value="550A"></option>
+        <option value="600A"></option>
+      </datalist>
+    </div>
+    <div class="pin-field">
+      <div class="pin-editor-label">TYPE</div>
+      <input type="text" id="pinTypeField" list="pinTypeOptions" placeholder="例：ｹﾞｰﾄ弁">
+      <datalist id="pinTypeOptions">
+        <option value="ｹﾞｰﾄ弁"></option>
+        <option value="ｸﾞﾛｰﾌﾞ弁"></option>
+        <option value="ﾎﾞｰﾙ弁"></option>
+        <option value="ﾁｪｯｷ弁"></option>
+        <option value="ﾊﾞﾀﾌﾗｲ弁"></option>
+        <option value="ﾀﾞｲﾔﾌﾗﾑ弁"></option>
+        <option value="ﾆｰﾄﾞﾙ弁"></option>
+      </datalist>
+    </div>
+    <div class="pin-field">
+      <div class="pin-editor-label">ガスケット</div>
+      <input type="text" id="pinGasketField" list="pinGasketOptions" placeholder="例：V6500">
+      <datalist id="pinGasketOptions">
+        <option value="V6500"></option>
+        <option value="V6500AC"></option>
+        <option value="GF300"></option>
+        <option value="V7026"></option>
+        <option value="V7010"></option>
+        <option value="V7020"></option>
+        <option value="V6596 EEE"></option>
+        <option value="V7596 EEE"></option>
+        <option value="V8596 EEE"></option>
+      </datalist>
+    </div>
+    <div class="pin-field">
+      <div class="pin-editor-label">適用法規</div>
+      <input type="text" id="pinLawField" list="pinLawOptions" placeholder="例：NONE">
+      <datalist id="pinLawOptions">
+        <option value="NONE"></option>
+        <option value="消防"></option>
+        <option value="高圧ガス"></option>
+        <option value="低圧ガス"></option>
+      </datalist>
+    </div>
+    <div class="pin-field">
+      <div class="pin-editor-label">流体</div>
+      <input type="text" id="pinFluidField" list="pinFluidOptions" placeholder="流体（手入力）">
+      <datalist id="pinFluidOptions"></datalist>
+    </div>
+    </div>
     <div class="pin-editor-label">色</div>
     <div class="pin-color-row" id="pinColorRow"></div>
     <div class="pin-editor-label">メモ／備考</div>
@@ -1096,6 +1237,60 @@ header{
     <div class="pin-editor-btns">
       <button class="pe-delete" id="pinDeleteBtn" onclick="deletePinFromEditor()">削除</button>
     </div>
+  </div>
+</div>
+
+<div class="spec-page-overlay" id="specPageOverlay" onclick="if(event.target===this)closeSpecPageList();">
+  <div class="spec-page-sheet">
+    <div class="share-sheet-title" id="specPageTitle" style="text-align:left;color:#0277bd;">仕様書</div>
+    <div class="spec-page-grid" id="specPageGrid"></div>
+    <button class="share-sheet-cancel" onclick="closeSpecPageList()">閉じる</button>
+  </div>
+</div>
+
+<div class="crop-overlay" id="cropOverlay">
+  <div class="crop-hint">ドラッグで枠を移動、四隅のハンドルでサイズ変更できます</div>
+  <div class="crop-stage" id="cropStage">
+    <img id="cropImg" src="" draggable="false">
+    <div class="crop-box" id="cropBox">
+      <div class="crop-handle tl" data-corner="tl"></div>
+      <div class="crop-handle tr" data-corner="tr"></div>
+      <div class="crop-handle bl" data-corner="bl"></div>
+      <div class="crop-handle br" data-corner="br"></div>
+    </div>
+  </div>
+  <div class="crop-btns">
+    <button class="crop-btn-cancel" onclick="closePhotoCropper()">キャンセル</button>
+    <button class="crop-btn-ok" onclick="confirmPhotoCrop()">この範囲で確定</button>
+  </div>
+</div>
+
+<div class="view-overlay" id="photoViewOverlay">
+  <div class="view-top">
+    <div class="view-count" id="photoViewCount"></div>
+    <div class="view-close" onclick="closePhotoViewer()" title="閉じる">✕</div>
+  </div>
+  <div class="view-stage" id="photoViewStage">
+    <div class="view-nav prev" id="photoViewPrev">‹</div>
+    <img id="photoViewImg" src="" draggable="false">
+    <div class="view-nav next" id="photoViewNext">›</div>
+    <div class="view-zoom-hint" id="photoViewZoomHint">🔍 ピンチ／ダブルタップで拡大</div>
+  </div>
+  <div class="view-btns">
+    <button class="view-btn-trim" onclick="photoViewerTrim()">✂ トリミング</button>
+  </div>
+</div>
+
+<div class="view-overlay" id="specViewOverlay">
+  <div class="view-top">
+    <div class="view-count" id="specViewCount"></div>
+    <div class="view-close" onclick="closeSpecViewer()" title="閉じる">✕</div>
+  </div>
+  <div class="view-stage" id="specViewStage">
+    <div class="view-nav prev" id="specViewPrev">‹</div>
+    <img id="specViewImg" src="" draggable="false">
+    <div class="view-nav next" id="specViewNext">›</div>
+    <div class="view-zoom-hint" id="specViewZoomHint">🔍 ピンチ／ダブルタップで拡大</div>
   </div>
 </div>
 
@@ -1248,6 +1443,9 @@ var PIPE_COLOR = '#000000';
 
 // フランジ付き判定
 var FL_TYPES = ['fl_gate','fl_globe','fl_ball','fl_butterfly','fl_check','flange','fl_solenoid','fl_control'];
+
+// 写真／仕様書の拡大表示（ピンチズーム・パン・スワイプ切替）を担当するコントローラー。initApp()で生成される。
+var photoViewerCtl = null, specViewerCtl = null;
 
 // ── STATE ──────────────────────────────────────
 var S = {
@@ -5076,7 +5274,7 @@ function handleDown(pos){
 
 // ── PAN / ZOOM ─────────────────────────────────
 function zoomAt(f,cx,cy){
-  var nz=Math.max(0.12,Math.min(8,S.zoom*f)),fc=nz/S.zoom;
+  var nz=Math.max(0.03,Math.min(8,S.zoom*f)),fc=nz/S.zoom;
   S.px=cx-fc*(cx-S.px);S.py=cy-fc*(cy-S.py);S.zoom=nz;render();
 }
 function toggleGrid(){S.showGrid=!S.showGrid;render();}
@@ -5888,24 +6086,207 @@ function buildPinColorRow(){
     host.appendChild(sw);
   });
 }
+// dataURLのbase64部分の文字数からおおよそのバイト数を概算する（正確な値ではなく目安表示用）
+function estimateDataUrlBytes(dataUrl){
+  if(!dataUrl) return 0;
+  var i = dataUrl.indexOf(',');
+  var b64 = i>=0 ? dataUrl.slice(i+1) : dataUrl;
+  return Math.round(b64.length*0.75);
+}
+function formatBytesJP(bytes){
+  if(bytes >= 1024*1024) return (bytes/1024/1024).toFixed(2)+'MB';
+  return Math.max(1, Math.round(bytes/1024))+'KB';
+}
 function renderPinPhotoRow(){
   var host = document.getElementById('pinPhotoRow');
   if(!host || !S.currentEditPin) return;
   var photos = S.currentEditPin.photos || [];
   var html='';
   photos.forEach(function(url, idx){
-    html += '<div class="pin-photo-thumb" onclick="openPinPhoto('+idx+')" title="タップして拡大表示"><img src="'+url+'"><div class="pin-photo-del" onclick="event.stopPropagation();removePinPhoto('+idx+')">✕</div></div>';
+    var sizeLabel = formatBytesJP(estimateDataUrlBytes(url));
+    html += '<div class="pin-photo-thumb" onclick="openPhotoViewer('+idx+')" title="タップして拡大表示"><img src="'+url+'">'
+      +'<div class="pin-photo-size">'+sizeLabel+'</div>'
+      +'<div class="pin-photo-recompress" onclick="event.stopPropagation();recompressSinglePhoto('+idx+')" title="この写真だけ再圧縮">🗜</div>'
+      +'<div class="pin-photo-del" onclick="event.stopPropagation();removePinPhoto('+idx+')">✕</div></div>';
   });
   html += '<div class="pin-photo-add" onclick="document.getElementById(\'pinPhotoInput\').click();" title="写真を追加">＋</div>';
   host.innerHTML = html;
 }
-// 写真サムネイルは小さいため、タップすると新しいタブに原寸大で表示する
-function openPinPhoto(idx){
-  var photos = S.currentEditPin && S.currentEditPin.photos;
-  if(!photos || !photos[idx]) return;
-  var w = window.open();
-  if(!w){ showToast('ポップアップがブロックされました。ブラウザの設定をご確認ください'); return; }
-  w.document.write('<title>写真</title><body style="margin:0;background:#222;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="'+photos[idx]+'" style="max-width:100%;max-height:100vh;"></body>');
+// 写真サムネイルは小さいため、タップすると拡大表示（スワイプ／クリックで前後の写真に移動）。
+// トリミングはここでは行わず、確認したうえで「トリミング」ボタンを押した時だけ編集画面に入る。
+function openPhotoViewer(idx){
+  var pin = S.currentEditPin;
+  if(!pin || !pin.photos || !pin.photos[idx]) return;
+  S.photoViewer = { idx: idx };
+  updatePhotoViewer();
+  document.getElementById('photoViewOverlay').classList.add('vis');
+}
+function updatePhotoViewer(){
+  var pin = S.currentEditPin;
+  if(!pin || !S.photoViewer) return;
+  var photos = pin.photos || [];
+  if(!photos.length){ closePhotoViewer(); return; }
+  var idx = S.photoViewer.idx;
+  if(idx < 0) idx = photos.length - 1;
+  if(idx >= photos.length) idx = 0;
+  S.photoViewer.idx = idx;
+  document.getElementById('photoViewImg').src = photos[idx];
+  document.getElementById('photoViewCount').textContent = (idx+1)+' / '+photos.length;
+  var multi = photos.length > 1;
+  document.getElementById('photoViewPrev').style.display = multi ? 'flex' : 'none';
+  document.getElementById('photoViewNext').style.display = multi ? 'flex' : 'none';
+  if(photoViewerCtl) photoViewerCtl.reset();
+}
+function photoViewerNav(dir){
+  if(!S.photoViewer) return;
+  S.photoViewer.idx += dir;
+  updatePhotoViewer();
+}
+function closePhotoViewer(){
+  document.getElementById('photoViewOverlay').classList.remove('vis');
+  S.photoViewer = null;
+  if(photoViewerCtl) photoViewerCtl.reset();
+}
+// 拡大表示の「トリミング」ボタン：確認画面からトリミング編集へ進む唯一の入口
+function photoViewerTrim(){
+  if(!S.photoViewer) return;
+  var idx = S.photoViewer.idx;
+  closePhotoViewer();
+  openPhotoCropper(idx);
+}
+// 拡大表示ステージ上のスワイプ／タップで前後の写真・ページへ移動する共通処理。
+// 大きく動かした場合はその方向へ、軽いタップの場合はタップ位置（左半分＝前／右半分＝次）で判定する。
+// 拡大表示ステージの操作をまとめて処理するコントローラーを作る。
+// ・等倍時：スワイプ／タップ（左半分＝前／右半分＝次）で写真・ページを切り替え
+// ・ピンチ操作／ダブルタップで拡大・縮小（つまんだ指の位置／タップ位置を中心に拡大）
+// ・拡大中：指1本のドラッグで表示位置をパン、ダブルタップで等倍に戻す
+// stageId は「〜Stage」という命名規則を前提に、対応する「〜Prev」「〜Next」「〜ZoomHint」要素を自動で探す。
+function createZoomSwipeController(stageId, imgId, navFn){
+  var stage = document.getElementById(stageId);
+  var img = document.getElementById(imgId);
+  if(!stage || !img) return null;
+  var prevEl = document.getElementById(stageId.replace('Stage','Prev'));
+  var nextEl = document.getElementById(stageId.replace('Stage','Next'));
+  var hintEl = document.getElementById(stageId.replace('Stage','ZoomHint'));
+  var MIN_SCALE = 1, MAX_SCALE = 4, DBLTAP_SCALE = 2.5;
+  var st = {scale:1, tx:0, ty:0};
+  var pointers = {};
+  var pinch = null, pan = null, tapInfo = null, lastTap = null;
+  var hintTimer = null;
+
+  function applyTransform(){
+    img.style.transform = 'translate('+st.tx+'px,'+st.ty+'px) scale('+st.scale+')';
+    var zoomed = st.scale > 1.02;
+    if(prevEl) prevEl.classList.toggle('hide', zoomed);
+    if(nextEl) nextEl.classList.toggle('hide', zoomed);
+  }
+  function clamp(){
+    var rect = stage.getBoundingClientRect();
+    var maxX = Math.max(0, (rect.width*(st.scale-1))/2);
+    var maxY = Math.max(0, (rect.height*(st.scale-1))/2);
+    st.tx = Math.max(-maxX, Math.min(maxX, st.tx));
+    st.ty = Math.max(-maxY, Math.min(maxY, st.ty));
+  }
+  function setScaleAt(newScale, clientX, clientY){
+    newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale));
+    var rect = stage.getBoundingClientRect();
+    var cx = clientX - (rect.left + rect.width/2);
+    var cy = clientY - (rect.top + rect.height/2);
+    var ratio = newScale / st.scale;
+    st.tx = (st.tx - cx)*ratio + cx;
+    st.ty = (st.ty - cy)*ratio + cy;
+    st.scale = newScale;
+    clamp();
+    applyTransform();
+  }
+  function reset(){
+    st.scale=1; st.tx=0; st.ty=0;
+    applyTransform();
+    showHint();
+  }
+  function showHint(){
+    if(!hintEl) return;
+    hintEl.style.opacity = '1';
+    if(hintTimer) clearTimeout(hintTimer);
+    hintTimer = setTimeout(function(){ hintEl.style.opacity = '0'; }, 2200);
+  }
+  function endGesture(e, wasSingleDrag){
+    var ids = Object.keys(pointers);
+    if(ids.length < 2) pinch = null;
+    if(ids.length === 0){
+      if(pan){
+        pan = null;
+      } else if(tapInfo){
+        handleTapEnd(e);
+      }
+      tapInfo = null;
+    }
+  }
+  function handleTapEnd(e){
+    var now = Date.now();
+    var endX = e.clientX, endY = e.clientY;
+    var swipeDx = endX - tapInfo.x, swipeDy = endY - tapInfo.y;
+    var isDoubleTap = lastTap && (now-lastTap.time)<350 && Math.hypot(endX-lastTap.x, endY-lastTap.y)<30;
+    if(st.scale > 1.02){
+      if(isDoubleTap){ reset(); lastTap = null; } else { lastTap = {x:endX, y:endY, time:now}; }
+      return;
+    }
+    if(isDoubleTap){
+      setScaleAt(DBLTAP_SCALE, endX, endY);
+      lastTap = null;
+      return;
+    }
+    lastTap = {x:endX, y:endY, time:now};
+    if(Math.abs(swipeDy) > Math.abs(swipeDx) && Math.abs(swipeDy) > 40) return; // 縦方向の動きは無視
+    var rect = stage.getBoundingClientRect();
+    var relX = endX - rect.left;
+    if(Math.abs(swipeDx) > 40){
+      navFn(swipeDx < 0 ? 1 : -1);
+    } else if(!tapInfo.moved){
+      navFn(relX > rect.width/2 ? 1 : -1);
+    }
+  }
+  stage.addEventListener('pointerdown', function(e){
+    try{ stage.setPointerCapture(e.pointerId); }catch(err){}
+    pointers[e.pointerId] = {x:e.clientX, y:e.clientY};
+    var ids = Object.keys(pointers);
+    if(ids.length === 2){
+      pan = null; tapInfo = null;
+      var p1=pointers[ids[0]], p2=pointers[ids[1]];
+      pinch = {startDist:Math.hypot(p2.x-p1.x, p2.y-p1.y), startScale:st.scale};
+    } else if(ids.length === 1){
+      tapInfo = {x:e.clientX, y:e.clientY, moved:false};
+      pan = st.scale > 1.02 ? {startX:e.clientX, startY:e.clientY, startTx:st.tx, startTy:st.ty} : null;
+    }
+  });
+  stage.addEventListener('pointermove', function(e){
+    if(!pointers[e.pointerId]) return;
+    pointers[e.pointerId] = {x:e.clientX, y:e.clientY};
+    var ids = Object.keys(pointers);
+    if(ids.length === 2 && pinch){
+      var p1=pointers[ids[0]], p2=pointers[ids[1]];
+      var dist = Math.hypot(p2.x-p1.x, p2.y-p1.y);
+      var mid = {x:(p1.x+p2.x)/2, y:(p1.y+p2.y)/2};
+      setScaleAt(pinch.startScale * (dist/pinch.startDist), mid.x, mid.y);
+    } else if(ids.length === 1){
+      if(tapInfo && (Math.abs(e.clientX-tapInfo.x)>6 || Math.abs(e.clientY-tapInfo.y)>6)) tapInfo.moved = true;
+      if(pan){
+        st.tx = pan.startTx + (e.clientX - pan.startX);
+        st.ty = pan.startTy + (e.clientY - pan.startY);
+        clamp();
+        applyTransform();
+      }
+    }
+  });
+  stage.addEventListener('pointerup', function(e){
+    delete pointers[e.pointerId];
+    endGesture(e);
+  });
+  stage.addEventListener('pointercancel', function(e){
+    delete pointers[e.pointerId];
+    pinch = null; pan = null; tapInfo = null;
+  });
+  return { reset: reset };
 }
 // ピン編集：写真・仕様書欄へのドラッグ&ドロップ対応
 // （windowレベルのExcel取込用ドロップ処理と競合しないよう、要素自身で処理してstopPropagationする）
@@ -5933,8 +6314,8 @@ function initPinFileDragDrop(){
       onFiles(e.dataTransfer.files);
     });
   }
-  wire('pinPhotoRow', addPinPhotoFiles);
-  wire('pinSpecRow', addPinSpecFiles);
+  wire('pinPhotoSection', addPinPhotoFiles);
+  wire('pinSpecSection', addPinSpecFiles);
 }
 
 // 「📌 ピン追加」ボタンを押したまま指をスライドしてキャンバス上まで動かし、
@@ -6047,16 +6428,48 @@ function handlePinPhotoAdd(evt){
   addPinPhotoFiles(evt.target.files);
   evt.target.value = '';
 }
+// 画像dataURLをCanvasで指定の長辺サイズ・JPEG品質に縮小・再エンコードする。
+// 失敗した場合は元のdataURLをそのまま返す（写真が消えないようにするための保険）。
+function compressImageDataUrl(srcDataUrl, maxSide, quality){
+  return new Promise(function(resolve){
+    try{
+      var img = new Image();
+      img.onload = function(){
+        try{
+          var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+          if(!w || !h){ resolve(srcDataUrl); return; }
+          var scale = Math.min(1, maxSide / Math.max(w, h));
+          var outW = Math.max(1, Math.round(w * scale));
+          var outH = Math.max(1, Math.round(h * scale));
+          var cv = document.createElement('canvas');
+          cv.width = outW; cv.height = outH;
+          var ctx = cv.getContext('2d');
+          // JPEGには透過が無いため、透過PNG等は白背景で塗ってから描画する
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0, 0, outW, outH);
+          ctx.drawImage(img, 0, 0, outW, outH);
+          var out = cv.toDataURL('image/jpeg', quality);
+          resolve(out && out.indexOf('data:image') === 0 ? out : srcDataUrl);
+        }catch(err){ resolve(srcDataUrl); }
+      };
+      img.onerror = function(){ resolve(srcDataUrl); };
+      img.src = srcDataUrl;
+    }catch(err){ resolve(srcDataUrl); }
+  });
+}
 // input選択・ドラッグ&ドロップの両方から呼べる共通処理
 function addPinPhotoFiles(files){
   if(!files || !files.length || !S.currentEditPin) return;
+  var pin = S.currentEditPin;
   Array.prototype.forEach.call(files, function(file){
     if(file.type && file.type.indexOf('image/')!==0) return; // 写真欄には画像以外を入れない
     var reader = new FileReader();
     reader.onload = function(e){
-      if(!S.currentEditPin.photos) S.currentEditPin.photos=[];
-      S.currentEditPin.photos.push(e.target.result);
-      renderPinPhotoRow();
+      compressImageDataUrl(e.target.result, 1000, 0.65).then(function(finalUrl){
+        if(!pin.photos) pin.photos=[];
+        pin.photos.push(finalUrl);
+        if(S.currentEditPin === pin) renderPinPhotoRow();
+      });
     };
     reader.readAsDataURL(file);
   });
@@ -6066,24 +6479,191 @@ function removePinPhoto(idx){
   S.currentEditPin.photos.splice(idx,1);
   renderPinPhotoRow();
 }
-// 仕様書：写真とは別枠でファイル（PDF・画像・Office文書など）を保存する一覧
+// サムネイル1枚だけを再圧縮する（編集中ピンが対象）
+function recompressSinglePhoto(idx){
+  var pin = S.currentEditPin;
+  if(!pin || !pin.photos || !pin.photos[idx]) return;
+  var before = estimateDataUrlBytes(pin.photos[idx]);
+  compressImageDataUrl(pin.photos[idx], 1000, 0.65).then(function(newUrl){
+    if(S.currentEditPin !== pin || !pin.photos[idx]) return; // 途中でピン編集が閉じられた場合は反映しない
+    pin.photos[idx] = newUrl;
+    var after = estimateDataUrlBytes(newUrl);
+    renderPinPhotoRow();
+    showToast('再圧縮しました（'+formatBytesJP(before)+' → '+formatBytesJP(after)+'）');
+  });
+}
+// ── 写真トリミング ──
+// 破壊的処理：確定すると元の写真データを直接上書きする。作図データのUndo履歴（S.hist）とは無関係。
+var cropDragState = null;
+function openPhotoCropper(idx){
+  var pin = S.currentEditPin;
+  if(!pin || !pin.photos || !pin.photos[idx]) return;
+  var img = document.getElementById('cropImg');
+  var overlay = document.getElementById('cropOverlay');
+  var url = pin.photos[idx];
+  function initRect(){
+    var dispW = img.clientWidth, dispH = img.clientHeight;
+    var natW = img.naturalWidth, natH = img.naturalHeight;
+    if(!dispW || !dispH || !natW || !natH){ closePhotoCropper(); showToast('写真の読み込みに失敗しました'); return; }
+    var mw = Math.round(dispW*0.8), mh = Math.round(dispH*0.8);
+    var rect = { x:Math.round((dispW-mw)/2), y:Math.round((dispH-mh)/2), w:mw, h:mh };
+    S.cropTool = { pin:pin, idx:idx, dispW:dispW, dispH:dispH, natW:natW, natH:natH, rect:rect };
+    updateCropBoxUI();
+  }
+  overlay.classList.add('vis');
+  if(img.src === url && img.complete){
+    initRect();
+  } else {
+    img.onload = initRect;
+    img.src = url;
+  }
+}
+function closePhotoCropper(){
+  document.getElementById('cropOverlay').classList.remove('vis');
+  S.cropTool = null;
+  cropDragState = null;
+}
+function updateCropBoxUI(){
+  if(!S.cropTool) return;
+  var box = document.getElementById('cropBox');
+  var r = S.cropTool.rect;
+  box.style.left = r.x+'px';
+  box.style.top = r.y+'px';
+  box.style.width = r.w+'px';
+  box.style.height = r.h+'px';
+}
+// ドラッグ移動・四隅リサイズをポインターイベントで統一的に処理する
+function initCropHandlers(){
+  var box = document.getElementById('cropBox');
+  if(!box) return;
+  box.addEventListener('pointerdown', function(e){
+    if(!S.cropTool) return;
+    var corner = e.target.getAttribute && e.target.getAttribute('data-corner');
+    cropDragState = {
+      mode: corner ? ('resize-'+corner) : 'move',
+      startX: e.clientX, startY: e.clientY,
+      rect: {x:S.cropTool.rect.x, y:S.cropTool.rect.y, w:S.cropTool.rect.w, h:S.cropTool.rect.h}
+    };
+    try{ e.target.setPointerCapture(e.pointerId); }catch(err){}
+    e.preventDefault();
+  });
+  document.addEventListener('pointermove', function(e){
+    if(!cropDragState || !S.cropTool) return;
+    applyCropDrag(e.clientX - cropDragState.startX, e.clientY - cropDragState.startY);
+    e.preventDefault();
+  });
+  document.addEventListener('pointerup', function(){ cropDragState = null; });
+  document.addEventListener('pointercancel', function(){ cropDragState = null; });
+}
+function applyCropDrag(dx, dy){
+  var ct = S.cropTool;
+  var base = cropDragState.rect;
+  var minSize = 20;
+  var dispW = ct.dispW, dispH = ct.dispH;
+  var r = {x:base.x, y:base.y, w:base.w, h:base.h};
+  var mode = cropDragState.mode;
+  if(mode === 'move'){
+    r.x = Math.max(0, Math.min(dispW - base.w, base.x + dx));
+    r.y = Math.max(0, Math.min(dispH - base.h, base.y + dy));
+  } else if(mode === 'resize-tl'){
+    var nx = Math.max(0, Math.min(base.x+base.w-minSize, base.x+dx));
+    var ny = Math.max(0, Math.min(base.y+base.h-minSize, base.y+dy));
+    r.x = nx; r.y = ny; r.w = base.x+base.w-nx; r.h = base.y+base.h-ny;
+  } else if(mode === 'resize-tr'){
+    var ny2 = Math.max(0, Math.min(base.y+base.h-minSize, base.y+dy));
+    r.y = ny2; r.h = base.y+base.h-ny2;
+    r.w = Math.max(minSize, Math.min(dispW-base.x, base.w+dx));
+  } else if(mode === 'resize-bl'){
+    var nx2 = Math.max(0, Math.min(base.x+base.w-minSize, base.x+dx));
+    r.x = nx2; r.w = base.x+base.w-nx2;
+    r.h = Math.max(minSize, Math.min(dispH-base.y, base.h+dy));
+  } else if(mode === 'resize-br'){
+    r.w = Math.max(minSize, Math.min(dispW-base.x, base.w+dx));
+    r.h = Math.max(minSize, Math.min(dispH-base.y, base.h+dy));
+  }
+  ct.rect = r;
+  updateCropBoxUI();
+}
+// 確定：選択範囲だけをCanvasで切り出し、既存の圧縮関数（長辺1000px・品質0.65）で再エンコードして置き換える
+function confirmPhotoCrop(){
+  if(!S.cropTool) return;
+  var ct = S.cropTool;
+  var img = document.getElementById('cropImg');
+  var scale = ct.natW / ct.dispW;
+  var nx = Math.round(ct.rect.x*scale), ny = Math.round(ct.rect.y*scale);
+  var nw = Math.max(1, Math.round(ct.rect.w*scale)), nh = Math.max(1, Math.round(ct.rect.h*scale));
+  try{
+    var cv = document.createElement('canvas');
+    cv.width = nw; cv.height = nh;
+    var ctx = cv.getContext('2d');
+    ctx.drawImage(img, nx, ny, nw, nh, 0, 0, nw, nh);
+    var rawUrl = cv.toDataURL('image/jpeg', 0.9);
+    compressImageDataUrl(rawUrl, 1000, 0.65).then(function(finalUrl){
+      ct.pin.photos[ct.idx] = finalUrl;
+      renderPinPhotoRow();
+      closePhotoCropper();
+      showToast('トリミングしました');
+    });
+  }catch(err){
+    showToast('トリミングに失敗しました');
+  }
+}
+// プロジェクト全体（全階・全ピン）の写真をまとめて再圧縮する
+async function bulkRecompressAllPhotos(){
+  if(!confirm('保存されている全ての階・全ピンの写真を一括で再圧縮します。よろしいですか？（元の写真データは上書きされます）')) return;
+  syncActiveSheetFromState();
+  var totalBefore = 0, totalAfter = 0, count = 0;
+  showToast('写真を再圧縮しています…');
+  for(var si=0; si<S.sheets.length; si++){
+    var pins = (S.sheets[si] && S.sheets[si].pins) || [];
+    for(var pi=0; pi<pins.length; pi++){
+      var photos = pins[pi].photos || [];
+      for(var ph=0; ph<photos.length; ph++){
+        var before = estimateDataUrlBytes(photos[ph]);
+        var newUrl = await compressImageDataUrl(photos[ph], 1000, 0.65);
+        photos[ph] = newUrl;
+        totalBefore += before;
+        totalAfter += estimateDataUrlBytes(newUrl);
+        count++;
+      }
+    }
+  }
+  loadSheetIntoState(S.activeSheet);
+  if(S.currentEditPin) renderPinPhotoRow();
+  render();
+  showToast('写真'+count+'枚を再圧縮しました（'+formatBytesJP(totalBefore)+' → '+formatBytesJP(totalAfter)+'）');
+}
+// 仕様書：写真とは別枠でファイル（PDF・画像・Office文書など）を保存する一覧。
+// specs[i] = {name, type, pages:[{dataUrl}, ...]}。PDFはページ毎に画像化して複数ページ、
+// 画像は1ページ、Word/Excel等ページ分割できない形式は無圧縮のまま1ページとして保持する。
 var PIN_SPEC_ICONS = {pdf:'📄', doc:'📝', docx:'📝', xls:'📊', xlsx:'📊', image:'🖼️'};
 function pinSpecIcon(spec){
   if(spec.type && spec.type.indexOf('image/')===0) return PIN_SPEC_ICONS.image;
   var ext = (spec.name||'').split('.').pop().toLowerCase();
   return PIN_SPEC_ICONS[ext] || '📎';
 }
+// 旧形式（{name,type,dataUrl}単一ファイル）を新形式（pages配列）へその場で変換する
+function normalizeSpec(spec){
+  if(spec && !spec.pages){
+    spec.pages = spec.dataUrl ? [{dataUrl: spec.dataUrl}] : [];
+    delete spec.dataUrl;
+  }
+  if(spec && !spec.pages) spec.pages = [];
+  return spec;
+}
 function renderPinSpecRow(){
   var host = document.getElementById('pinSpecRow');
   if(!host || !S.currentEditPin) return;
-  var specs = S.currentEditPin.specs || [];
+  var specs = (S.currentEditPin.specs || []).map(normalizeSpec);
   var html='';
   specs.forEach(function(spec, idx){
-    html += '<div class="pin-spec-chip" onclick="openPinSpec('+idx+')" title="タップして表示／保存">'
-      +'<span class="psic">'+pinSpecIcon(spec)+'</span><span class="psname">'+escapeHtml(spec.name||'仕様書')+'</span>'
+    var pageCount = spec.pages ? spec.pages.length : 0;
+    var nameLabel = escapeHtml(spec.name||'仕様書') + (pageCount>1 ? '（'+pageCount+'P）' : '');
+    html += '<div class="pin-spec-chip" onclick="openSpecPageList('+idx+')" title="タップしてページ一覧を表示">'
+      +'<span class="psic">'+pinSpecIcon(spec)+'</span><span class="psname">'+nameLabel+'</span>'
       +'<div class="pin-spec-del" onclick="event.stopPropagation();removePinSpec('+idx+')">✕</div></div>';
   });
-  html += '<div class="pin-spec-add" onclick="document.getElementById(\'pinSpecInput\').click();" title="仕様書を追加">＋ 仕様書を追加</div>';
+  html += '<div class="pin-spec-add" onclick="document.getElementById(\'pinSpecInput\').click();" title="仕様書を追加">＋</div>';
   host.innerHTML = html;
 }
 function handlePinSpecAdd(evt){
@@ -6093,49 +6673,186 @@ function handlePinSpecAdd(evt){
 // input選択・ドラッグ&ドロップの両方から呼べる共通処理
 function addPinSpecFiles(files){
   if(!files || !files.length || !S.currentEditPin) return;
+  var pin = S.currentEditPin;
   Array.prototype.forEach.call(files, function(file){
-    var reader = new FileReader();
-    reader.onload = function(e){
-      if(!S.currentEditPin.specs) S.currentEditPin.specs=[];
-      S.currentEditPin.specs.push({name:file.name, type:file.type||'', dataUrl:e.target.result});
-      renderPinSpecRow();
-    };
-    reader.readAsDataURL(file);
+    addSinglePinSpecFile(pin, file);
   });
 }
+// PDFはpdf.jsでページ毎に画像化（長辺1400px・品質0.75）、画像は1ページとして圧縮（長辺1600px・品質0.75）、
+// それ以外（Word/Excel等）はページ分割できないためファイル全体を無圧縮のまま1ページとして保存する。
+function addSinglePinSpecFile(pin, file){
+  var type = file.type || '';
+  var isPdf = type === 'application/pdf' || /\.pdf$/i.test(file.name||'');
+  if(isPdf){
+    showToast('仕様書（PDF）を取り込んでいます…');
+    ensurePdfjs().then(function(){
+      var reader = new FileReader();
+      reader.onload = function(e){
+        pdfjsLib.getDocument({data:e.target.result}).promise.then(function(pdf){
+          renderPdfDocToSpecPages(pdf, 1400, 0.75).then(function(pages){
+            if(!pin.specs) pin.specs=[];
+            pin.specs.push({name:file.name, type:type||'application/pdf', pages:pages});
+            if(S.currentEditPin===pin) renderPinSpecRow();
+            showToast('仕様書を取り込みました（'+pages.length+'ページ）');
+          }).catch(function(){ showToast('PDFのページ変換に失敗しました'); });
+        }).catch(function(){ showToast('PDFの読み込みに失敗しました'); });
+      };
+      reader.onerror = function(){ showToast('PDFの読み込みに失敗しました'); };
+      reader.readAsArrayBuffer(file);
+    }).catch(function(){ showToast('PDF読込ライブラリの読み込みに失敗しました。通信環境をご確認ください。'); });
+    return;
+  }
+  if(type.indexOf('image/')===0){
+    var reader2 = new FileReader();
+    reader2.onload = function(e){
+      compressImageDataUrl(e.target.result, 1600, 0.75).then(function(finalUrl){
+        if(!pin.specs) pin.specs=[];
+        pin.specs.push({name:file.name, type:type, pages:[{dataUrl:finalUrl}]});
+        if(S.currentEditPin===pin) renderPinSpecRow();
+      });
+    };
+    reader2.readAsDataURL(file);
+    return;
+  }
+  // Word/Excel等ページ分割できない形式：無圧縮のまま丸ごと1ページとして保存
+  var reader3 = new FileReader();
+  reader3.onload = function(e){
+    if(!pin.specs) pin.specs=[];
+    pin.specs.push({name:file.name, type:type, pages:[{dataUrl:e.target.result}]});
+    if(S.currentEditPin===pin) renderPinSpecRow();
+  };
+  reader3.readAsDataURL(file);
+}
+// PDFの全ページを順番にcanvasへ描画し、JPEG dataURLの配列にする
+function renderPdfDocToSpecPages(pdf, maxSide, quality){
+  var pages = [];
+  function next(i){
+    if(i > pdf.numPages) return Promise.resolve(pages);
+    return pdf.getPage(i).then(function(page){
+      var vp1 = page.getViewport({scale:1});
+      var scale = Math.max(0.1, Math.min(3, maxSide / Math.max(vp1.width, vp1.height)));
+      var viewport = page.getViewport({scale:scale});
+      var off = document.createElement('canvas');
+      off.width = Math.max(1, Math.round(viewport.width));
+      off.height = Math.max(1, Math.round(viewport.height));
+      var offCtx = off.getContext('2d');
+      return page.render({canvasContext:offCtx, viewport:viewport}).promise.then(function(){
+        pages.push({dataUrl: off.toDataURL('image/jpeg', quality)});
+        return next(i+1);
+      });
+    });
+  }
+  return next(1);
+}
+// 仕様書チップの✕：仕様書自体（全ページ）を削除する
 function removePinSpec(idx){
   if(!S.currentEditPin || !S.currentEditPin.specs) return;
   S.currentEditPin.specs.splice(idx,1);
   renderPinSpecRow();
 }
-// 仕様書を表示する。画像はプレビュー表示、PDFはiframeに埋め込んで表示（data:URLへの直接ナビゲーションは
-// ブラウザにブロックされ「開いても真っ白/確認できない」原因になるため、iframe埋め込みで回避する）。
-// Word/Excel等プレビューできない形式は、ブラウザで確認できないためそのままダウンロードする。
-function openPinSpec(idx){
-  var specs = S.currentEditPin && S.currentEditPin.specs;
-  if(!specs || !specs[idx]) return;
-  var spec = specs[idx];
+// 仕様書をタップした際のページ一覧（サムネイル）モーダル
+function openSpecPageList(idx){
+  var pin = S.currentEditPin;
+  if(!pin || !pin.specs || !pin.specs[idx]) return;
+  normalizeSpec(pin.specs[idx]);
+  S.currentSpecIdx = idx;
+  document.getElementById('specPageTitle').textContent = pin.specs[idx].name || '仕様書';
+  renderSpecPageGrid();
+  document.getElementById('specPageOverlay').classList.add('vis');
+}
+function closeSpecPageList(){
+  document.getElementById('specPageOverlay').classList.remove('vis');
+  S.currentSpecIdx = null;
+}
+function renderSpecPageGrid(){
+  var host = document.getElementById('specPageGrid');
+  var pin = S.currentEditPin;
+  if(!host) return;
+  if(!pin || S.currentSpecIdx==null || !pin.specs || !pin.specs[S.currentSpecIdx]){ host.innerHTML=''; return; }
+  var spec = pin.specs[S.currentSpecIdx];
+  var pages = spec.pages || [];
+  var isImgLike = (spec.type||'').indexOf('image/')===0 || (spec.type||'')==='application/pdf';
+  var html='';
+  pages.forEach(function(p, pi){
+    var thumbInner = isImgLike ? ('<img src="'+p.dataUrl+'">') : ('<span style="font-size:28px;">'+pinSpecIcon(spec)+'</span>');
+    html += '<div class="spec-page-thumb" onclick="openSpecPage('+pi+')" title="タップして表示／保存">'
+      + thumbInner
+      + (pages.length>1 ? '<div class="spec-page-num">'+(pi+1)+'/'+pages.length+'</div>' : '')
+      + '<div class="spec-page-del" onclick="event.stopPropagation();removeSpecPage('+pi+')">✕</div></div>';
+  });
+  host.innerHTML = html || '<div style="color:#5c6b8a;font-size:13px;">ページがありません</div>';
+}
+// ページを表示する。画像・PDF（ページ画像化済み）はプレビュー表示、Office文書等はダウンロードする
+function openSpecPage(pi){
+  var pin = S.currentEditPin;
+  if(!pin || S.currentSpecIdx==null) return;
+  var spec = pin.specs[S.currentSpecIdx];
+  if(!spec || !spec.pages || !spec.pages[pi]) return;
   var type = spec.type || '';
-  if(type.indexOf('image/')===0){
-    var w = window.open();
-    if(!w){ showToast('ポップアップがブロックされました。ブラウザの設定をご確認ください'); return; }
-    w.document.write('<title>'+escapeHtml(spec.name||'仕様書')+'</title><body style="margin:0;background:#222;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="'+spec.dataUrl+'" style="max-width:100%;max-height:100vh;"></body>');
+  if(type.indexOf('image/')===0 || type==='application/pdf'){
+    openSpecViewer(pi);
     return;
   }
-  if(type==='application/pdf'){
-    var w2 = window.open();
-    if(!w2){ showToast('ポップアップがブロックされました。ブラウザの設定をご確認ください'); return; }
-    w2.document.write('<title>'+escapeHtml(spec.name||'仕様書')+'</title><style>html,body{margin:0;height:100%;}iframe{border:0;width:100%;height:100%;}</style><iframe src="'+spec.dataUrl+'"></iframe>');
-    return;
-  }
-  // Word/Excel/PowerPointなどはブラウザ上でプレビューできないため、ダウンロードして開いてもらう
+  var page = spec.pages[pi];
   var a = document.createElement('a');
-  a.href = spec.dataUrl;
+  a.href = page.dataUrl;
   a.download = spec.name || '仕様書';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   showToast('この形式（'+(spec.name||'')+'）はブラウザ内でプレビューできないため、ダウンロードしました。お手持ちのアプリで開いてご確認ください');
+}
+// 仕様書ページの拡大表示（画像・PDFのみ）。スワイプ／クリックで前後のページへ移動できる。
+function openSpecViewer(pi){
+  if(!S.currentEditPin || S.currentSpecIdx==null) return;
+  S.specViewer = { pi: pi };
+  updateSpecViewer();
+  document.getElementById('specViewOverlay').classList.add('vis');
+}
+function updateSpecViewer(){
+  var pin = S.currentEditPin;
+  if(!pin || S.currentSpecIdx==null || !S.specViewer) return;
+  var spec = pin.specs && pin.specs[S.currentSpecIdx];
+  var pages = spec && spec.pages ? spec.pages : [];
+  if(!pages.length){ closeSpecViewer(); return; }
+  var pi = S.specViewer.pi;
+  if(pi < 0) pi = pages.length - 1;
+  if(pi >= pages.length) pi = 0;
+  S.specViewer.pi = pi;
+  document.getElementById('specViewImg').src = pages[pi].dataUrl;
+  document.getElementById('specViewCount').textContent = (pi+1)+' / '+pages.length;
+  var multi = pages.length > 1;
+  document.getElementById('specViewPrev').style.display = multi ? 'flex' : 'none';
+  document.getElementById('specViewNext').style.display = multi ? 'flex' : 'none';
+  if(specViewerCtl) specViewerCtl.reset();
+}
+function specViewerNav(dir){
+  if(!S.specViewer) return;
+  S.specViewer.pi += dir;
+  updateSpecViewer();
+}
+function closeSpecViewer(){
+  document.getElementById('specViewOverlay').classList.remove('vis');
+  S.specViewer = null;
+  if(specViewerCtl) specViewerCtl.reset();
+}
+// ページ単位で削除。全ページ削除されたら仕様書自体を一覧から削除する
+function removeSpecPage(pi){
+  var pin = S.currentEditPin;
+  if(!pin || S.currentSpecIdx==null) return;
+  var idx = S.currentSpecIdx;
+  var spec = pin.specs[idx];
+  if(!spec || !spec.pages) return;
+  spec.pages.splice(pi,1);
+  if(spec.pages.length===0){
+    pin.specs.splice(idx,1);
+    closeSpecPageList();
+    renderPinSpecRow();
+    showToast('仕様書を削除しました');
+    return;
+  }
+  renderSpecPageGrid();
+  renderPinSpecRow();
 }
 function openPinEditor(pin, isNew){
   S.currentEditPin = pin;
@@ -6154,6 +6871,7 @@ function openPinEditor(pin, isNew){
   document.getElementById('pinDeleteBtn').style.display = isNew ? 'none' : 'block';
   if(!pin.photos) pin.photos=[];
   if(!pin.specs) pin.specs=[];
+  pin.specs = pin.specs.map(normalizeSpec);
   buildPinColorRow();
   renderPinPhotoRow();
   renderPinSpecRow();
@@ -8098,18 +8816,47 @@ function loadSheetsFromSaveArray(arr, callback){
     });
   });
 }
-function saveProjectFile(){
+// 保存用データをまとめて作る（JSON保存・HTML保存の両方から共通で使う）
+function buildProjectSaveData(){
   syncActiveSheetFromState();
   var sheetsOut = S.sheets.map(sheetToSaveObj);
-  var data = { app:'PipeISO', ver:PROJECT_FILE_VERSION, savedAt:new Date().toISOString(), els:S.els, sheets:sheetsOut, activeSheet:S.activeSheet, projectName:S.projectName||'', companyName:S.companyName||'' };
+  return { app:'PipeISO', ver:PROJECT_FILE_VERSION, savedAt:new Date().toISOString(), els:S.els, sheets:sheetsOut, activeSheet:S.activeSheet, projectName:S.projectName||'', companyName:S.companyName||'' };
+}
+function projectFileBaseName(){
+  var name = (S.projectName && S.projectName.trim()) ? S.projectName.trim().replace(/[\\/:*?"<>|]/g,'_') : 'pipe-iso';
+  var ts = new Date();
+  var pad=function(n){return (n<10?'0':'')+n;};
+  return name+'-'+ts.getFullYear()+pad(ts.getMonth()+1)+pad(ts.getDate())+'-'+pad(ts.getHours())+pad(ts.getMinutes());
+}
+function saveProjectFile(){
+  var data = buildProjectSaveData();
   var json = JSON.stringify(data, null, 0);
   var blob = new Blob([json], {type:'application/json'});
   var a = document.createElement('a');
-  var ts = new Date();
-  var pad=function(n){return (n<10?'0':'')+n;};
-  var fname = 'pipe-iso-'+ts.getFullYear()+pad(ts.getMonth()+1)+pad(ts.getDate())+'-'+pad(ts.getHours())+pad(ts.getMinutes())+'.json';
+  var fname = projectFileBaseName()+'.json';
   a.download = fname; a.href = URL.createObjectURL(blob); a.click();
   showToast('作図データを保存しました（'+fname+'）');
+}
+// 保存データをアプリ本体（このHTMLファイル一式）に埋め込んだ1ファイルとして保存する。
+// これにより「ソフトを開く→データを読み込む」の二手間が無くなり、保存したファイルをダブルクリックするだけで
+// アプリごと起動し、データも自動で読み込まれる。写真・仕様書ページ画像を多く含む場合はファイルサイズが
+// 大きくなる（数十MB規模になり得る）点に留意。
+function saveProjectAsHtml(){
+  var data = buildProjectSaveData();
+  var json = JSON.stringify(data);
+  // 既にこのHTML自体が「埋め込みデータ入りファイル」として開かれている場合、古い埋め込みデータが
+  // 二重に残らないよう、複製したDOMから先に取り除いてから新しいデータを埋め込む
+  var clone = document.documentElement.cloneNode(true);
+  var oldTag = clone.querySelector('#embeddedProjectData');
+  if(oldTag && oldTag.parentNode) oldTag.parentNode.removeChild(oldTag);
+  var htmlSrc = '<!DOCTYPE html>\n' + clone.outerHTML;
+  var marker = '<script type="application/json" id="embeddedProjectData">'+json.replace(/<\/script/gi,'<\\/script')+'<\/script>';
+  var outHtml = htmlSrc.indexOf('</body>')>=0 ? htmlSrc.replace('</body>', marker+'</body>') : (htmlSrc+marker);
+  var blob = new Blob([outHtml], {type:'text/html'});
+  var a = document.createElement('a');
+  var fname = projectFileBaseName()+'.html';
+  a.download = fname; a.href = URL.createObjectURL(blob); a.click();
+  showToast('データ入りのファイルを保存しました（'+fname+'）。次回はこのファイルをダブルクリックするだけで開けます');
 }
 async function triggerLoadFile(){
   // 対応ブラウザ（Chrome/Edge等）では、前回この用途で開いたフォルダを自動的に覚えておいてくれる
@@ -8119,7 +8866,7 @@ async function triggerLoadFile(){
       var handles = await window.showOpenFilePicker({
         id: 'pipeiso-open-project',
         multiple: false,
-        types: [{ description:'作図データ', accept:{'application/json':['.json','.pipeiso']} }]
+        types: [{ description:'作図データ', accept:{'application/json':['.json','.pipeiso'], 'text/html':['.html']} }]
       });
       var file = await handles[0].getFile();
       handleLoadFile({target:{files:[file]}});
@@ -8132,44 +8879,61 @@ async function triggerLoadFile(){
   document.getElementById('loadFileInput').value = '';
   document.getElementById('loadFileInput').click();
 }
+// .htmlファイル内から埋め込みデータ（<script id="embeddedProjectData">）を取り出す
+function extractEmbeddedProjectJson(text){
+  var m = text.match(/<script[^>]*id=["']embeddedProjectData["'][^>]*>([\s\S]*?)<\/script>/i);
+  return m ? m[1] : null;
+}
 function handleLoadFile(evt){
   var file = evt.target.files && evt.target.files[0];
   if(!file) return;
   var reader = new FileReader();
   reader.onload = function(e){
+    var raw = e.target.result;
+    var isHtml = /\.html?$/i.test(file.name||'') || /^\s*<!doctype html/i.test(raw) || /^\s*<html/i.test(raw);
+    var jsonText = raw;
+    if(isHtml){
+      var embedded = extractEmbeddedProjectJson(raw);
+      if(!embedded){ showToast('このファイルには作図データが埋め込まれていません'); return; }
+      jsonText = embedded;
+    }
     var data;
-    try{ data = JSON.parse(e.target.result); }
+    try{ data = JSON.parse(jsonText); }
     catch(err){ showToast('ファイルの読み込みに失敗しました（形式が正しくありません）'); return; }
     if(!data || !(Array.isArray(data.els) || Array.isArray(data.sheets))){ showToast('このファイルは配管アイソメの作図データではありません'); return; }
-    var hasContent = S.sheets.some(function(s){ return s.els && s.els.length; }) || (S.els && S.els.length);
-    if(hasContent){
-      if(!confirm('現在の作図内容を破棄して、選択したファイルを開きますか？')) return;
-    }
-    saveH();
-    S.projectName = data.projectName || '';
-    S.companyName = data.companyName || '';
-    if(Array.isArray(data.sheets) && data.sheets.length){
-      loadSheetsFromSaveArray(data.sheets, function(sheets){
-        S.sheets = sheets;
-        var startIdx = (typeof data.activeSheet==='number' && data.activeSheet>=0 && data.activeSheet<S.sheets.length) ? data.activeSheet : 0;
-        loadSheetIntoState(startIdx);
-        if(S.dragMode) endDragMode();
-        renderSheetTabs();
-        render();
-        showToast('作図データを読み込みました');
-      });
-    } else {
-      S.sheets = [makeSheet('1階')];
-      S.sheets[0].els = data.els;
-      loadSheetIntoState(0);
+    applyLoadedProjectData(data);
+  };
+  reader.onerror = function(){ showToast('ファイルの読み込みに失敗しました'); };
+  reader.readAsText(file);
+}
+// 読み込んだ保存データ（JSON・HTML埋め込みどちらでも共通）を現在の作図状態に反映する
+function applyLoadedProjectData(data){
+  var hasContent = S.sheets.some(function(s){ return s.els && s.els.length; }) || (S.els && S.els.length);
+  if(hasContent){
+    if(!confirm('現在の作図内容を破棄して、選択したファイルを開きますか？')) return;
+  }
+  saveH();
+  S.projectName = data.projectName || '';
+  S.companyName = data.companyName || '';
+  if(Array.isArray(data.sheets) && data.sheets.length){
+    loadSheetsFromSaveArray(data.sheets, function(sheets){
+      S.sheets = sheets;
+      var startIdx = (typeof data.activeSheet==='number' && data.activeSheet>=0 && data.activeSheet<S.sheets.length) ? data.activeSheet : 0;
+      loadSheetIntoState(startIdx);
       if(S.dragMode) endDragMode();
       renderSheetTabs();
       render();
       showToast('作図データを読み込みました');
-    }
-  };
-  reader.onerror = function(){ showToast('ファイルの読み込みに失敗しました'); };
-  reader.readAsText(file);
+    });
+  } else {
+    S.sheets = [makeSheet('1階')];
+    S.sheets[0].els = data.els;
+    loadSheetIntoState(0);
+    if(S.dragMode) endDragMode();
+    renderSheetTabs();
+    render();
+    showToast('作図データを読み込みました');
+  }
 }
 
 // ── 背景（PDF／写真）：現場で描いた下書きPDFや現場写真を読み込み、上からトレースできるようにする ──
@@ -8696,17 +9460,58 @@ function initApp(){
   initPinFileDragDrop();
   initPinAddDrag();
   initFileDropButtons();
+  initCropHandlers();
+  photoViewerCtl = createZoomSwipeController('photoViewStage', 'photoViewImg', photoViewerNav);
+  specViewerCtl = createZoomSwipeController('specViewStage', 'specViewImg', specViewerNav);
   document.getElementById('appVersionLabel').textContent = 'v'+APP_VERSION;
   document.getElementById('bDimToggle').classList.add('on');
   S.px=canvas.width/2 - 2*PX_PER_M;
   S.py=canvas.height/2;
   S.els=[];
   ensureAtLeastOneSheet();
-  tryRestoreAutosave(function(){
+  var embeddedTag = document.getElementById('embeddedProjectData');
+  if(embeddedTag){
+    loadEmbeddedProjectData(embeddedTag);
+  } else {
+    tryRestoreAutosave(function(){
+      loadSheetIntoState(S.activeSheet);
+      renderSheetTabs();
+      render();
+    });
+  }
+}
+// このHTMLファイル自体に埋め込まれた作図データを起動時に自動で読み込む（saveProjectAsHtmlで保存したファイルを
+// そのままダブルクリックで開いた場合の入り口）。ブラウザの自動保存（tryRestoreAutosave）より優先する。
+function loadEmbeddedProjectData(tag){
+  var data = null;
+  try{ data = JSON.parse(tag.textContent); }catch(err){ data = null; }
+  var hasSheets = data && Array.isArray(data.sheets) && data.sheets.length;
+  var hasOldEls = data && Array.isArray(data.els) && data.els.length;
+  if(!data || (!hasSheets && !hasOldEls)){
     loadSheetIntoState(S.activeSheet);
     renderSheetTabs();
     render();
-  });
+    return;
+  }
+  S.projectName = data.projectName || '';
+  S.companyName = data.companyName || '';
+  if(hasSheets){
+    loadSheetsFromSaveArray(data.sheets, function(sheets){
+      S.sheets = sheets;
+      var startIdx = (typeof data.activeSheet==='number' && data.activeSheet>=0 && data.activeSheet<S.sheets.length) ? data.activeSheet : 0;
+      loadSheetIntoState(startIdx);
+      renderSheetTabs();
+      render();
+      showToast('このファイルに保存されていた作図データを読み込みました');
+    });
+  } else {
+    S.sheets = [makeSheet('1階')];
+    S.sheets[0].els = data.els;
+    loadSheetIntoState(0);
+    renderSheetTabs();
+    render();
+    showToast('このファイルに保存されていた作図データを読み込みました');
+  }
 }
 setTimeout(function(){
   bootWithLicenseCheck(initApp);
