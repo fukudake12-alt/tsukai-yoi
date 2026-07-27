@@ -8964,7 +8964,7 @@ function renderXlsxExportPreview(){
         '<span>'+escSvgText(sh.name)+'</span><span style="font-size:var(--fs-3);">（空のため出力対象外）</span></div>');
     }
   });
-  var summary = '<div style="padding:8px 10px;font-size:var(--fs-3);color:#5c6b8a;">全'+S.sheets.length+'シート中 '+includeCount+'シートを出力します（各シートとも記入されている範囲の端まで自動出力・「配管図」「物量」「ピン一覧」の3枚ずつ）</div>';
+  var summary = '<div style="padding:8px 10px;font-size:var(--fs-3);color:#5c6b8a;">全'+S.sheets.length+'シート中 '+includeCount+'シートを出力します（各シートとも記入されている範囲の端まで自動出力・「配管図」「物量ピン一覧」の2枚ずつ）</div>';
   host.innerHTML = summary + rows.join('');
 }
 function cancelXlsxExportPreview(){
@@ -9094,7 +9094,7 @@ var XLSX_THEME = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
 '<a:accent3><a:srgbClr val="9BBB59"/></a:accent3><a:accent4><a:srgbClr val="8064A2"/></a:accent4>'+
 '<a:accent5><a:srgbClr val="4BACC6"/></a:accent5><a:accent6><a:srgbClr val="F79646"/></a:accent6>'+
 '<a:hlink><a:srgbClr val="0000FF"/></a:hlink><a:folHlink><a:srgbClr val="800080"/></a:folHlink></a:clrScheme>'+
-'<a:fontScheme name="Office"><a:majorFont><a:latin typeface="Calibri"/></a:majorFont><a:minorFont><a:latin typeface="Calibri"/></a:minorFont></a:fontScheme>'+
+'<a:fontScheme name="Office"><a:majorFont><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont><a:minorFont><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme>'+
 '<a:fmtScheme name="Office"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst>'+
 '<a:lnStyleLst><a:ln><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst>'+
 '<a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst>'+
@@ -9126,13 +9126,15 @@ function xlsxFormulaCell(ref, formula){
 }
 // 物量集計シート（足場・敷地）：一覧データ本体＋種類別の個数・合計面積をExcelの数式(ROUND/SUMIF/COUNTIF)で算出する。
 // 面積計算式は今後たろさんが持つ計算式に差し替え・拡張しやすいよう、F列（面積）はシンプルなROUND(C*D)の仮式にしてある。
-function xlsxQuantitySheetXml(items){
+// 物量表の行データを作る（baseRow行目からヘッダーを始める）。戻り値のlastRowは、この表が最後に使った行番号
+// （集計行を含む）。ピン一覧をこの下に続けて配置するために使う。
+function buildQuantityRows(items, baseRow){
   var rows = [];
   var headerCells = ['種類','番号','桁W(m)','布D(m)','高さ(m)','面積(m\u00b2)【仮式：桁×布】'].map(function(v,i){
-    return xlsxTextCell(xlsxColLetter(i+1)+'1', v);
+    return xlsxTextCell(xlsxColLetter(i+1)+baseRow, v);
   }).join('');
-  rows.push('<row r="1">'+headerCells+'</row>');
-  var firstDataRow = 2, lastDataRow = 1 + items.length;
+  rows.push('<row r="'+baseRow+'">'+headerCells+'</row>');
+  var firstDataRow = baseRow+1, lastDataRow = baseRow + items.length;
   items.forEach(function(el, i){
     var r = firstDataRow + i;
     var isSite = el.sub==='site';
@@ -9146,6 +9148,7 @@ function xlsxQuantitySheetXml(items){
     ].join('');
     rows.push('<row r="'+r+'">'+cells+'</row>');
   });
+  var lastRow = lastDataRow;
   // 種類別の集計（個数・合計面積）：SCAFF_KIND_ORDERの順にCOUNTIF/SUMIFで算出する
   var sumStartRow = lastDataRow + 3;
   if(items.length){
@@ -9173,38 +9176,19 @@ function xlsxQuantitySheetXml(items){
       xlsxFormulaCell('C'+sumRow, 'SUM(C'+(sumStartRow+1)+':C'+(sumRow-1)+')')
     ].join('');
     rows.push('<row r="'+sumRow+'">'+totalCells+'</row>');
+    lastRow = sumRow;
   }
-  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
-  '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
-  '<dimension ref="A1"/><sheetViews><sheetView workbookViewId="0"/></sheetViews>'+
-  '<sheetFormatPr defaultRowHeight="15"/>'+
-  '<cols><col min="1" max="1" width="14" customWidth="1"/><col min="2" max="2" width="8" customWidth="1"/><col min="3" max="6" width="14" customWidth="1"/></cols>'+
-  '<sheetData>'+rows.join('')+'</sheetData>'+
-  '<pageMargins left="0.3" right="0.3" top="0.3" bottom="0.3" header="0" footer="0"/>'+
-  '</worksheet>';
+  return {rows: rows, lastRow: lastRow};
 }
-var PIN_PHOTO_MAX = 6; // 1ピンあたりExcelに埋め込む写真の上限（多すぎるとファイルが重くなるため）
-var PIN_PHOTO_COL0 = 11; // 写真を並べ始める列（0始まり＝L列から）
-var PIN_PHOTO_PX = 90; // サムネイルの一辺(px)
-// data URL（"data:image/jpeg;base64,xxxx"等）からExcelメディアファイル用の拡張子とbase64本体を取り出す
-function parseDataUrlImage(url){
-  var m = /^data:image\/(png|jpe?g);base64,([\s\S]+)$/i.exec(url||'');
-  if(!m) return null;
-  var ext = /^jpe?g$/i.test(m[1]) ? 'jpeg' : 'png';
-  return {ext: ext, base64: m[2]};
-}
-// ピン一覧シート：名称・仕様項目に加え、写真をL列以降にサムネイル画像として埋め込む。
-// 列見出しはExcel取込機能(applyImportedPinRows)が認識する列名(名称/ITEM/整備/レーティング/サイズ/TYPE/ガスケット/適用法規/流体/メモ)と揃えてあるため、
-// テキスト部分だけを編集してそのまま「Excelから取込」で読み戻すことができる（写真・仕様書はテキスト取込の対象外）。
-// zip/ctxを受け取り、写真がある場合はxl/media配下にJPEG/PNGをそのまま書き出し、drawingのXMLも合わせて組み立てる。
-function buildPinListSheetXml(pins, zip, ctx){
+// ピン一覧の行データを作る（baseRow行目からヘッダーを始める）。写真アンカーの行位置もbaseRowに合わせてずらす。
+function buildPinRows(pins, baseRow, zip, ctx){
   var headers = ['名称','ITEM','整備','レーティング','サイズ','TYPE','ガスケット','適用法規','流体','メモ','仕様書(件)'];
   var rows = [];
-  var headerCells = headers.map(function(v,i){ return xlsxTextCell(xlsxColLetter(i+1)+'1', v); }).join('');
-  rows.push('<row r="1">'+headerCells+'</row>');
+  var headerCells = headers.map(function(v,i){ return xlsxTextCell(xlsxColLetter(i+1)+baseRow, v); }).join('');
+  rows.push('<row r="'+baseRow+'">'+headerCells+'</row>');
   var anchorsXml = [], mediaRels = [], shapeId = 1;
   (pins||[]).forEach(function(p, i){
-    var r = i+2; // Excel行番号(1始まり)
+    var r = baseRow+1+i;
     var textVals = [p.name, p.item, p.seibi, p.rating, p.size, p.type, p.gasket, p.law, p.fluid, p.memo];
     var cells = textVals.map(function(v, ci){ return xlsxTextCell(xlsxColLetter(ci+1)+r, v||''); }).join('');
     cells += xlsxNumCell(xlsxColLetter(11)+r, (p.specs||[]).length);
@@ -9233,6 +9217,20 @@ function buildPinListSheetXml(pins, zip, ctx){
       shapeId++;
     });
   });
+  var lastRow = baseRow + (pins||[]).length;
+  return {rows: rows, anchorsXml: anchorsXml, mediaRels: mediaRels, lastRow: lastRow};
+}
+// 物量表とピン一覧を1枚のシートにまとめる（物量が上、1行空けてピン一覧が下）
+function buildQtyAndPinSheetXml(items, pins, zip, ctx){
+  var qtyTitleRow = 1;
+  var q = buildQuantityRows(items, qtyTitleRow+1);
+  var pinTitleRow = q.lastRow + 3;
+  var p = buildPinRows(pins, pinTitleRow+1, zip, ctx);
+  var rows = [];
+  rows.push('<row r="'+qtyTitleRow+'">'+xlsxTextCell('A'+qtyTitleRow,'【物量】')+'</row>');
+  rows = rows.concat(q.rows);
+  rows.push('<row r="'+pinTitleRow+'">'+xlsxTextCell('A'+pinTitleRow,'【ピン一覧】')+'</row>');
+  rows = rows.concat(p.rows);
   var lastPhotoCol = PIN_PHOTO_COL0 + PIN_PHOTO_MAX; // 1始まり換算での最終列番号
   var sheetXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
   '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
@@ -9243,9 +9241,19 @@ function buildPinListSheetXml(pins, zip, ctx){
   '<col min="'+(PIN_PHOTO_COL0+1)+'" max="'+lastPhotoCol+'" width="13" customWidth="1"/></cols>'+
   '<sheetData>'+rows.join('')+'</sheetData>'+
   '<pageMargins left="0.3" right="0.3" top="0.3" bottom="0.3" header="0" footer="0"/>'+
-  (anchorsXml.length ? '<drawing r:id="rIdDraw"/>' : '')+
+  (p.anchorsXml.length ? '<drawing r:id="rIdDraw"/>' : '')+
   '</worksheet>';
-  return {sheetXml: sheetXml, anchorsXml: anchorsXml, mediaRels: mediaRels};
+  return {sheetXml: sheetXml, anchorsXml: p.anchorsXml, mediaRels: p.mediaRels};
+}
+var PIN_PHOTO_MAX = 6; // 1ピンあたりExcelに埋め込む写真の上限（多すぎるとファイルが重くなるため）
+var PIN_PHOTO_COL0 = 11; // 写真を並べ始める列（0始まり＝L列から）
+var PIN_PHOTO_PX = 90; // サムネイルの一辺(px)
+// data URL（"data:image/jpeg;base64,xxxx"等）からExcelメディアファイル用の拡張子とbase64本体を取り出す
+function parseDataUrlImage(url){
+  var m = /^data:image\/(png|jpe?g);base64,([\s\S]+)$/i.exec(url||'');
+  if(!m) return null;
+  var ext = /^jpe?g$/i.test(m[1]) ? 'jpeg' : 'png';
+  return {ext: ext, base64: m[2]};
 }
 // 背景（PDF/写真）だけを1枚のsvgにする（buildExportSvgの背景部分を単独レイヤーとして切り出したもの）
 function buildBgOnlySvg(rect){
@@ -9269,24 +9277,25 @@ function buildBgOnlySvg(rect){
 // 世界座標が指す先端の点をローカル原点(0,0)とし、外接ボックス(bbox)を一緒に返すことで、
 // 呼び出し側が「先端の実座標＋このbboxの左上オフセット」から画像の貼り付け位置を計算できるようにしている。
 function pinIconStandaloneSvg(p, idx){
-  var R = 13*S.zoom, cy = -R*1.5;
+  var M = 6; // 出力時のピンサイズ倍率（配管図に対して小さすぎるとの指摘のため6倍にしている）
+  var R = 13*M*S.zoom, cy = -R*1.5;
   var color = p.color || PIN_COLORS[0];
   var label = String(idx);
-  var fs = 11*S.zoom;
+  var fs = 11*M*S.zoom;
   var hasName = !!p.name;
   var disp = hasName ? (p.name.length>18 ? p.name.slice(0,18)+'…' : p.name) : '';
-  var padX=5*S.zoom, padY=3*S.zoom, boxW=0, boxH=0, bx=0, by=0;
+  var padX=5*M*S.zoom, padY=3*M*S.zoom, boxW=0, boxH=0, bx=0, by=0;
   if(hasName){
     ctx.font = 'bold '+fs.toFixed(2)+'px system-ui,sans-serif';
     var tw = ctx.measureText(disp).width;
     boxW = tw+padX*2; boxH = fs*1.4+padY;
-    bx = R+4*S.zoom; by = cy-boxH/2;
+    bx = R+4*M*S.zoom; by = cy-boxH/2;
   }
   var body = '<path d="M '+(-R*0.55).toFixed(2)+' '+(cy+R*0.75).toFixed(2)+' L '+(R*0.55).toFixed(2)+' '+(cy+R*0.75).toFixed(2)+' L 0 0 Z" fill="'+color+'"/>'+
-    '<circle cx="0" cy="'+cy.toFixed(2)+'" r="'+R.toFixed(2)+'" fill="'+color+'" stroke="#ffffff" stroke-width="'+(2*S.zoom).toFixed(2)+'"/>'+
+    '<circle cx="0" cy="'+cy.toFixed(2)+'" r="'+R.toFixed(2)+'" fill="'+color+'" stroke="#ffffff" stroke-width="'+(2*M*S.zoom).toFixed(2)+'"/>'+
     '<text x="0" y="'+cy.toFixed(2)+'" text-anchor="middle" dominant-baseline="central" font-family="system-ui,sans-serif" font-weight="bold" font-size="'+fs.toFixed(2)+'" fill="#ffffff">'+escSvgText(label)+'</text>';
   if(hasName){
-    body += '<rect x="'+bx.toFixed(2)+'" y="'+by.toFixed(2)+'" width="'+boxW.toFixed(2)+'" height="'+boxH.toFixed(2)+'" rx="'+(5*S.zoom).toFixed(2)+'" fill="rgba(255,255,255,0.92)" stroke="rgba(0,0,0,0.15)"/>'+
+    body += '<rect x="'+bx.toFixed(2)+'" y="'+by.toFixed(2)+'" width="'+boxW.toFixed(2)+'" height="'+boxH.toFixed(2)+'" rx="'+(5*M*S.zoom).toFixed(2)+'" fill="rgba(255,255,255,0.92)" stroke="rgba(0,0,0,0.15)"/>'+
       '<text x="'+(bx+padX).toFixed(2)+'" y="'+(cy+1).toFixed(2)+'" text-anchor="start" dominant-baseline="central" font-family="system-ui,sans-serif" font-weight="bold" font-size="'+fs.toFixed(2)+'" fill="#1a1d27">'+escSvgText(disp)+'</text>';
   }
   var minX = Math.min(-R*0.6, hasName ? bx : -R*1.2) - 2;
@@ -9557,41 +9566,32 @@ async function xlsxAppendSheetPair(zip, sheetName, rect, ctx){
     sheetId: ctx.sheetId++, rId: 'rId'+drawWsIdx, fileIndex: drawWsIdx
   });
 
-  // ── 物量シート（足場・敷地の一覧＋種類別集計） ──
+  // ── 物量・ピン一覧シート（足場物量の集計＋ピンの名称・仕様一覧＋写真を1枚にまとめる）──
   ctx.wsFileIndex++;
-  var qtyWsIdx = ctx.wsFileIndex;
+  var qpWsIdx = ctx.wsFileIndex;
   var scaffItems = S.els.filter(function(e){ return e.kind==='scaffold'; }).slice().sort(function(a,b){
     var oa = SCAFF_KIND_ORDER.indexOf(a.sub), ob = SCAFF_KIND_ORDER.indexOf(b.sub);
     return oa!==ob ? oa-ob : a.num-b.num;
   });
-  zip.file('xl/worksheets/sheet'+qtyWsIdx+'.xml', xlsxQuantitySheetXml(scaffItems));
-  ctx.sheetDefs.push({
-    name: sanitizeXlsxSheetName(sheetName+'_物量', ctx.usedNames),
-    sheetId: ctx.sheetId++, rId: 'rId'+qtyWsIdx, fileIndex: qtyWsIdx
-  });
-
-  // ── ピン一覧シート（名称・ITEM・整備・レーティング・サイズ・TYPE・ガスケット・適用法規・流体・メモ＋写真）──
-  ctx.wsFileIndex++;
-  var pinWsIdx = ctx.wsFileIndex;
-  var pinBuild = buildPinListSheetXml(S.pins, zip, ctx);
-  zip.file('xl/worksheets/sheet'+pinWsIdx+'.xml', pinBuild.sheetXml);
-  if(pinBuild.anchorsXml.length){
+  var qpBuild = buildQtyAndPinSheetXml(scaffItems, S.pins, zip, ctx);
+  zip.file('xl/worksheets/sheet'+qpWsIdx+'.xml', qpBuild.sheetXml);
+  if(qpBuild.anchorsXml.length){
     ctx.drawingIndex++;
-    var pinDrawingIdx = ctx.drawingIndex;
-    var pinDrawingXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
+    var qpDrawingIdx = ctx.drawingIndex;
+    var qpDrawingXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
       '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
-      pinBuild.anchorsXml.join('')+'</xdr:wsDr>';
-    zip.file('xl/drawings/drawing'+pinDrawingIdx+'.xml', pinDrawingXml);
-    var pinDrawingRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
+      qpBuild.anchorsXml.join('')+'</xdr:wsDr>';
+    zip.file('xl/drawings/drawing'+qpDrawingIdx+'.xml', qpDrawingXml);
+    var qpDrawingRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
       '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
-      pinBuild.mediaRels.map(function(r){ return '<Relationship Id="'+r.id+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="'+r.target+'"/>'; }).join('')+
+      qpBuild.mediaRels.map(function(r){ return '<Relationship Id="'+r.id+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="'+r.target+'"/>'; }).join('')+
       '</Relationships>';
-    zip.file('xl/drawings/_rels/drawing'+pinDrawingIdx+'.xml.rels', pinDrawingRels);
-    zip.file('xl/worksheets/_rels/sheet'+pinWsIdx+'.xml.rels', xlsxWorksheetRelsXml('drawing'+pinDrawingIdx+'.xml'));
+    zip.file('xl/drawings/_rels/drawing'+qpDrawingIdx+'.xml.rels', qpDrawingRels);
+    zip.file('xl/worksheets/_rels/sheet'+qpWsIdx+'.xml.rels', xlsxWorksheetRelsXml('drawing'+qpDrawingIdx+'.xml'));
   }
   ctx.sheetDefs.push({
-    name: sanitizeXlsxSheetName(sheetName+'_ピン一覧', ctx.usedNames),
-    sheetId: ctx.sheetId++, rId: 'rId'+pinWsIdx, fileIndex: pinWsIdx
+    name: sanitizeXlsxSheetName(sheetName+'_物量ピン一覧', ctx.usedNames),
+    sheetId: ctx.sheetId++, rId: 'rId'+qpWsIdx, fileIndex: qpWsIdx
   });
 }
 
@@ -9653,7 +9653,7 @@ async function exportAllSheetsXlsx(){
   var fname = 'pipe-iso-'+ts.getFullYear()+pad(ts.getMonth()+1)+pad(ts.getDate())+'-'+pad(ts.getHours())+pad(ts.getMinutes())+'.xlsx';
   var a = document.createElement('a');
   a.download = fname; a.href = URL.createObjectURL(blob); a.click();
-  showToast('Excelを保存しました（全'+targets.length+'シート／各シート「配管図」「物量」「ピン一覧」の3枚ずつ出力・配管図の中身は全部まとめて1つのグループにしています。個別に動かす時はグループ解除してください）');
+  showToast('Excelを保存しました（全'+targets.length+'シート／各シート「配管図」「物量ピン一覧」の2枚ずつ出力・配管図の中身は全部まとめて1つのグループにしています。個別に動かす時はグループ解除してください）');
 }
 
 function exportSVG(){
