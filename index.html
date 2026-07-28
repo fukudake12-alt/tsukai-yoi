@@ -1376,7 +1376,7 @@ function ensureXlsx(){ return loadScriptOnce(LIB_URLS.xlsx); }
 <script>
 // ── 定数 ──────────────────────────────────────
 // アプリのバージョン番号。改修（機能追加・修正）を行うたびに1ずつ増やすこと。
-var APP_VERSION  = 29;
+var APP_VERSION  = 35;
 var GRID_M       = 0.1;
 var PX_PER_M     = 80;
 var SNAP_DIST_PX = 28;  // スナップ精度向上のため拡大
@@ -1471,7 +1471,7 @@ var photoViewerCtl = null, specViewerCtl = null;
 // ── STATE ──────────────────────────────────────
 var S = {
   tool:'pipe', pt:'CS', ft:'fl_gate', weldType:'weld_butt',
-  showGrid:false, showDim:true, zoom:1, px:0, py:0,
+  showGrid:true, showDim:true, zoom:1, px:0, py:0,
   // 配管を描くときの角度・長さの合わせ方：'iso'=アイソメ（30°刻み）／'plan'=平面図（15°刻み）
   pipeDrawMode:'iso',
   angleStepDeg:30,
@@ -1625,6 +1625,13 @@ function scaffLabel(el){
 }
 // 自動採番のみ（呼び名を無視した「種類-番号」）。呼び名入力欄のプレースホルダー表示用。
 function scaffAutoLabel(el){ return (SCAFF_KIND_ABBR[el.sub]||'?')+'-'+el.num; }
+// 寸法（および高さ）を1行にまとめる：ラベル表示を「種類」「サイズ」の2行構成にするための共通ヘルパー
+function scaffSizeLine(el){
+  var isSite = el.sub==='site';
+  var txt = el.w.toFixed(1)+'×'+el.d.toFixed(1)+'m';
+  if(!isSite && el.height!=null) txt += '  H'+parseFloat(el.height).toFixed(1)+'m（座）';
+  return txt;
+}
 // まだ作成していない要素向け：次に振られる予定の番号をプレビュー表示するための関数（カウンターは消費しない）
 function peekNextScaffLabel(sub){ return (SCAFF_KIND_ABBR[sub]||'?')+'-'+((S.scaffCounters[sub]||0)+1); }
 var scaffUidSeq = 1;
@@ -1775,6 +1782,7 @@ function drawPipeLineWithGaps(p1,p2,cutTs){
 
 function render(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
+  if(S.showGrid) drawGrid();
   if(S.bg && S.bg.img && S.bg.img.complete){
     var bgW = S.bg.baseW*S.bg.scale, bgH = S.bg.baseH*S.bg.scale;
     var bgCenterScr = w2s(S.bg.wx, S.bg.wy);
@@ -1794,7 +1802,6 @@ function render(){
     ctx.drawImage(bgMip.canvas, -bgPxW/2, -bgPxH/2, bgPxW, bgPxH);
     ctx.restore();
   }
-  if(S.showGrid) drawGrid();
   drawGhost();
   // 足場・敷地の矩形は面として広く塗るため、配管より先（一番奥）に描画する
   S.els.forEach(function(e){ if(e.kind==='scaffold') drawEl(e, e===S.sel||e===S.dragEl||S.multiSel.indexOf(e)>=0, false); });
@@ -2275,8 +2282,7 @@ function drawScaffold(el, sel, ghost){
   if(rw>34 && rh>18){
     var lines = [];
     lines.push(el.num!=null ? scaffLabel(el) : peekNextScaffLabel(el.sub));
-    lines.push(el.w.toFixed(1)+'×'+el.d.toFixed(1)+'m');
-    if(!isSite && el.height!=null) lines.push('H'+parseFloat(el.height).toFixed(1)+'m（座）');
+    lines.push(scaffSizeLine(el));
     ctx.save();
     if(ghost) ctx.globalAlpha = 0.6;
     ctx.fillStyle = sel ? '#d32f2f' : '#1a1d27';
@@ -4733,8 +4739,8 @@ function movePress(pos){
         S.dragEl.wx = rs.origWx + localCx*cA - localCy*sA;
         S.dragEl.wy = rs.origWy + localCx*sA + localCy*cA;
       } else {
-        // 足場・敷地：0.5m単位にスナップしながら平行移動する
-        var wws=s2w(pos.x,pos.y), sgS=snapScaffPt(wws.x-S.dragOffX, wws.y-S.dragOffY);
+        // 足場・敷地：0.1m単位にスナップしながら平行移動する（0.5m単位だと配置の自由度が低すぎるため）
+        var wws=s2w(pos.x,pos.y), sgS=snapGrid(wws.x-S.dragOffX, wws.y-S.dragOffY);
         S.dragEl.wx=sgS.x; S.dragEl.wy=sgS.y;
       }
     } else if(S.dragEl.kind==='leader'){
@@ -8768,15 +8774,20 @@ function leaderSvgMarkup(el){
   var tx=p2.x+(goingRight?4:-4);
   return '<line x1="'+p1.x.toFixed(2)+'" y1="'+p1.y.toFixed(2)+'" x2="'+p2.x.toFixed(2)+'" y2="'+p2.y.toFixed(2)+'" stroke="'+col+'" stroke-width="'+(1.4*S.zoom)+'"/>'+
     '<circle cx="'+p1.x.toFixed(2)+'" cy="'+p1.y.toFixed(2)+'" r="'+(2.4*S.zoom)+'" fill="'+col+'"/>'+
-    '<text x="'+tx.toFixed(2)+'" y="'+p2.y.toFixed(2)+'" text-anchor="'+(goingRight?'start':'end')+'" font-family="sans-serif" font-weight="bold" font-size="'+(12*S.zoom)+'" fill="'+col+'">'+escSvgText(el.text)+'</text>';
+    '<text x="'+tx.toFixed(2)+'" y="'+p2.y.toFixed(2)+'" text-anchor="'+(goingRight?'start':'end')+'" font-family="sans-serif" font-weight="bold" font-size="'+(12*S.zoom*xlsxTextBoost)+'" fill="'+col+'">'+escSvgText(el.text)+'</text>';
 }
 
 function textSvgMarkup(el){
   var sp=w2s(el.wx,el.wy);
   var col=el.color||'#d32f2f';
-  return '<text x="'+sp.x.toFixed(2)+'" y="'+sp.y.toFixed(2)+'" text-anchor="start" font-family="sans-serif" font-weight="bold" font-size="'+(12*S.zoom*(el.scale||1))+'" fill="'+col+'">'+escSvgText(el.text)+'</text>';
+  return '<text x="'+sp.x.toFixed(2)+'" y="'+sp.y.toFixed(2)+'" text-anchor="start" font-family="sans-serif" font-weight="bold" font-size="'+(12*S.zoom*(el.scale||1)*xlsxTextBoost)+'" fill="'+col+'">'+escSvgText(el.text)+'</text>';
 }
 
+// Excel出力時、大きな図面ほどA4に収めるための縮小率(fitScale)が小さくなり、寸法線などの文字が
+// 図面と一緒に縮んで読めなくなってしまう問題への対策。xlsxAppendSheetPair内で「文字だけ」この係数分
+// 逆に拡大しておき、後段のfitScale縮小と打ち消し合わせることで、紙面上の文字サイズをほぼ一定に保つ。
+// （小さい図面はfitScale=1のままなので、この係数も1のままになり従来と見た目は変わらない）
+var xlsxTextBoost = 1;
 function dimSvgMarkup(el,col){
   if(!S.showDim) return '';
   var dx=el.wx2-el.wx1, dy=el.wy2-el.wy1;
@@ -8789,7 +8800,7 @@ function dimSvgMarkup(el,col){
   var ang=Math.atan2(p2.y-p1.y, p2.x-p1.x);
   var dispAng=ang;
   if(dispAng>Math.PI/2||dispAng<-Math.PI/2) dispAng+=Math.PI;
-  var fs=Math.max(9, Math.min(13, 10*S.zoom));
+  var fs=Math.max(9, Math.min(13, 10*S.zoom))*xlsxTextBoost;
   var offset=lw()/2+fs+3;
   ctx.font=fs+'px sans-serif';
   var tw=ctx.measureText(disp).width;
@@ -8814,8 +8825,7 @@ function scaffoldSvgMarkup(el){
   var rectSvg = '<rect x="'+(-rw/2).toFixed(2)+'" y="'+(-rh/2).toFixed(2)+'" width="'+rw.toFixed(2)+'" height="'+rh.toFixed(2)+'" fill="'+col+'" fill-opacity="0.16" stroke="'+col+'" stroke-width="1.8"'+dash+'/>';
   var out = '<g transform="translate('+c.x.toFixed(2)+' '+c.y.toFixed(2)+') rotate('+ang.toFixed(2)+')">'+rectSvg+'</g>';
   if(rw>34 && rh>18){
-    var lines = [scaffLabel(el), el.w.toFixed(1)+'×'+el.d.toFixed(1)+'m'];
-    if(!isSite && el.height!=null) lines.push('H'+parseFloat(el.height).toFixed(1)+'m（座）');
+    var lines = [scaffLabel(el), scaffSizeLine(el)];
     var lh = Math.max(10, Math.min(14, rh/5));
     var cy0 = c.y - (lh*(lines.length-1))/2;
     lines.forEach(function(ln,i){
@@ -9426,8 +9436,7 @@ function xlsxScaffoldShapeXml(el, rect, emuPerPx, shapeId, asGroupChild){
   var cx=Math.max(1,Math.round(rw*emuPerPx)), cy=Math.max(1,Math.round(rh*emuPerPx));
   var isSite = el.sub==='site';
   var hex = xlsxColorHex(el.color, SCAFF_COLORS[0]);
-  var lines = [scaffLabel(el), el.w.toFixed(1)+'×'+el.d.toFixed(1)+'m'];
-  if(!isSite && el.height!=null) lines.push('H'+parseFloat(el.height).toFixed(1)+'m（座）');
+  var lines = [scaffLabel(el), scaffSizeLine(el)];
   var paras = lines.map(function(ln){
     return '<a:p><a:pPr algn="ctr"/><a:r><a:rPr lang="ja-JP" sz="900" b="1"><a:solidFill><a:srgbClr val="1A1D27"/></a:solidFill></a:rPr><a:t>'+escSvgText(ln)+'</a:t></a:r></a:p>';
   }).join('');
@@ -9443,7 +9452,7 @@ function xlsxScaffoldShapeXml(el, rect, emuPerPx, shapeId, asGroupChild){
     '<a:solidFill><a:srgbClr val="'+hex+'"><a:alpha val="16000"/></a:srgbClr></a:solidFill>'+
     '<a:ln w="22225"><a:solidFill><a:srgbClr val="'+hex+'"/></a:solidFill>'+dash+'</a:ln>'+
     '</xdr:spPr>'+
-    '<xdr:txBody><a:bodyPr wrap="square" anchor="ctr" anchorCtr="1"/><a:lstStyle/>'+paras+'</xdr:txBody>'+
+    '<xdr:txBody><a:bodyPr wrap="none" anchor="ctr" anchorCtr="1"/><a:lstStyle/>'+paras+'</xdr:txBody>'+
     '</xdr:sp>';
   if(asGroupChild) return shape;
   return '<xdr:absoluteAnchor>'+
@@ -9506,7 +9515,11 @@ async function xlsxAppendSheetPair(zip, sheetName, rect, ctx){
     if(el.kind==='pipe') groupChildrenXml.push(xlsxPipeConnectorXml(el, rect, emuPerPx, shapeId++, true));
   });
   // ④ 継手・溶接記号・引出線・プラントノース・文字・寸法：1枚の画像として重ねる（バラバラに崩れないように）
+  // 寸法線・引出線・注記の文字だけは、fitScaleで図面ごと縮んで読めなくならないよう、
+  // ここで縮小分を打ち消す方向にあらかじめ拡大しておく（大きい図面ほど強くかかるが、上限4倍まで）。
+  xlsxTextBoost = Math.min(4, 1/fitScale);
   var iconSvg = buildIconOnlySvg(rect);
+  xlsxTextBoost = 1;
   var iconPng = await svgStringToPngDataUrl(iconSvg, pxW, pxH, true);
   var iconImgName = 'image'+(ctx.mediaIndex++)+'.png';
   var iconSvgName = 'image'+(ctx.mediaIndex++)+'.svg';
@@ -10146,9 +10159,35 @@ function idbDeleteAutosave(cb){
     }catch(e){ if(cb) cb(); }
   });
 }
+// ── 自動保存の世代履歴（直近数世代分をさかのぼって復元できるようにする） ──
+function idbSetHistory(arr, cb){
+  openAutosaveDB(function(db){
+    if(!db){ if(cb) cb(false); return; }
+    try{
+      var tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).put(arr, 'autosave_history');
+      tx.oncomplete = function(){ if(cb) cb(true); };
+      tx.onerror = function(){ if(cb) cb(false); };
+    }catch(e){ if(cb) cb(false); }
+  });
+}
+function idbGetHistory(cb){
+  openAutosaveDB(function(db){
+    if(!db){ cb([]); return; }
+    try{
+      var tx = db.transaction(IDB_STORE, 'readonly');
+      var req = tx.objectStore(IDB_STORE).get('autosave_history');
+      req.onsuccess = function(){ cb(Array.isArray(req.result) ? req.result : []); };
+      req.onerror = function(){ cb([]); };
+    }catch(e){ cb([]); }
+  });
+}
 
 var AUTOSAVE_KEY = 'pipeiso_autosave_v1';
+var AUTOSAVE_HISTORY_MAX = 5;
 var autosaveTimer=null;
+var lastAutosavePayload=null; // 直近の自動保存内容。閉じたタイミングで履歴へ退避する際に使う
+var autosaveHistoryCache=null; // 起動時に読み込んだ履歴（配列）。閉じる時にここへ追加してから書き戻す
 function scheduleAutosave(){
   if(autosaveTimer) clearTimeout(autosaveTimer);
   autosaveTimer = setTimeout(function(){
@@ -10158,10 +10197,12 @@ function scheduleAutosave(){
       if(!hasContent){
         idbDeleteAutosave();
         try{ localStorage.removeItem(AUTOSAVE_KEY); }catch(e){}
+        lastAutosavePayload = null;
         return;
       }
       var sheetsOut = S.sheets.map(sheetToSaveObj);
       var payload = { savedAt:Date.now(), sheets:sheetsOut, activeSheet:S.activeSheet };
+      lastAutosavePayload = payload;
       idbSetAutosave(payload, function(ok){
         if(ok){
           // IndexedDBへの保存に成功したら、旧方式（localStorage）の自動保存は片付けておく
@@ -10184,48 +10225,133 @@ function scheduleAutosave(){
     }catch(e){ /* 保存できない環境（プライベートモード等）では何もしない */ }
   }, 600);
 }
+// アプリを閉じる・バックグラウンドに回す瞬間に、その時点の自動保存内容を履歴（直近5世代分）へ退避する。
+// （編集の途中経過ではなく「閉じたタイミング」の状態だけを世代として残したいため）
+var _historySnapshotTaken = false;
+function snapshotAutosaveToHistoryOnClose(){
+  if(_historySnapshotTaken) return;
+  var payload = lastAutosavePayload;
+  if(!payload) return;
+  var cache = Array.isArray(autosaveHistoryCache) ? autosaveHistoryCache.slice() : [];
+  if(cache.length && cache[0] && cache[0].savedAt === payload.savedAt) return; // 何も変わっていなければ重複して積まない
+  _historySnapshotTaken = true;
+  cache.unshift(payload);
+  if(cache.length > AUTOSAVE_HISTORY_MAX) cache = cache.slice(0, AUTOSAVE_HISTORY_MAX);
+  autosaveHistoryCache = cache;
+  try{ idbSetHistory(cache); }catch(e){ /* 間に合わなくても諦める（ベストエフォート） */ }
+}
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState==='hidden'){ snapshotAutosaveToHistoryOnClose(); }
+  else if(document.visibilityState==='visible'){ _historySnapshotTaken = false; }
+});
+window.addEventListener('pagehide', snapshotAutosaveToHistoryOnClose);
 // render()実行のたびに自動保存を予約する（元のrender関数をラップ）
 var _renderOrig = render;
 render = function(){ _renderOrig(); scheduleAutosave(); };
 
 function tryRestoreAutosave(then){
   idbGetAutosave(function(idbData){
-    if(idbData){ restoreAutosavePayload(idbData, then); return; }
-    // IndexedDBに保存が無い場合は、旧方式（localStorage）の自動保存を確認する
-    var raw;
-    try{ raw = localStorage.getItem(AUTOSAVE_KEY); }catch(e){ then(); return; }
-    if(!raw){ then(); return; }
-    var data;
-    try{ data = JSON.parse(raw); }catch(e){ then(); return; }
-    if(!data){ then(); return; }
-    restoreAutosavePayload(data, then);
+    idbGetHistory(function(hist){
+      autosaveHistoryCache = Array.isArray(hist) ? hist : [];
+      if(idbData){ offerRestoreChoice(idbData, autosaveHistoryCache, then); return; }
+      // IndexedDBの「最新」枠が無い場合は、旧方式（localStorage）の自動保存を確認する
+      var raw, data=null;
+      try{ raw = localStorage.getItem(AUTOSAVE_KEY); }catch(e){ raw=null; }
+      if(raw){ try{ data = JSON.parse(raw); }catch(e){ data=null; } }
+      if(data && autosaveHasContent(data)){ offerRestoreChoice(data, autosaveHistoryCache, then); return; }
+      // 「最新」枠は無くても、過去の履歴だけが残っている場合はそこから選べるようにする
+      if(autosaveHistoryCache.length){ offerRestoreChoice(null, autosaveHistoryCache, then); return; }
+      then();
+    });
   });
 }
-function restoreAutosavePayload(data, then){
+function autosaveHasContent(data){
   var hasSheets = Array.isArray(data.sheets) && data.sheets.some(function(s){ return (s.els&&s.els.length) || (s.pins&&s.pins.length) || s.bg; });
   var hasOldEls = Array.isArray(data.els) && data.els.length;
-  if(!hasSheets && !hasOldEls){ then(); return; }
+  return !!(hasSheets || hasOldEls);
+}
+function applyAutosavePayload(data, then){
+  var hasSheets = Array.isArray(data.sheets) && data.sheets.some(function(s){ return (s.els&&s.els.length) || (s.pins&&s.pins.length) || s.bg; });
+  var hasOldEls = Array.isArray(data.els) && data.els.length;
+  lastAutosavePayload = data;
+  if(hasSheets){
+    loadSheetsFromSaveArray(data.sheets, function(sheets){
+      S.sheets = sheets;
+      var startIdx = (typeof data.activeSheet==='number' && data.activeSheet>=0 && data.activeSheet<S.sheets.length) ? data.activeSheet : 0;
+      S.activeSheet = startIdx;
+      then();
+      if(data.slim) showToast('PLOT（PDF/写真）は自動保存に含まれていなかったため復元されていません。必要な場合はプロットから開き直してください');
+    });
+  } else if(hasOldEls){
+    S.sheets = [makeSheet('1階')];
+    S.sheets[0].els = data.els;
+    S.activeSheet = 0;
+    then();
+  } else {
+    then();
+  }
+}
+// 世代が1つだけの場合は従来通りシンプルな確認ダイアログ、複数ある場合は選択モーダルを出す
+function offerRestoreChoice(current, history, then){
+  var entries = [];
+  var currentSavedAt = (current && autosaveHasContent(current)) ? current.savedAt : null;
+  if(currentSavedAt!=null) entries.push(current);
+  history.forEach(function(h){
+    if(h && autosaveHasContent(h) && h.savedAt!==currentSavedAt) entries.push(h);
+  });
+  if(entries.length === 0){ then(); return; }
+  if(entries.length === 1){
+    restoreAutosavePayload(entries[0], then);
+    return;
+  }
+  showAutosaveHistoryModal(entries, then);
+}
+function showAutosaveHistoryModal(entries, then){
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(20,22,28,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  var card = document.createElement('div');
+  card.style.cssText = 'background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.28);padding:18px;max-width:360px;width:100%;max-height:82vh;overflow:auto;';
+  var title = document.createElement('div');
+  title.textContent = '前回までの自動保存が複数あります。復元するものを選んでください。';
+  title.style.cssText = 'font-weight:700;font-size:14px;margin-bottom:12px;color:#1a1d27;line-height:1.5;';
+  card.appendChild(title);
+  entries.forEach(function(ent, idx){
+    var btn = document.createElement('button');
+    var when = ent.savedAt ? new Date(ent.savedAt).toLocaleString('ja-JP') : '(不明な時刻)';
+    var tag = idx===0 ? '最新' : (idx+1)+'世代前';
+    btn.textContent = tag+'：'+when+(ent.slim ? '　※PLOT除く' : '');
+    btn.style.cssText = 'display:block;width:100%;text-align:left;padding:11px 12px;margin-bottom:8px;border:1.5px solid '+(idx===0?'#0277bd':'#d8dce3')+';border-radius:9px;background:'+(idx===0?'#eaf5fb':'#f7f9fc')+';font-size:13px;color:#1a1d27;cursor:pointer;';
+    btn.onclick = function(){
+      document.body.removeChild(overlay);
+      applyAutosavePayload(ent, then);
+    };
+    card.appendChild(btn);
+  });
+  var newBtn = document.createElement('button');
+  newBtn.textContent = '復元せず新規作成';
+  newBtn.style.cssText = 'display:block;width:100%;text-align:center;padding:10px 12px;margin-top:6px;border:1.5px solid #d32f2f;border-radius:9px;background:#fff;color:#d32f2f;font-size:13px;cursor:pointer;';
+  newBtn.onclick = function(){
+    document.body.removeChild(overlay);
+    idbDeleteAutosave();
+    try{ localStorage.removeItem(AUTOSAVE_KEY); }catch(e){}
+    lastAutosavePayload = null;
+    then();
+  };
+  card.appendChild(newBtn);
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+}
+function restoreAutosavePayload(data, then){
+  if(!autosaveHasContent(data)){ then(); return; }
   var when = data.savedAt ? new Date(data.savedAt).toLocaleString('ja-JP') : '';
   var confirmMsg = '前回の続き（自動保存 '+when+'）を復元しますか？\n「キャンセル」で新規作成します。';
   if(data.slim) confirmMsg += '\n※端末の保存容量の都合で、自動保存にはPLOT（PDF/写真）が含まれていません。配管・ピンなどの線のみ復元されます。';
   if(confirm(confirmMsg)){
-    if(hasSheets){
-      loadSheetsFromSaveArray(data.sheets, function(sheets){
-        S.sheets = sheets;
-        var startIdx = (typeof data.activeSheet==='number' && data.activeSheet>=0 && data.activeSheet<S.sheets.length) ? data.activeSheet : 0;
-        S.activeSheet = startIdx;
-        then();
-        if(data.slim) showToast('PLOT（PDF/写真）は自動保存に含まれていなかったため復元されていません。必要な場合はプロットから開き直してください');
-      });
-    } else {
-      S.sheets = [makeSheet('1階')];
-      S.sheets[0].els = data.els;
-      S.activeSheet = 0;
-      then();
-    }
+    applyAutosavePayload(data, then);
   } else {
     idbDeleteAutosave();
     try{ localStorage.removeItem(AUTOSAVE_KEY); }catch(e){}
+    lastAutosavePayload = null;
     then();
   }
 }
