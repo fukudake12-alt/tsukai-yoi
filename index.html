@@ -1376,8 +1376,9 @@ function ensureXlsx(){ return loadScriptOnce(LIB_URLS.xlsx); }
 <script>
 // ── 定数 ──────────────────────────────────────
 // アプリのバージョン番号。改修（機能追加・修正）を行うたびに1ずつ増やすこと。
-var APP_VERSION  = 35;
-var GRID_M       = 0.1;
+var APP_VERSION  = 40;
+var GRID_M       = 0.05; // 配管などの移動ピッチ
+var VISUAL_GRID_M = 0.1; // 画面に表示する背景グリッド線の間隔（移動ピッチとは別物。従来通り0.1m単位の見た目を維持）
 var PX_PER_M     = 80;
 var SNAP_DIST_PX = 28;  // スナップ精度向上のため拡大
 var DBL_MS       = 350;
@@ -1900,7 +1901,7 @@ function render(){
 function drawGrid(){
   var w=canvas.width, h=canvas.height;
   // グリッドスケールを10倍に拡大（0.1m→1m間隔）
-  var gPx=GRID_M*10*PX_PER_M*S.zoom; if(gPx<6) return;
+  var gPx=VISUAL_GRID_M*10*PX_PER_M*S.zoom; if(gPx<6) return;
   ctx.save(); ctx.strokeStyle='#c8e6a0'; ctx.lineWidth=0.8;
 
   var tan30=Math.tan(30*Math.PI/180);
