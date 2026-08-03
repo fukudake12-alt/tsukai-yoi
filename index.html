@@ -365,6 +365,16 @@ header{
   z-index:30;-webkit-tap-highlight-color:transparent;
 }
 .esc-btn:active{background:#ffebee;}
+/* 決定（Enterキー相当）ボタン：ESCボタンのすぐ右、画面左上。ESC同様「キー名」を表示して対応関係を分かりやすくする */
+.ok-btn{
+  position:absolute;top:8px;left:46px;height:34px;padding:0 8px;
+  border-radius:var(--radius-md);background:#ffffff;border:1.5px solid #2e7d32;
+  color:#2e7d32;font-size:var(--fs-3);font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.12);
+  z-index:30;-webkit-tap-highlight-color:transparent;white-space:nowrap;
+}
+.ok-btn:active{background:#e8f5e9;}
 /* 配管の描画モード切替（アイソメ／平面図）：配管ツール使用中のみ、ツールバー直上・左側に表示 */
 .pipe-mode-switch{
   position:absolute;left:8px;bottom:8px;
@@ -642,7 +652,7 @@ header{
 /* PRINT */
 @media print{
   body{background:#ffffff;color:#000000;}
-  header,.btbar,.sheet-tabbar,.ovl,.esc-btn,.drawer,.multisel-panel,.pipe-edit-panel,.scaff-edit-panel,.scaff-list-panel,.status,.toast,.text-input-overlay,.share-sheet-overlay,.ctx-menu,.bg-panel,.pipe-mode-switch,.angle-step-switch,.pin-list-panel{display:none!important;}
+  header,.btbar,.sheet-tabbar,.ovl,.esc-btn,.ok-btn,.drawer,.multisel-panel,.pipe-edit-panel,.scaff-edit-panel,.scaff-list-panel,.status,.toast,.text-input-overlay,.share-sheet-overlay,.ctx-menu,.bg-panel,.pipe-mode-switch,.angle-step-switch,.pin-list-panel{display:none!important;}
   .canvas-wrap{position:static;width:100%;height:100vh;}
 }
 </style>
@@ -683,7 +693,8 @@ header{
 <div class="body">
   <div class="canvas-wrap" id="wrap">
     <canvas id="c"></canvas>
-    <div class="esc-btn" onclick="escapeToNeutral()" title="操作を中断してニュートラルに戻る">ESC</div>
+    <div class="esc-btn" onclick="escapeToNeutral()" title="操作を中断してニュートラルに戻る（元の位置に戻ります）">ESC</div>
+    <div class="ok-btn" onclick="confirmAtLastMouse()" title="直近でタップ/クリックした位置で確定します（Enterキーと同じ）">ENTER</div>
     <div class="status" id="status">配管</div>
     <div class="ctx-menu" id="ctxMenu"></div>
     <div class="angle-step-switch" id="angleStepSwitch" onclick="cycleAngleStep()" title="配管を描くときの角度固定（タップで15°/30°/45°/90°を切替）" style="display:none;">
@@ -694,8 +705,8 @@ header{
     </div>
 
     <div class="ovl">
-      <div class="ov-label-btn ov-primary" onclick="setToolFitting()" title="継手・ピン・足場などの部品を選んで置く">
-        <span class="ic">🧰</span><span>部品</span>
+      <div class="ov-label-btn ov-primary" onclick="setToolFitting()" title="継手・ピン・足場・配管などをまとめたメニューを開閉します">
+        <span class="ic">☰</span><span>メニュー</span>
       </div>
     </div>
 
@@ -881,9 +892,10 @@ header{
     <!-- ■ ピン記録：バルブ等の対象物に印を付け、名称・サイズ・メモ・写真を紐付ける -->
     <div class="dsec">
       <div class="dg c1">
-        <button class="di" id="bPin" draggable="false" onclick="setTool('addpin')" style="touch-action:none;user-select:none;-webkit-user-drag:none;" ondragstart="return false;" title="タップした位置にピンを設置。既存ピンはドラッグ（他のツール中は長押しでつかんで）移動できます。ピンの情報編集はダブルタップで開きます。ボタンを押したまま指をキャンバスまでスライドさせて離しても設置できます">📌 ピン追加</button>
+        <button class="di" id="bPin" draggable="false" onclick="setTool('addpin')" style="touch-action:none;user-select:none;-webkit-user-drag:none;" ondragstart="return false;" title="タップでその場に直接ピンを設置します。ドラッグすると、押した位置から離した位置まで引き出し線（風船式）を1回の操作で引けます（①はドラッグを離した位置）。その場で少し静止してから指を離す「長押し」でも引き出し線モードに入れ、その場合は続けてもう一度タップして①の位置を指定します（Shift＋タップで折れ点を追加でき、折れ線にできます）。既存ピンはドラッグ（他のツール中は長押しでつかんで）移動できます。ピンの情報編集はダブルタップで開きます。なおこのボタン自体を押したまま指をキャンバスまでスライドさせて離した場合は、引き出し線なしでその場に直接設置されます">📌 ピン追加</button>
         <button class="di" onclick="togglePinListPanel()" style="margin-top:4px;" title="設置済みのピン一覧を表示">📋 ピン一覧</button>
         <button class="di" id="btnImportExcel" onclick="triggerImportPinList()" style="margin-top:4px;" title="Excel(.xlsx/.csv)の名称・ITEM・整備・レーティング・サイズ・TYPE・ガスケット・適用法規・流体・備考の各列を読み込み、名称が一致するピンへ反映します。画面へファイルをドラッグ&ドロップしても取込めます">📥 Excelから取込（D&D可）</button>
+        <button class="di" id="pinScaleSwitch" onclick="cyclePinScale()" style="margin-top:4px;" title="ピンの表示サイズを一括で変更します（タップで70%/100%/130%/160%/200%を巡回）。画面表示・Excel出力の両方に反映されます">ピンの大きさ 100%</button>
       </div>
     </div>
 
@@ -1522,7 +1534,14 @@ var S = {
   pins:[],
   currentEditPin:null, isNewPin:false, pendingPinPhotos:[],
   pinDragging:false, pinDragTarget:null, pinDragStart:null, pinDragOrig:null, pinDragMoved:false,
+  pinDragOrigLx:0, pinDragOrigLy:0, pinDragOrigBends:null, pinDragPart:'whole',
   pinListOpen:false,
+  // ── ピン設置（風船式）：1回目のクリックで実際の位置（アンカー）、2回目のクリックで
+  //    番号バルーン（①等）の位置を決める。Shift＋クリックで折れ点を追加でき、折れ線の
+  //    引き出し線として表現できる。placing中はこのオブジェクトに {wx,wy,bends,previewX,previewY} を持つ ──
+  pinPlacing:null, shiftHeld:false,
+  // ピンの表示サイズ（全体設定・倍率）。localStorageから復元される
+  pinScale:1,
   // ── 階の半透明重ね表示（位置合わせ用） ──
   ghostSheet:0, ghostOpacity:1, ghostShowPins:true, plotPanelOpen:false,
 };
@@ -1888,11 +1907,37 @@ function render(){
     ctx.restore();
   }
   drawPins();
+  if(S.tool==='addpin' && S.pinPlacing){
+    var ppAnchorS = w2s(S.pinPlacing.wx, S.pinPlacing.wy);
+    var ppBendsS = (S.pinPlacing.bends||[]).map(function(b){ return w2s(b.x,b.y); });
+    var ppEndWorld = (S.pinPlacing.previewX!=null) ? {x:S.pinPlacing.previewX, y:S.pinPlacing.previewY} : {x:S.pinPlacing.wx, y:S.pinPlacing.wy};
+    var ppEndS = w2s(ppEndWorld.x, ppEndWorld.y);
+    var ppPts = [ppAnchorS].concat(ppBendsS).concat([ppEndS]);
+    ctx.save();
+    ctx.strokeStyle='#0277bd'; ctx.lineWidth=1.5; ctx.setLineDash([5,4]);
+    ctx.beginPath();
+    ctx.moveTo(ppPts[0].x, ppPts[0].y);
+    for(var ppi=1; ppi<ppPts.length; ppi++) ctx.lineTo(ppPts[ppi].x, ppPts[ppi].y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // アンカー（実際の位置）マーカー
+    ctx.beginPath(); ctx.arc(ppAnchorS.x,ppAnchorS.y,5,0,Math.PI*2);
+    ctx.fillStyle='#0277bd'; ctx.fill(); ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.5; ctx.stroke();
+    // 折れ点マーカー
+    ppBendsS.forEach(function(bs){
+      ctx.beginPath(); ctx.arc(bs.x,bs.y,3.5,0,Math.PI*2);
+      ctx.fillStyle='#0277bd'; ctx.fill();
+    });
+    ctx.restore();
+    ctx.save(); ctx.globalAlpha=0.8;
+    drawPinBalloon(ppEndS.x, ppEndS.y, PIN_COLORS[0], (S.pins?S.pins.length:0)+1, false, null, S.pinScale);
+    ctx.restore();
+  }
   if(S.pinPaletteDragging && S.pinDragGhostPos){
     ctx.save();
     ctx.globalAlpha = 0.75;
     var ghostNum = (S.pins ? S.pins.length : 0) + 1;
-    drawPinIcon(S.pinDragGhostPos.x, S.pinDragGhostPos.y, PIN_COLORS[0], ghostNum, false, false, 2.2);
+    drawPinIcon(S.pinDragGhostPos.x, S.pinDragGhostPos.y, PIN_COLORS[0], ghostNum, false, false, 2.2*(S.pinScale||1));
     ctx.restore();
   }
   updateSt(); updateMirrorButton(); updateMultiSelPanel(); updatePipeEditPanel(); updateScaffEditPanel(); updateScaffListPanel(); updatePinListPanel();
@@ -1959,14 +2004,66 @@ function drawPinIcon(sx,sy,color,label,ghost,grabbed,scale,ringColor){
   }
   ctx.restore();
 }
+// 番号バルーンだけを描く（drawPinIconの旗アイコンから、位置を指す三角の"足"を省いたもの）。
+// 風船式ピン（アンカーと番号バルーンが離れている場合）の、離れた側のバルーン表示に使う。
+function drawPinBalloon(sx,sy,color,label,grabbed,ringColor,scale){
+  var R=13*(scale||1);
+  ctx.save();
+  ctx.translate(sx,sy);
+  if(grabbed){
+    ctx.beginPath();
+    ctx.arc(0,0,R+6,0,Math.PI*2);
+    ctx.strokeStyle='#0277bd'; ctx.lineWidth=2.5; ctx.setLineDash([3,3]); ctx.stroke(); ctx.setLineDash([]);
+  }
+  if(ringColor){
+    ctx.beginPath();
+    ctx.arc(0,0,R+5,0,Math.PI*2);
+    ctx.strokeStyle=ringColor; ctx.lineWidth=3; ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.arc(0,0,R,0,Math.PI*2);
+  ctx.fillStyle=color; ctx.fill();
+  ctx.lineWidth=2; ctx.strokeStyle='#ffffff'; ctx.stroke();
+  ctx.fillStyle='#ffffff'; ctx.font='bold '+Math.round(11*(scale||1))+'px system-ui,sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(String(label), 0, 0);
+  ctx.restore();
+}
+// ピンに「アンカー(実際の位置)」と「ラベル位置(lx,ly)」が別々に設定されているかどうか
+// （旧バージョンで保存されたピンや、2回目のクリックをほぼ同じ場所で行った場合はfalseになり、
+//   これまで通りの旗アイコンとして描画される＝後方互換）
+function pinHasLeader(p){
+  if(p.lx==null || p.ly==null) return false;
+  if(Math.abs(p.lx-p.wx)>1e-6 || Math.abs(p.ly-p.wy)>1e-6) return true;
+  return !!(p.bends && p.bends.length);
+}
 function drawPins(){
   if(!S.pins) return;
+  var pz = S.pinScale||1;
   S.pins.forEach(function(p,i){
-    var pos=w2s(p.wx,p.wy);
     var grabbed = !!(S.dragMode==='move' && S.dragIsPin && S.dragEl===p);
     var ringColor = p.isGpsCalib ? '#ffca28' : (p.isGpsPlaced ? '#29b6f6' : null); // 金=GPS基準点、青=GPSで自動配置
-    drawPinIcon(pos.x,pos.y,p.color||PIN_COLORS[0], i+1, false, grabbed, undefined, ringColor);
-    if(p.name) drawPinNameLabel(pos.x,pos.y,p.name);
+    var anchorS = w2s(p.wx,p.wy);
+    if(pinHasLeader(p)){
+      var labelS = w2s(p.lx,p.ly);
+      var leaderPts = [anchorS].concat((p.bends||[]).map(function(b){ return w2s(b.x,b.y); })).concat([labelS]);
+      ctx.save();
+      ctx.strokeStyle = p.color||PIN_COLORS[0]; ctx.lineWidth=1.5*pz;
+      ctx.beginPath();
+      ctx.moveTo(leaderPts[0].x, leaderPts[0].y);
+      for(var li=1; li<leaderPts.length; li++) ctx.lineTo(leaderPts[li].x, leaderPts[li].y);
+      ctx.stroke();
+      // アンカー（実際の位置）を示す小さな丸
+      ctx.beginPath(); ctx.arc(anchorS.x,anchorS.y,5*pz,0,Math.PI*2);
+      ctx.fillStyle = p.color||PIN_COLORS[0]; ctx.fill();
+      ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.5*pz; ctx.stroke();
+      ctx.restore();
+      drawPinBalloon(labelS.x, labelS.y, p.color||PIN_COLORS[0], i+1, grabbed, ringColor, pz);
+      if(p.name) drawPinNameLabel(labelS.x, labelS.y, p.name, 0, pz);
+    } else {
+      drawPinIcon(anchorS.x,anchorS.y,p.color||PIN_COLORS[0], i+1, false, grabbed, pz, ringColor);
+      if(p.name) drawPinNameLabel(anchorS.x,anchorS.y,p.name, undefined, pz);
+    }
   });
 }
 // 角丸四角形のパス（ctx.roundRectが無い環境でも描けるように自前で用意）
@@ -1982,18 +2079,22 @@ function roundRectPath(x,y,w,h,r){
 }
 // ピンにタイトル（名称）が設定されている場合、アイコンの右側に名前ラベルを表示する
 // （アイコン内の数字はピン一覧との対応用に残し、実際の名前は別途ラベルで見せる）
-function drawPinNameLabel(sx,sy,name){
-  var R=13, cy=-R*1.5;
+// refCy: アイコン（丸）の中心が(sx,sy)からどれだけ上にずれているか。旗アイコン(drawPinIcon)は-R*1.5、
+//        風船バルーン(drawPinBalloon)は0（バルーンは(sx,sy)そのものが中心のため）。省略時は旗アイコン相当。
+function drawPinNameLabel(sx,sy,name,refCy,scale){
+  var R=13*(scale||1);
+  var cy = (refCy!=null) ? refCy : -R*1.5;
   var disp = name.length>18 ? (name.slice(0,18)+'…') : name;
   ctx.save();
   ctx.translate(sx,sy);
-  ctx.font='bold 11px system-ui,sans-serif';
-  var padX=5, padY=3;
+  var fs = Math.round(11*(scale||1));
+  ctx.font='bold '+fs+'px system-ui,sans-serif';
+  var padX=5*(scale||1), padY=3*(scale||1);
   var tw = ctx.measureText(disp).width;
-  var boxW = tw+padX*2, boxH=15+padY;
-  var bx = R+4, by = cy-boxH/2;
+  var boxW = tw+padX*2, boxH=(15*(scale||1))+padY;
+  var bx = R+4*(scale||1), by = cy-boxH/2;
   ctx.fillStyle='rgba(255,255,255,0.92)';
-  roundRectPath(bx,by,boxW,boxH,5);
+  roundRectPath(bx,by,boxW,boxH,5*(scale||1));
   ctx.fill();
   ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=1; ctx.stroke();
   ctx.fillStyle='#1a1d27';
@@ -2004,15 +2105,58 @@ function drawPinNameLabel(sx,sy,name){
 // タップ位置に最も近いピンを探す（アイコン全体を覆う程度の当たり判定にする）
 function hitTestPin(sx,sy){
   if(!S.pins) return null;
-  var R=24, cyOff=-13*1.5;
+  var R=24*(S.pinScale||1), cyOff=-13*1.5*(S.pinScale||1);
   var best=null, bestD=Infinity;
   for(var i=S.pins.length-1;i>=0;i--){
     var p=S.pins[i];
-    var pos=w2s(p.wx,p.wy);
-    var d=Math.hypot(sx-pos.x, sy-(pos.y+cyOff));
+    var pos;
+    if(pinHasLeader(p)){
+      pos = w2s(p.lx,p.ly); // 風船式：番号バルーンの位置で当たり判定
+    } else {
+      var a=w2s(p.wx,p.wy);
+      pos = {x:a.x, y:a.y+cyOff};
+    }
+    var d=Math.hypot(sx-pos.x, sy-pos.y);
     if(d<R && d<bestD){ bestD=d; best=p; }
   }
   return best;
+}
+// 点と線分の距離（線＝引き出し線をつまんだかどうかの判定に使う）
+function distToSegment(px,py,x1,y1,x2,y2){
+  var dx=x2-x1, dy=y2-y1;
+  var len2 = dx*dx+dy*dy;
+  var t = len2>0 ? ((px-x1)*dx+(py-y1)*dy)/len2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  var cx = x1+t*dx, cy = y1+t*dy;
+  return Math.hypot(px-cx, py-cy);
+}
+// タップ位置がピンの「番号バルーン」なのか「引き出し線／アンカー」なのかを区別して返す。
+// バルーンをつまむと①の位置だけ移動（線の始点＝実際の位置は固定）、
+// 線やアンカーをつまむと全体（アンカー・バルーン・折れ点）をまとめて移動する。
+// 戻り値: {pin, part:'label'|'whole'} または null
+function hitTestPinPart(sx,sy){
+  if(!S.pins) return null;
+  var Rb=24*(S.pinScale||1), lineTol=10;
+  for(var i=S.pins.length-1;i>=0;i--){
+    var p=S.pins[i];
+    if(pinHasLeader(p)){
+      var labelS=w2s(p.lx,p.ly);
+      if(Math.hypot(sx-labelS.x, sy-labelS.y) < Rb) return {pin:p, part:'label'};
+      var anchorS=w2s(p.wx,p.wy);
+      var pts=[anchorS].concat((p.bends||[]).map(function(b){ return w2s(b.x,b.y); })).concat([labelS]);
+      var onLine=false;
+      for(var si=0; si<pts.length-1; si++){
+        if(distToSegment(sx,sy,pts[si].x,pts[si].y,pts[si+1].x,pts[si+1].y) < lineTol){ onLine=true; break; }
+      }
+      if(onLine || Math.hypot(sx-anchorS.x, sy-anchorS.y) < 14) return {pin:p, part:'whole'};
+    } else {
+      var cyOff2=-13*1.5*(S.pinScale||1);
+      var a=w2s(p.wx,p.wy);
+      var pos={x:a.x, y:a.y+cyOff2};
+      if(Math.hypot(sx-pos.x, sy-pos.y) < Rb) return {pin:p, part:'whole'};
+    }
+  }
+  return null;
 }
 // ── 階の半透明重ね表示（ゴースト）：他の階の背景・ピンを水色で薄く重ねて位置ズレを確認する ──
 var GHOST_TINT_COLOR = '#00acc1';
@@ -2090,7 +2234,7 @@ function drawGhost(){
     ctx.globalAlpha=Math.min(1,op+0.35);
     sh.pins.forEach(function(p){
       var pos=w2s(p.wx,p.wy);
-      drawPinIcon(pos.x,pos.y,GHOST_TINT_COLOR,'',true);
+      drawPinIcon(pos.x,pos.y,GHOST_TINT_COLOR,'',true,false,S.pinScale);
     });
     ctx.restore();
   }
@@ -3089,9 +3233,13 @@ function setDrawerTab(tab){
   // 足場・ピンタブを開いた直後は、まだ「本足場」「ピン追加」など具体的な種類を選んでいない段階。
   // それなのに配管ツールのままだと、キャンバスをタップした際に誤って配管を引いてしまうため、
   // まだ何も選んでいない状態は「選択」にしておき、誤操作を防ぐ。
+  // ※ここでのsetTool呼び出しは「タブを開いた際の内部的な安全策」であり、ユーザーが明示的に
+  //   ツールを選んだわけではないため、silent=true（確認ダイアログを出さない）・keepDrawer=true
+  //   （ドロワーを閉じない）を指定する。これを付け忘れると、部品/足場タブをタップした瞬間に
+  //   setTool('rangesel')の既定動作でドロワーが閉じてしまい、「タブが選択できず閉じる」ように見える。
   var neededTool = {scaff:'scaff', pin:'addpin'};
   if(neededTool[tab] && S.tool!==neededTool[tab] && S.tool!=='rangesel'){
-    setTool('rangesel');
+    setTool('rangesel', true, true);
   }
   try{ localStorage.setItem(DRAWER_TAB_STORAGE_KEY, tab); }catch(e){}
 }
@@ -4402,6 +4550,7 @@ canvas.addEventListener('touchstart',function(e){
     return;
   }
   if(S.touches.length!==1) return;
+  S.lastMousePos = tpos(e.touches[0]); // 「決定」ボタン（Enterキー相当）が、直近のタッチ位置で確定できるようにする
   startPress(tpos(e.touches[0]));
 },{passive:false});
 
@@ -4424,6 +4573,7 @@ canvas.addEventListener('touchmove',function(e){
     S.touches=ts; render(); return;
   }
   if(ts.length===1 && !S.pinching){
+    S.lastMousePos = tpos(ts[0]);
     movePress(tpos(ts[0]));
   }
 },{passive:false});
@@ -4463,6 +4613,13 @@ function startPress(pos){
   S.downPos = pos;
   S.longPressFired = false;
 
+  // ピン設置中（風船式：アンカーは決めたが番号バルーンの位置、または折れ点をまだ決めていない）は、
+  // 既存ピンのダブルタップ判定や長押しドラッグ判定を一切挟まず、そのままタップとして扱う。
+  // 実際の「折れ点を追加」／「バルーン位置を確定」はendPress→handleDown側で行う。
+  if(S.tool==='addpin' && S.pinPlacing){
+    return;
+  }
+
   // ピンのダブルタップ判定：ツールの種類に関わらず、同じピンを素早く2回タップしたら
   // 長押し・ドラッグを一切開始せず、その場で編集画面を開く（設置後の編集はこちらに統一）。
   var hpForTap = hitTestPin(pos.x,pos.y);
@@ -4491,15 +4648,31 @@ function startPress(pos){
 
   // ピン追加ツール：既存ピンの上を押したらそのままドラッグで移動できるようにする（長押し判定は挟まない）
   if(S.tool==='addpin'){
-    var hpDown = hitTestPin(pos.x,pos.y);
+    var hpDown = hitTestPinPart(pos.x,pos.y);
     if(hpDown){
       S.pinDragging = true;
-      S.pinDragTarget = hpDown;
-      S.pinDragStart = s2w(pos.x,pos.y);
-      S.pinDragOrig = {x:hpDown.wx, y:hpDown.wy};
+      S.pinDragTarget = hpDown.pin;
+      S.pinDragPart = hpDown.part;
+      S.pinDragStart = s2w(pos.x,pos.y); // つかんだ瞬間の絶対座標（以降の移動量＝deltaの基準にする）
+      S.pinDragOrig = {x:hpDown.pin.wx, y:hpDown.pin.wy};
+      // 風船式（引き出し線あり）の場合は、バルーン位置・折れ点も含めて一緒に平行移動させる
+      S.pinDragOrigLx = (hpDown.pin.lx!=null) ? hpDown.pin.lx : hpDown.pin.wx;
+      S.pinDragOrigLy = (hpDown.pin.ly!=null) ? hpDown.pin.ly : hpDown.pin.wy;
+      S.pinDragOrigBends = (hpDown.pin.bends||[]).map(function(b){ return {x:b.x, y:b.y}; });
       S.pinDragMoved = false;
       return;
     }
+    // 何もない場所を押した＝新規ピンの配置。
+    // タップ（短押し）ならその場に直接ピンを設置し、長押しなら風船式（引き出し線）の配置を開始する。
+    cancelLongPress();
+    S.longPressTimer = setTimeout(function(){
+      S.longPressFired = true; // 指を離すまで、この後のタップ確定（simple配置）を発火させない
+      var wpLp = s2w(pos.x,pos.y);
+      S.pinPlacing = {wx:wpLp.x, wy:wpLp.y, bends:[], previewX:wpLp.x, previewY:wpLp.y};
+      render();
+      showToast('📍 実際の位置を配置しました。次に①を置く位置をタップしてください（Shift+タップで折れ点を追加できます）');
+    }, LONG_PRESS_MS);
+    return;
   }
 
   // トリム／延長ツール：2回のタップで基準配管→対象配管を選ぶ操作なので、
@@ -4592,6 +4765,14 @@ function startPress(pos){
       var ww0=s2w(pos.x,pos.y); S.dragOffX=ww0.x-el2.wx1; S.dragOffY=ww0.y-el2.wy1;
     } else if(el2.kind==='hose'){
       var ww0h=s2w(pos.x,pos.y); S.dragOffX=ww0h.x-el2.pts[0].x; S.dragOffY=ww0h.y-el2.pts[0].y;
+    } else if(S.dragIsPin && S.pinDragPart==='label'){
+      // ピンの番号（バルーン）だけを掴んでいる場合：アンカー(wx,wy)ではなく、
+      // バルーンの位置(lx,ly)を基準にオフセットを計算し直す。
+      // ここをel.wx基準のまま計算していたため、長押しで数字をつかんだ後にタップし直すと
+      // アンカー位置からの相対量で数字が動いてしまい、タップした場所と違う所に配置される不具合があった。
+      var wwLbl=s2w(pos.x,pos.y);
+      var curLx1 = (el2.lx!=null) ? el2.lx : el2.wx, curLy1 = (el2.ly!=null) ? el2.ly : el2.wy;
+      S.dragOffX=wwLbl.x-curLx1; S.dragOffY=wwLbl.y-curLy1;
     } else {
       var ww1=s2w(pos.x,pos.y); S.dragOffX=ww1.x-el2.wx; S.dragOffY=ww1.y-el2.wy;
     }
@@ -4630,14 +4811,50 @@ function movePress(pos){
   }
   if(S.pinDragging){
     var wgpP = s2w(pos.x,pos.y);
-    S.pinDragTarget.wx = S.pinDragOrig.x + (wgpP.x - S.pinDragStart.x);
-    S.pinDragTarget.wy = S.pinDragOrig.y + (wgpP.y - S.pinDragStart.y);
+    var pdx = wgpP.x - S.pinDragStart.x, pdy = wgpP.y - S.pinDragStart.y; // つかんでからの移動量
+    if(S.pinDragPart==='label'){
+      // 数字（①バルーン）だけをドラッグ：線の始点＝アンカー（実際の位置）はそのまま、バルーンの位置だけ動かす
+      S.pinDragTarget.lx = S.pinDragOrigLx + pdx;
+      S.pinDragTarget.ly = S.pinDragOrigLy + pdy;
+    } else {
+      // 引き出し線／アンカーをドラッグ：アンカー・バルーン・折れ点をまとめて平行移動
+      S.pinDragTarget.wx = S.pinDragOrig.x + pdx;
+      S.pinDragTarget.wy = S.pinDragOrig.y + pdy;
+      if(S.pinDragTarget.lx!=null){
+        S.pinDragTarget.lx = S.pinDragOrigLx + pdx;
+        S.pinDragTarget.ly = S.pinDragOrigLy + pdy;
+      }
+      if(S.pinDragOrigBends && S.pinDragOrigBends.length){
+        S.pinDragTarget.bends = S.pinDragOrigBends.map(function(b){ return {x:b.x+pdx, y:b.y+pdy}; });
+      }
+    }
     S.pinDragMoved = true;
     render();
     return;
   }
-  // 長押し判定前に大きく動いたら長押しをキャンセルして通常描画系の動きに切替
-  if(S.longPressTimer && S.downPos && dist2(pos.x,pos.y,S.downPos.x,S.downPos.y) > MOVE_CANCEL_PX){
+  // ピン追加ツール：長押し（その場で静止）で入る以外に、素早くドラッグした場合も
+  // 「押した位置→今の位置」の引き出し線モードにその場で入る（配管等の他ツールと同じ
+  // 「ドラッグ＝線を引く」感覚に合わせるため）。この場合は指を離した時点でそのまま①の
+  // 位置として確定する（長押し後に別途タップし直す必要はない）。
+  if(S.tool==='addpin' && !S.pinPlacing && !S.pinDragging && S.downPos && S.longPressTimer && dist2(pos.x,pos.y,S.downPos.x,S.downPos.y) > MOVE_CANCEL_PX){
+    cancelLongPress();
+    var wpDragStart = s2w(S.downPos.x, S.downPos.y);
+    S.pinPlacing = {wx:wpDragStart.x, wy:wpDragStart.y, bends:[], previewX:wpDragStart.x, previewY:wpDragStart.y, dragMode:true};
+  }
+  // ピン設置中（風船式）：アンカー／直前の折れ点から現在のポインタ位置までのプレビュー線を更新する
+  if(S.tool==='addpin' && S.pinPlacing){
+    var wgpPin = s2w(pos.x,pos.y);
+    S.pinPlacing.previewX = wgpPin.x;
+    S.pinPlacing.previewY = wgpPin.y;
+    render();
+    return;
+  }
+  // 長押し判定前に大きく動いたら長押しをキャンセルして通常描画系の動きに切替。
+  // ただしピン追加ツールは例外：長押し＝引き出し線モードの開始トリガーとして使っているため、
+  // ここで早期キャンセル→即タップ扱い（handleDown）にしてしまうと、長押し中の少しの指ぶれ・
+  // マウスの微振動だけで「タップでその場に即設置」の分岐に化けてしまい、長押しが実質発火しなくなる。
+  // そのためピン追加ツールに限り、指を離すまで（endPress側のcancelLongPress）は長押し判定を継続する。
+  if(S.tool!=='addpin' && S.longPressTimer && S.downPos && dist2(pos.x,pos.y,S.downPos.x,S.downPos.y) > MOVE_CANCEL_PX){
     cancelLongPress();
     if(!S.dragMode){ handleDown(S.downPos); }
   }
@@ -4665,8 +4882,23 @@ function movePress(pos){
     if(S.dragIsPin){
       // ピン：配管・継手と同じ移動操作だが、グリッドスナップはせず指の位置にそのまま追従させる
       var wwPinM=s2w(pos.x,pos.y);
-      S.dragEl.wx = wwPinM.x-S.dragOffX;
-      S.dragEl.wy = wwPinM.y-S.dragOffY;
+      if(S.pinDragPart==='label'){
+        // 数字（①バルーン）だけをドラッグ：線の始点＝アンカー（実際の位置）はそのまま、バルーンの位置だけ動かす
+        S.dragEl.lx = wwPinM.x - S.dragOffX;
+        S.dragEl.ly = wwPinM.y - S.dragOffY;
+      } else {
+        S.dragEl.wx = wwPinM.x-S.dragOffX;
+        S.dragEl.wy = wwPinM.y-S.dragOffY;
+        // 風船式（引き出し線あり）の場合、バルーン位置・折れ点も同じ分だけ一緒に動かす
+        if(S.dragEl.lx!=null && S.dragPinOrigWx!=null){
+          var pdxM = S.dragEl.wx - S.dragPinOrigWx, pdyM = S.dragEl.wy - S.dragPinOrigWy;
+          S.dragEl.lx = S.dragPinOrigLx + pdxM;
+          S.dragEl.ly = S.dragPinOrigLy + pdyM;
+          if(S.dragPinOrigBends && S.dragPinOrigBends.length){
+            S.dragEl.bends = S.dragPinOrigBends.map(function(b){ return {x:b.x+pdxM, y:b.y+pdyM}; });
+          }
+        }
+      }
     } else if(S.dragEl.kind==='pipe'){
       // 固定モードではなく、指の「今の位置」が端に近いか中央寄りかを毎回判定する
       var pEp1=w2s(S.dragEl.wx1,S.dragEl.wy1), pEp2=w2s(S.dragEl.wx2,S.dragEl.wy2);
@@ -5104,16 +5336,29 @@ function endPress(pos){
 // 対象の上でなければ何もせず false を返す。
 function grabElementAt(pos){
   // ピンは他の要素より上に描画されるため、配管・継手などと同じ「長押しでつかんで移動」の対象として最初に判定する
-  var hp = hitTestPin(pos.x,pos.y);
+  var hp = hitTestPinPart(pos.x,pos.y);
   if(hp){
     S.justGrabbed = true;
     saveH();
-    S.dragMode='move'; S.dragEl=hp; S.dragging=true; S.dragEntryTime=Date.now();
+    S.dragMode='move'; S.dragEl=hp.pin; S.dragging=true; S.dragEntryTime=Date.now();
     S.dragIsPin = true;
+    S.pinDragPart = hp.part;
     S.sel=null; S.lastFit=null;
     S.dragSubMode=null; S.dragEnd=null; S.dragPart=null;
-    var wwPin=s2w(pos.x,pos.y); S.dragOffX=wwPin.x-hp.wx; S.dragOffY=wwPin.y-hp.wy;
-    showToast('↔ ドラッグで移動 — タップで確定');
+    var wwPin=s2w(pos.x,pos.y);
+    var curLx = (hp.pin.lx!=null) ? hp.pin.lx : hp.pin.wx;
+    var curLy = (hp.pin.ly!=null) ? hp.pin.ly : hp.pin.wy;
+    if(hp.part==='label'){
+      // 数字（①バルーン）だけをつかんだ：バルーン位置基準でオフセットを記録（アンカーは動かさない）
+      S.dragOffX = wwPin.x - curLx; S.dragOffY = wwPin.y - curLy;
+    } else {
+      S.dragOffX = wwPin.x - hp.pin.wx; S.dragOffY = wwPin.y - hp.pin.wy;
+    }
+    // 風船式（引き出し線あり）の場合、バルーン位置・折れ点も一緒に平行移動させるため元の位置を記録しておく
+    S.dragPinOrigWx = hp.pin.wx; S.dragPinOrigWy = hp.pin.wy;
+    S.dragPinOrigLx = curLx; S.dragPinOrigLy = curLy;
+    S.dragPinOrigBends = (hp.pin.bends||[]).map(function(b){ return {x:b.x, y:b.y}; });
+    showToast(hp.part==='label' ? '↔ ①の位置だけドラッグで移動 — タップで確定' : '↔ ドラッグで移動 — タップで確定');
     render();
     return true;
   }
@@ -5194,6 +5439,24 @@ function endDragMode(){
   var wasPin = S.dragIsPin;
   S.dragMode=null; S.dragEl=null; S.dragging=false; S.snapPt=null; S.justGrabbed=false; S.dragSubMode=null; S.dragEnd=null; S.dragPart=null; S.scaffRotateGuideShow=false; S.scaffResize=null; S.freehandResize=null; S.dragIsPin=false;
   showToast(wasPin ? '✅ 確定（編集するにはダブルタップ）' : '✅ 確定'); updateMirrorButton(); render();
+}
+// つかんで移動中（長押しでつかんだ後、まだ確定タップをしていない状態）の操作を、
+// 位置を変更する前の状態に戻したうえで中断する（Escapeキー用）。
+// 現状、掴む前の位置を保持しているのはピン（S.dragPinOrig*）のみのため、ピンのみ完全に元へ戻せる。
+// それ以外の要素（配管・継手など）は、掴む前の位置を保持していないため、この関数は何もせずfalseを返す
+// （その場合、呼び出し側は従来通りendDragMode()等でその場に確定させる）。
+// 戻り値: 実際にキャンセル（元に戻す）処理を行った場合はtrue
+function cancelDragMode(){
+  if(S.dragMode==='move' && S.dragIsPin && S.dragEl && S.dragPinOrigWx!=null){
+    S.dragEl.wx = S.dragPinOrigWx; S.dragEl.wy = S.dragPinOrigWy;
+    if(S.dragEl.lx!=null){ S.dragEl.lx = S.dragPinOrigLx; S.dragEl.ly = S.dragPinOrigLy; }
+    if(S.dragPinOrigBends){ S.dragEl.bends = S.dragPinOrigBends.map(function(b){ return {x:b.x, y:b.y}; }); }
+    S.dragMode=null; S.dragEl=null; S.dragging=false; S.snapPt=null; S.justGrabbed=false; S.dragSubMode=null; S.dragEnd=null; S.dragPart=null; S.dragIsPin=false;
+    showToast('⏹ 移動をキャンセルしました（元の位置に戻しました）');
+    render();
+    return true;
+  }
+  return false;
 }
 
 // 範囲選択中の要素すべてを画面座標のバウンディングボックス（余白付き）で返す
@@ -5301,11 +5564,35 @@ function handleDown(pos){
   hidePop();
   S.lastFit=null;
   if(S.tool==='addpin'){
+    // 風船式ピン設置の続き：1回目のクリックで既に実際の位置（アンカー）を決めてある状態
+    if(S.pinPlacing){
+      var wpCont = s2w(pos.x,pos.y);
+      if(S.shiftHeld){
+        // Shiftを押しながらのクリック：折れ点を追加し、続けて次の点の入力を待つ（折れ線の引き出し線）
+        S.pinPlacing.bends.push({x:wpCont.x, y:wpCont.y});
+        render();
+        showToast('📍 折れ点を追加しました（続けてタップで追加／Shiftを離してタップで①の位置を確定）');
+        return;
+      }
+      // 通常のクリック：ここが番号バルーン「①」の位置になり、ピンを確定する
+      var anchorPin = {x:S.pinPlacing.wx, y:S.pinPlacing.wy};
+      var bendsPin = S.pinPlacing.bends.slice();
+      S.pinPlacing = null;
+      var newPin = {id:'pin_'+Date.now()+'_'+Math.floor(Math.random()*10000),
+        wx:anchorPin.x, wy:anchorPin.y, lx:wpCont.x, ly:wpCont.y, bends:bendsPin,
+        name:'', item:'', seibi:'', rating:'', size:'', type:'', gasket:'', law:'', fluid:'', memo:'', photos:[], specs:[], color:PIN_COLORS[0]};
+      render();
+      openPinEditor(newPin, true);
+      return;
+    }
     var hpTap = hitTestPin(pos.x,pos.y);
     if(hpTap){ showToast('✏️ 編集するにはピンをダブルタップしてください'); return; } // 既存ピン上：新規作成を防ぎつつ案内のみ
+    // タップ（短押し）：引き出し線なしで、その場に直接ピンを設置する（後方互換のシンプルな旗ピン）。
+    // 風船式（引き出し線）で置きたい場合は、このタップ操作ではなく「長押し」を使う（startPress側で開始される）。
     var wp = s2w(pos.x,pos.y);
-    var newPin = {id:'pin_'+Date.now()+'_'+Math.floor(Math.random()*10000), wx:wp.x, wy:wp.y, name:'', item:'', seibi:'', rating:'', size:'', type:'', gasket:'', law:'', fluid:'', memo:'', photos:[], specs:[], color:PIN_COLORS[0]};
-    openPinEditor(newPin, true);
+    var newPinSimple = {id:'pin_'+Date.now()+'_'+Math.floor(Math.random()*10000),
+      wx:wp.x, wy:wp.y, name:'', item:'', seibi:'', rating:'', size:'', type:'', gasket:'', law:'', fluid:'', memo:'', photos:[], specs:[], color:PIN_COLORS[0]};
+    openPinEditor(newPinSimple, true);
     return;
   }
   if(S.tool==='eraser'){
@@ -5874,13 +6161,18 @@ document.addEventListener('click',function(e){
 // という意図のための機能なので、何も進行中でなければ何もしない。
 function confirmAtLastMouse(){
   if(!S.lastMousePos) return;
-  var busy = !!S.dragMode || S.drawing || S.drawingLeader || S.rangeSelecting || S.hoseDrawing || S.pendingScale || S.bgDragging || S.angleDrawing || S.scaffDrawing || S.rulerDrawing || S.freehandDrawing;
-  if(!busy) return;
+  var busy = !!S.dragMode || S.drawing || S.drawingLeader || S.rangeSelecting || S.hoseDrawing || S.pendingScale || S.bgDragging || S.angleDrawing || S.scaffDrawing || S.rulerDrawing || S.freehandDrawing || !!S.pinPlacing;
+  if(!busy){ showToast('（確定できる操作がありません）'); return; }
   var pos = S.lastMousePos;
   S.downPos = pos;      // タップ位置＝現在のマウス位置とみなす（移動量0扱いにするため）
   S.longPressFired = false;
   endPress(pos);
 }
+// ピンの風船式設置（折れ線の引き出し線）用：Shiftキーが押されているかどうかを追跡する。
+// マウス操作のブラウザ環境向け（タッチ操作にはShiftキーが無いため、その場合は常にfalseのまま＝通常のクリックとして扱われる）。
+document.addEventListener('keydown',function(e){ if(e.key==='Shift') S.shiftHeld = true; });
+document.addEventListener('keyup',function(e){ if(e.key==='Shift') S.shiftHeld = false; });
+window.addEventListener('blur',function(){ S.shiftHeld = false; }); // 他アプリへ切替えた際に押しっぱなし判定が残らないようにする
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
     e.preventDefault();
@@ -7965,7 +8257,7 @@ function toggleDimVisible(){
 // これがtrueの間に別のツールへ切り替えると、入力中の内容が失われてしまうため、
 // setTool()側で確認ポップアップを出す判断に使う。
 function isPlacementInProgress(){
-  return !!S.dragMode || S.drawing || S.drawingLeader || S.rangeSelecting || S.hoseDrawing || S.pendingScale || S.bgDragging || S.angleDrawing || S.scaffDrawing || S.rulerDrawing || S.freehandDrawing || (S.freehandBuffer && S.freehandBuffer.length>0);
+  return !!S.dragMode || S.drawing || S.drawingLeader || S.rangeSelecting || S.hoseDrawing || S.pendingScale || S.bgDragging || S.angleDrawing || S.scaffDrawing || S.rulerDrawing || S.freehandDrawing || (S.freehandBuffer && S.freehandBuffer.length>0) || !!S.pinPlacing;
 }
 function cancelInProgressDrawing(){
   S.drawing=false; S.drawStart=null; S.prev=null; S.snapPt=null;
@@ -7979,8 +8271,9 @@ function cancelInProgressDrawing(){
   S.scaffDrawing=false; S.scaffPrev=null; S.scaffStart=null;
   S.rulerDrawing=false; S.rulerPrev=null; S.rulerStart=null;
   S.bgDragging=false;
+  S.pinPlacing=null;
 }
-function setTool(t, silent){
+function setTool(t, silent, keepDrawer){
   if(!silent && t!==S.tool && isPlacementInProgress()){
     if(!confirm('⚠️ 現在、設置・作図の途中です。\n中断して別の操作に切り替えますか？（入力中の内容は失われます）')) return;
   }
@@ -8003,7 +8296,7 @@ function setTool(t, silent){
     });
   }
   var keepDrawerOpen = ['fitting','stampExisting','stampNew','split','join','hose','freehand','headerPlan','headerIso','trim','extend','scaff'];
-  if(keepDrawerOpen.indexOf(t)===-1) closeDrawer();
+  if(!keepDrawer && keepDrawerOpen.indexOf(t)===-1) closeDrawer();
   updateSt(); updateMirrorButton(); updateMultiSelPanel(); updatePipeEditPanel(); updateScaffEditPanel(); updatePipeModeSwitch(); updateAngleStepSwitch(); updatePlotPanel(); updateFreehandBar();
 }
 // ── 配管の描画モード切替（アイソメ／平面図） ─────────────
@@ -8052,6 +8345,32 @@ function setAngleStep(deg){
   updateAngleStepSwitch();
   showToast('角度固定：'+deg+'°刻みに切り替えました');
 }
+// ── ピンの表示サイズ（全体設定）：70%→100%→130%→160%→200%…と巡回して切り替える。
+// 画面表示・ドラッグゴースト・GPSゴースト・Excel出力（配管図への埋め込み画像）すべてに反映される。
+var PIN_SCALE_STORAGE_KEY = 'pipeiso_pin_scale';
+var PIN_SCALE_SEQ = [0.7, 1, 1.3, 1.6, 2];
+function initPinScale(){
+  var saved = null;
+  try{ saved = parseFloat(localStorage.getItem(PIN_SCALE_STORAGE_KEY)); }catch(e){}
+  S.pinScale = (PIN_SCALE_SEQ.indexOf(saved)>=0) ? saved : 1;
+  updatePinScaleSwitch();
+}
+function cyclePinScale(){
+  var i = PIN_SCALE_SEQ.indexOf(S.pinScale);
+  var next = PIN_SCALE_SEQ[(i+1) % PIN_SCALE_SEQ.length];
+  setPinScale(next);
+}
+function setPinScale(v){
+  S.pinScale = v;
+  try{ localStorage.setItem(PIN_SCALE_STORAGE_KEY, String(v)); }catch(e){}
+  updatePinScaleSwitch();
+  showToast('📌 ピンの大きさ：'+Math.round(v*100)+'%に変更しました');
+  render();
+}
+function updatePinScaleSwitch(){
+  var sw = document.getElementById('pinScaleSwitch');
+  if(sw) sw.textContent = 'ピンの大きさ '+Math.round((S.pinScale||1)*100)+'%';
+}
 function updateAngleStepSwitch(){
   var sw = document.getElementById('angleStepSwitch');
   if(sw) sw.style.display = (S.tool==='pipe') ? 'flex' : 'none'; // 配管ツール使用中のみ表示（角度固定は配管を描く時にしか使わないため）
@@ -8078,14 +8397,27 @@ function escapeToNeutral(){
   closeTextInput();
   closeShareSheet();
   if(S.currentEditPin) cancelPinEditor();
+  // ピン追加ツール自身でのドラッグ中（S.pinDragging）にEscapeした場合も、位置を元に戻してからキャンセルする
+  var cancelledPinDrag = false;
+  if(S.pinDragging && S.pinDragTarget){
+    var pdT = S.pinDragTarget;
+    pdT.wx = S.pinDragOrig.x; pdT.wy = S.pinDragOrig.y;
+    if(pdT.lx!=null){ pdT.lx = S.pinDragOrigLx; pdT.ly = S.pinDragOrigLy; }
+    if(S.pinDragOrigBends){ pdT.bends = S.pinDragOrigBends.map(function(b){ return {x:b.x, y:b.y}; }); }
+    cancelledPinDrag = true;
+  }
   S.pinDragging=false; S.pinDragTarget=null;
   cancelLongPress();
   S.drawing=false; S.drawStart=null; S.prev=null; S.snapPt=null;
   S.drawingLeader=false; S.leaderStart=null; S.leaderPrev=null;
   S.rangeSelecting=false; S.rangeStart=null; S.rangeEnd=null;
   S.sel=null; S.lastFit=null; S.pendingScale=false;
+  // ピンをつかんで移動中（長押しでつかんだ後、まだ確定タップをしていない状態）にEscapeを押した場合は、
+  // 単に今の位置で確定させる（setTool内部のendDragMode）のではなく、掴む前の位置に戻してキャンセルする。
+  var cancelledDrag = cancelDragMode();
   setTool('rangesel', true); // 内部でドラッグ・グループ移動モードの終了と選択解除も行われる（Escによる中断は既に確定済みの操作なので確認は不要）
-  showToast('⏹ 操作を中断しました');
+  if(cancelledPinDrag) showToast('⏹ 移動をキャンセルしました（元の位置に戻しました）');
+  else if(!cancelledDrag) showToast('⏹ 操作を中断しました');
   render();
 }
 
@@ -8258,7 +8590,7 @@ function closeDrawer(){
 
 // ── STATUS / TOAST ─────────────────────────────
 function updateSt(){
-  var tn={pipe:'配管',fitting:'継手',dim:'寸法',text:'文字',eraser:'消去',northarrow:'プラントノース',split:'分割',join:'結合',trim:'トリム',extend:'延長',angle:'角度(補助三角形)',headerPlan:'ヘッダー(平面)',headerIso:'ヘッダー(アイソメ)',movebg:'背景PDF位置調整',hose:'ホース',freehand:'手書き（描き終えたら✅確定を押してください）',rangesel:'選択',ruler:'校正',addpin:'ピン追加（タップで設置／既存ピンはドラッグで移動）'};
+  var tn={pipe:'配管',fitting:'継手',dim:'寸法',text:'文字',eraser:'消去',northarrow:'プラントノース',split:'分割',join:'結合',trim:'トリム',extend:'延長',angle:'角度(補助三角形)',headerPlan:'ヘッダー(平面)',headerIso:'ヘッダー(アイソメ)',movebg:'背景PDF位置調整',hose:'ホース',freehand:'手書き（描き終えたら✅確定を押してください）',rangesel:'選択',ruler:'校正',addpin:'ピン追加（タップ=その場に設置／ドラッグ・長押し=引き出し線で①の位置を指定。Shift+タップで折れ点／既存ピンはドラッグで移動）'};
   var mode='';
   if(S.dragMode==='move'){
     if(S.dragEl && S.dragEl.kind==='fitting'){
@@ -8923,7 +9255,11 @@ function computeSheetContentScreenRect(sheetData){
     }
     else if(typeof el.wx==='number' && typeof el.wy==='number'){ addWorldPt(el.wx, el.wy); }
   });
-  (sheetData.pins||[]).forEach(function(p){ addWorldPt(p.wx,p.wy); });
+  (sheetData.pins||[]).forEach(function(p){
+    addWorldPt(p.wx,p.wy);
+    if(p.lx!=null && p.ly!=null) addWorldPt(p.lx,p.ly); // 風船式：バルーンが離れた位置にある場合も出力範囲に含める
+    if(p.bends && p.bends.length) p.bends.forEach(function(b){ addWorldPt(b.x,b.y); });
+  });
   if(sheetData.bg && sheetData.bg.img){
     addRotatedRect(sheetData.bg.wx, sheetData.bg.wy, sheetData.bg.baseW*sheetData.bg.scale, sheetData.bg.baseH*sheetData.bg.scale, sheetData.bg.angle||0);
   }
@@ -9288,14 +9624,53 @@ function buildBgOnlySvg(rect){
 // 世界座標が指す先端の点をローカル原点(0,0)とし、外接ボックス(bbox)を一緒に返すことで、
 // 呼び出し側が「先端の実座標＋このbboxの左上オフセット」から画像の貼り付け位置を計算できるようにしている。
 function pinIconStandaloneSvg(p, idx){
-  var M = 6; // 出力時のピンサイズ倍率（配管図に対して小さすぎるとの指摘のため6倍にしている）
-  var R = 13*M*S.zoom, cy = -R*1.5;
+  var M = 6*(S.pinScale||1); // 出力時のピンサイズ倍率（配管図に対して小さすぎるとの指摘のため6倍にしている。全体設定のピンサイズも反映）
+  var R = 13*M*S.zoom;
   var color = p.color || PIN_COLORS[0];
   var label = String(idx);
   var fs = 11*M*S.zoom;
   var hasName = !!p.name;
   var disp = hasName ? (p.name.length>18 ? p.name.slice(0,18)+'…' : p.name) : '';
   var padX=5*M*S.zoom, padY=3*M*S.zoom, boxW=0, boxH=0, bx=0, by=0;
+  // 風船式（アンカーと①バルーンの位置が離れている、または折れ線がある場合）：
+  // 先端(0,0)＝実際の位置（アンカー）から、引き出し線を経て離れた位置にバルーンを描く
+  if(pinHasLeader(p)){
+    var anchorScr = w2s(p.wx, p.wy);
+    var labelScr = w2s(p.lx, p.ly);
+    var bcx = (labelScr.x - anchorScr.x) * M; // バルーン中心のローカルx（先端(0,0)基準）
+    var bcy = (labelScr.y - anchorScr.y) * M; // バルーン中心のローカルy
+    var bendsLocal = (p.bends||[]).map(function(b){
+      var bs = w2s(b.x,b.y);
+      return {x:(bs.x-anchorScr.x)*M, y:(bs.y-anchorScr.y)*M};
+    });
+    if(hasName){
+      ctx.font = 'bold '+fs.toFixed(2)+'px system-ui,sans-serif';
+      var tw2 = ctx.measureText(disp).width;
+      boxW = tw2+padX*2; boxH = fs*1.4+padY;
+      bx = bcx+R+4*M*S.zoom; by = bcy-boxH/2;
+    }
+    var anchorR = 5*M*S.zoom;
+    var leaderPts = [{x:0,y:0}].concat(bendsLocal).concat([{x:bcx,y:bcy}]);
+    var leaderPath = leaderPts.map(function(pt,ix){ return (ix===0?'M ':'L ')+pt.x.toFixed(2)+' '+pt.y.toFixed(2); }).join(' ');
+    var body2 = '<path d="'+leaderPath+'" fill="none" stroke="'+color+'" stroke-width="'+(1.5*M*S.zoom).toFixed(2)+'"/>'+
+      '<circle cx="0" cy="0" r="'+anchorR.toFixed(2)+'" fill="'+color+'" stroke="#ffffff" stroke-width="'+(1.5*M*S.zoom).toFixed(2)+'"/>'+
+      '<circle cx="'+bcx.toFixed(2)+'" cy="'+bcy.toFixed(2)+'" r="'+R.toFixed(2)+'" fill="'+color+'" stroke="#ffffff" stroke-width="'+(2*M*S.zoom).toFixed(2)+'"/>'+
+      '<text x="'+bcx.toFixed(2)+'" y="'+bcy.toFixed(2)+'" text-anchor="middle" dominant-baseline="central" font-family="system-ui,sans-serif" font-weight="bold" font-size="'+fs.toFixed(2)+'" fill="#ffffff">'+escSvgText(label)+'</text>';
+    if(hasName){
+      body2 += '<rect x="'+bx.toFixed(2)+'" y="'+by.toFixed(2)+'" width="'+boxW.toFixed(2)+'" height="'+boxH.toFixed(2)+'" rx="'+(5*M*S.zoom).toFixed(2)+'" fill="rgba(255,255,255,0.92)" stroke="rgba(0,0,0,0.15)"/>'+
+        '<text x="'+(bx+padX).toFixed(2)+'" y="'+(bcy+1).toFixed(2)+'" text-anchor="start" dominant-baseline="central" font-family="system-ui,sans-serif" font-weight="bold" font-size="'+fs.toFixed(2)+'" fill="#1a1d27">'+escSvgText(disp)+'</text>';
+    }
+    var xs2 = [-anchorR, anchorR, bcx-R, bcx+R], ys2 = [-anchorR, anchorR, bcy-R, bcy+R];
+    bendsLocal.forEach(function(pt){ xs2.push(pt.x); ys2.push(pt.y); });
+    if(hasName){ xs2.push(bx); xs2.push(bx+boxW); ys2.push(by); ys2.push(by+boxH); }
+    var minX2 = Math.min.apply(null, xs2) - 2, maxX2 = Math.max.apply(null, xs2) + 2;
+    var minY2 = Math.min.apply(null, ys2) - 2, maxY2 = Math.max.apply(null, ys2) + 2;
+    var vw2 = maxX2-minX2, vh2 = maxY2-minY2;
+    var svg2 = '<svg xmlns="http://www.w3.org/2000/svg" width="'+vw2.toFixed(2)+'" height="'+vh2.toFixed(2)+'" viewBox="'+minX2.toFixed(2)+' '+minY2.toFixed(2)+' '+vw2.toFixed(2)+' '+vh2.toFixed(2)+'">'+body2+'</svg>';
+    return {svg: svg2, minX: minX2, minY: minY2, vw: vw2, vh: vh2};
+  }
+  // 通常（後方互換）：アンカーと①バルーンが同じ位置＝従来通りの旗アイコン
+  var cy = -R*1.5;
   if(hasName){
     ctx.font = 'bold '+fs.toFixed(2)+'px system-ui,sans-serif';
     var tw = ctx.measureText(disp).width;
@@ -9958,10 +10333,11 @@ function finishBgImageLoad(img, loadedLabel){
   S.bg = {img:img, wx:centerScr.x, wy:centerScr.y, baseW:baseW, baseH:baseH, scale:2.594, opacity:0.8, angle:0};
   document.getElementById('bgOpacitySlider').value = 80;
   S.plotPanelOpen = true;
+  S.showGrid = false; // プロット（写真/PDF）を貼り付けた直後は、下敷きが見やすいようグリッドを自動的に隠す（ツールバーの「⊞ グリッド切替」でいつでも再表示できる）
   updatePlotPanel();
   setTool('ruler', true); // 取込に続けて校正モードを自動で起動する（不要な場合は背景メニューの「校正をキャンセル」で戻れる）
   render();
-  showToast(loadedLabel+'を読み込みました。続けて校正を行ってください（不要なら背景メニューでキャンセルできます）');
+  showToast(loadedLabel+'を読み込みました（グリッドは非表示にしました／「⊞ グリッド切替」で再表示できます）。続けて校正を行ってください（不要なら背景メニューでキャンセルできます）');
 }
 // 写真（jpg/png等）を背景として読み込む。PDF取込と同じ下敷き機構（濃さ・サイズ・回転・位置）をそのまま使う。
 // 解像度はそのまま・保存形式だけWebP（対応環境。非対応時はJPEG）に変換することでファイルサイズを大きく抑える。
@@ -10527,6 +10903,7 @@ function initApp(){
   initDrawStyle();
   initPipeDrawMode();
   initAngleStep();
+  initPinScale();
   initDrawerResize();
   initPanelDragging();
   initDisplayMenuOutsideClose();
