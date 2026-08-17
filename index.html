@@ -593,6 +593,29 @@ header{
   padding:10px 22px;border-radius:var(--radius-lg);border:none;font-size:var(--fs-5);cursor:pointer;font-weight:700;
 }
 .view-btn-trim{background:#0277bd;color:#fff;}
+.view-btn-mark{background:#2e7d32;color:#fff;}
+
+/* 写真マーキング（拡大表示から、丸／フリーハンドで写真に印を付ける） */
+.photo-mark-canvas{position:absolute;touch-action:none;z-index:5;cursor:crosshair;display:none;}
+.mark-toolbar{
+  display:none;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;
+  padding:10px 14px calc(14px + env(safe-area-inset-bottom));
+}
+.mark-shape-group,.mark-color-group{display:flex;gap:6px;align-items:center;}
+.mark-shape-btn{
+  width:36px;height:36px;border-radius:var(--radius-md);border:none;background:rgba(255,255,255,0.15);
+  color:#fff;font-size:16px;cursor:pointer;
+}
+.mark-shape-btn.active{background:#0277bd;}
+.mark-color-btn{
+  width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,0.35);cursor:pointer;padding:0;
+}
+.mark-color-btn.active{border-color:#fff;}
+.mark-undo-btn,.mark-cancel-btn,.mark-confirm-btn{
+  padding:10px 16px;border-radius:var(--radius-lg);border:none;font-size:var(--fs-5);font-weight:700;cursor:pointer;
+}
+.mark-undo-btn,.mark-cancel-btn{background:rgba(255,255,255,0.15);color:#fff;}
+.mark-confirm-btn{background:#0277bd;color:#fff;}
 
 /* 仕様書ページ一覧 */
 .spec-page-overlay{
@@ -1318,11 +1341,27 @@ header{
   <div class="view-stage" id="photoViewStage">
     <div class="view-nav prev" id="photoViewPrev">‹</div>
     <img id="photoViewImg" src="" draggable="false">
+    <canvas class="photo-mark-canvas" id="photoMarkCanvas"></canvas>
     <div class="view-nav next" id="photoViewNext">›</div>
     <div class="view-zoom-hint" id="photoViewZoomHint">🔍 ピンチ／ダブルタップで拡大</div>
   </div>
-  <div class="view-btns">
+  <div class="view-btns" id="photoViewBtns">
     <button class="view-btn-trim" onclick="photoViewerTrim()">✂ トリミング</button>
+    <button class="view-btn-mark" onclick="openPhotoMark()">✏ 書き込み</button>
+  </div>
+  <div class="mark-toolbar" id="photoMarkToolbar">
+    <div class="mark-shape-group">
+      <button class="mark-shape-btn active" data-shape="circle" onclick="setMarkShape('circle')" title="丸で囲む">○</button>
+      <button class="mark-shape-btn" data-shape="free" onclick="setMarkShape('free')" title="フリーハンド">✏</button>
+    </div>
+    <div class="mark-color-group">
+      <button class="mark-color-btn active" data-color="#ff3b30" style="background:#ff3b30" onclick="setMarkColor('#ff3b30')" title="赤"></button>
+      <button class="mark-color-btn" data-color="#ffcc00" style="background:#ffcc00" onclick="setMarkColor('#ffcc00')" title="黄"></button>
+      <button class="mark-color-btn" data-color="#0a84ff" style="background:#0a84ff" onclick="setMarkColor('#0a84ff')" title="青"></button>
+    </div>
+    <button class="mark-undo-btn" onclick="undoMarkStroke()">↩ 戻す</button>
+    <button class="mark-cancel-btn" onclick="cancelPhotoMark()">✕ キャンセル</button>
+    <button class="mark-confirm-btn" onclick="confirmPhotoMark()">✓ 確定</button>
   </div>
 </div>
 
@@ -1971,7 +2010,7 @@ function drawGrid(){
 }
 
 // ── ピン（現場記録：バルブ等の対象物に立てる目印） ─────────────
-function drawPinIcon(sx,sy,color,label,ghost,grabbed,scale,ringColor){
+function drawPinIcon(sx,sy,color,label,ghost,grabbed,scale,ringColor,isName){
   var R=13*(scale||1), cy=-R*1.5;
   ctx.save();
   ctx.translate(sx,sy);
@@ -1993,20 +2032,33 @@ function drawPinIcon(sx,sy,color,label,ghost,grabbed,scale,ringColor){
   ctx.lineTo(0,0);
   ctx.closePath();
   ctx.fillStyle=color; ctx.fill();
-  ctx.beginPath();
-  ctx.arc(0,cy,R,0,Math.PI*2);
-  ctx.fillStyle=color; ctx.fill();
-  ctx.lineWidth=2; ctx.strokeStyle='#ffffff'; ctx.stroke();
+  // 名称表示の場合は横長の角丸カプセルに広げ、番号表示の場合は従来通り丸のまま
+  var fs = Math.round(11*(scale||1));
+  ctx.font='bold '+fs+'px system-ui,sans-serif';
+  var disp = String(label);
+  var capW = R*2;
+  if(isName && !ghost){
+    if(disp.length>8) disp = disp.slice(0,8)+'…';
+    capW = Math.max(R*2, ctx.measureText(disp).width + 14*(scale||1));
+    roundRectPath(-capW/2, cy-R, capW, R*2, R);
+    ctx.fillStyle=color; ctx.fill();
+    ctx.lineWidth=2; ctx.strokeStyle='#ffffff'; ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.arc(0,cy,R,0,Math.PI*2);
+    ctx.fillStyle=color; ctx.fill();
+    ctx.lineWidth=2; ctx.strokeStyle='#ffffff'; ctx.stroke();
+  }
   if(!ghost){
-    ctx.fillStyle='#ffffff'; ctx.font='bold '+Math.round(11*(scale||1))+'px system-ui,sans-serif';
+    ctx.fillStyle='#ffffff';
     ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(String(label), 0, cy);
+    ctx.fillText(disp, 0, cy);
   }
   ctx.restore();
 }
 // 番号バルーンだけを描く（drawPinIconの旗アイコンから、位置を指す三角の"足"を省いたもの）。
 // 風船式ピン（アンカーと番号バルーンが離れている場合）の、離れた側のバルーン表示に使う。
-function drawPinBalloon(sx,sy,color,label,grabbed,ringColor,scale){
+function drawPinBalloon(sx,sy,color,label,grabbed,ringColor,scale,isName){
   var R=13*(scale||1);
   ctx.save();
   ctx.translate(sx,sy);
@@ -2020,13 +2072,24 @@ function drawPinBalloon(sx,sy,color,label,grabbed,ringColor,scale){
     ctx.arc(0,0,R+5,0,Math.PI*2);
     ctx.strokeStyle=ringColor; ctx.lineWidth=3; ctx.stroke();
   }
-  ctx.beginPath();
-  ctx.arc(0,0,R,0,Math.PI*2);
-  ctx.fillStyle=color; ctx.fill();
-  ctx.lineWidth=2; ctx.strokeStyle='#ffffff'; ctx.stroke();
-  ctx.fillStyle='#ffffff'; ctx.font='bold '+Math.round(11*(scale||1))+'px system-ui,sans-serif';
+  var fs = Math.round(11*(scale||1));
+  ctx.font='bold '+fs+'px system-ui,sans-serif';
+  var disp = String(label);
+  if(isName){
+    if(disp.length>8) disp = disp.slice(0,8)+'…';
+    var capW = Math.max(R*2, ctx.measureText(disp).width + 14*(scale||1));
+    roundRectPath(-capW/2, -R, capW, R*2, R);
+    ctx.fillStyle=color; ctx.fill();
+    ctx.lineWidth=2; ctx.strokeStyle='#ffffff'; ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.arc(0,0,R,0,Math.PI*2);
+    ctx.fillStyle=color; ctx.fill();
+    ctx.lineWidth=2; ctx.strokeStyle='#ffffff'; ctx.stroke();
+  }
+  ctx.fillStyle='#ffffff';
   ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(String(label), 0, 0);
+  ctx.fillText(disp, 0, 0);
   ctx.restore();
 }
 // ピンに「アンカー(実際の位置)」と「ラベル位置(lx,ly)」が別々に設定されているかどうか
@@ -2058,11 +2121,9 @@ function drawPins(){
       ctx.fillStyle = p.color||PIN_COLORS[0]; ctx.fill();
       ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.5*pz; ctx.stroke();
       ctx.restore();
-      drawPinBalloon(labelS.x, labelS.y, p.color||PIN_COLORS[0], i+1, grabbed, ringColor, pz);
-      if(p.name) drawPinNameLabel(labelS.x, labelS.y, p.name, 0, pz);
+      drawPinBalloon(labelS.x, labelS.y, p.color||PIN_COLORS[0], p.name||(i+1), grabbed, ringColor, pz, !!p.name);
     } else {
-      drawPinIcon(anchorS.x,anchorS.y,p.color||PIN_COLORS[0], i+1, false, grabbed, pz, ringColor);
-      if(p.name) drawPinNameLabel(anchorS.x,anchorS.y,p.name, undefined, pz);
+      drawPinIcon(anchorS.x,anchorS.y,p.color||PIN_COLORS[0], p.name||(i+1), false, grabbed, pz, ringColor, !!p.name);
     }
   });
 }
@@ -6772,6 +6833,175 @@ function photoViewerTrim(){
   closePhotoViewer();
   openPhotoCropper(idx);
 }
+// ── 写真マーキング（拡大表示から、丸／フリーハンドで写真に印を付ける） ──
+// トリミングと同じ「破壊的処理」方式：確定すると元の写真データに焼き込んで上書きする。
+function openPhotoMark(){
+  if(!S.photoViewer) return;
+  var img = document.getElementById('photoViewImg');
+  var stage = document.getElementById('photoViewStage');
+  var canvas = document.getElementById('photoMarkCanvas');
+  if(!img.naturalWidth){ showToast('写真の読み込みを待ってから書き込んでください'); return; }
+  if(photoViewerCtl) photoViewerCtl.reset(); // ズーム状態のままだと座標がずれるため等倍に戻す
+  var imgRect = img.getBoundingClientRect(), stageRect = stage.getBoundingClientRect();
+  var dispW = imgRect.width, dispH = imgRect.height;
+  var dpr = window.devicePixelRatio || 1;
+  canvas.style.left = (imgRect.left - stageRect.left)+'px';
+  canvas.style.top = (imgRect.top - stageRect.top)+'px';
+  canvas.style.width = dispW+'px';
+  canvas.style.height = dispH+'px';
+  canvas.width = Math.max(1, Math.round(dispW*dpr));
+  canvas.height = Math.max(1, Math.round(dispH*dpr));
+  var ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  S.photoMark = {
+    idx: S.photoViewer.idx, natW: img.naturalWidth, natH: img.naturalHeight,
+    dispW: dispW, dispH: dispH, shape:'circle', color:'#ff3b30',
+    strokes:[], drawing:false, cur:null, ctx:ctx
+  };
+  canvas.style.display = 'block';
+  document.getElementById('photoMarkToolbar').style.display = 'flex';
+  document.getElementById('photoViewBtns').style.display = 'none';
+  document.getElementById('photoViewPrev').style.display = 'none';
+  document.getElementById('photoViewNext').style.display = 'none';
+  var hint = document.getElementById('photoViewZoomHint'); if(hint) hint.style.opacity = '0';
+}
+function setMarkShape(shape){
+  if(!S.photoMark) return;
+  S.photoMark.shape = shape;
+  document.querySelectorAll('.mark-shape-btn').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-shape')===shape); });
+}
+function setMarkColor(color){
+  if(!S.photoMark) return;
+  S.photoMark.color = color;
+  document.querySelectorAll('.mark-color-btn').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-color')===color); });
+}
+function undoMarkStroke(){
+  if(!S.photoMark) return;
+  S.photoMark.strokes.pop();
+  renderMarkCanvas();
+}
+function closePhotoMarkUI(){
+  document.getElementById('photoMarkCanvas').style.display = 'none';
+  document.getElementById('photoMarkToolbar').style.display = 'none';
+  document.getElementById('photoViewBtns').style.display = 'flex';
+  var photos = (S.currentEditPin && S.currentEditPin.photos) || [];
+  var multi = photos.length > 1;
+  document.getElementById('photoViewPrev').style.display = multi ? 'flex' : 'none';
+  document.getElementById('photoViewNext').style.display = multi ? 'flex' : 'none';
+}
+function cancelPhotoMark(){
+  closePhotoMarkUI();
+  S.photoMark = null;
+}
+function renderMarkCanvas(){
+  var pm = S.photoMark; if(!pm) return;
+  var ctx = pm.ctx;
+  ctx.clearRect(0,0,pm.dispW,pm.dispH);
+  var list = pm.cur ? pm.strokes.concat([pm.cur]) : pm.strokes;
+  list.forEach(function(s){ drawMarkStroke(ctx, s, 4); });
+}
+function drawMarkStroke(ctx, s, lineWidth){
+  ctx.lineWidth = lineWidth;
+  ctx.strokeStyle = s.color;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if(s.type === 'circle'){
+    var cx = (s.x0+s.x1)/2, cy = (s.y0+s.y1)/2;
+    var rx = Math.abs(s.x1-s.x0)/2, ry = Math.abs(s.y1-s.y0)/2;
+    if(rx<2 || ry<2) return;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2);
+    ctx.stroke();
+  } else if(s.type === 'free' && s.pts && s.pts.length>1){
+    ctx.beginPath();
+    ctx.moveTo(s.pts[0].x, s.pts[0].y);
+    for(var i=1;i<s.pts.length;i++) ctx.lineTo(s.pts[i].x, s.pts[i].y);
+    ctx.stroke();
+  }
+}
+// キャンバスのポインター操作（丸ドラッグ／フリーハンド）。stage側のピンチズーム処理へ
+// イベントが伝わらないようstopPropagationする。
+function initPhotoMarkHandlers(){
+  var canvas = document.getElementById('photoMarkCanvas');
+  if(!canvas) return;
+  function getPos(e){
+    var rect = canvas.getBoundingClientRect();
+    return { x:e.clientX-rect.left, y:e.clientY-rect.top };
+  }
+  canvas.addEventListener('pointerdown', function(e){
+    var pm = S.photoMark; if(!pm) return;
+    e.stopPropagation();
+    try{ canvas.setPointerCapture(e.pointerId); }catch(err){}
+    var p = getPos(e);
+    if(pm.shape === 'circle'){
+      pm.cur = {type:'circle', x0:p.x, y0:p.y, x1:p.x, y1:p.y, color:pm.color};
+    } else {
+      pm.cur = {type:'free', pts:[p], color:pm.color};
+    }
+    pm.drawing = true;
+  });
+  canvas.addEventListener('pointermove', function(e){
+    var pm = S.photoMark;
+    if(!pm || !pm.drawing || !pm.cur) return;
+    e.stopPropagation();
+    var p = getPos(e);
+    if(pm.cur.type === 'circle'){ pm.cur.x1 = p.x; pm.cur.y1 = p.y; }
+    else { pm.cur.pts.push(p); }
+    renderMarkCanvas();
+  });
+  function endStroke(e){
+    var pm = S.photoMark;
+    if(!pm || !pm.drawing) return;
+    if(e) e.stopPropagation();
+    pm.drawing = false;
+    if(pm.cur){
+      var valid = pm.cur.type==='circle'
+        ? (Math.abs(pm.cur.x1-pm.cur.x0)>4 && Math.abs(pm.cur.y1-pm.cur.y0)>4)
+        : (pm.cur.pts.length>1);
+      if(valid) pm.strokes.push(pm.cur);
+    }
+    pm.cur = null;
+    renderMarkCanvas();
+  }
+  canvas.addEventListener('pointerup', endStroke);
+  canvas.addEventListener('pointercancel', endStroke);
+}
+// 確定：写真の実寸解像度に丸／フリーハンドの線を焼き込み、既存の圧縮関数で再エンコードして置き換える
+function confirmPhotoMark(){
+  var pm = S.photoMark;
+  if(!pm){ return; }
+  if(!pm.strokes.length){ cancelPhotoMark(); return; }
+  var pin = S.currentEditPin;
+  if(!pin || !pin.photos || !pin.photos[pm.idx]){ cancelPhotoMark(); return; }
+  try{
+    var srcImg = document.getElementById('photoViewImg');
+    var cv = document.createElement('canvas');
+    cv.width = pm.natW; cv.height = pm.natH;
+    var ctx = cv.getContext('2d');
+    ctx.drawImage(srcImg, 0, 0, pm.natW, pm.natH);
+    var scaleX = pm.natW/pm.dispW, scaleY = pm.natH/pm.dispH;
+    var lineWidth = 4 * ((scaleX+scaleY)/2);
+    pm.strokes.forEach(function(s){
+      var scaled;
+      if(s.type === 'circle'){
+        scaled = {type:'circle', x0:s.x0*scaleX, y0:s.y0*scaleY, x1:s.x1*scaleX, y1:s.y1*scaleY, color:s.color};
+      } else {
+        scaled = {type:'free', color:s.color, pts:s.pts.map(function(p){ return {x:p.x*scaleX, y:p.y*scaleY}; })};
+      }
+      drawMarkStroke(ctx, scaled, lineWidth);
+    });
+    var rawUrl = cv.toDataURL('image/jpeg', 0.9);
+    compressImageDataUrl(rawUrl, 1000, 0.65).then(function(finalUrl){
+      pin.photos[pm.idx] = finalUrl;
+      renderPinPhotoRow();
+      closePhotoMarkUI();
+      S.photoMark = null;
+      updatePhotoViewer();
+      showToast('写真に書き込みました');
+    });
+  }catch(err){
+    showToast('書き込みの保存に失敗しました（もう一度お試しください）');
+  }
+}
 // 拡大表示ステージ上のスワイプ／タップで前後の写真・ページへ移動する共通処理。
 // 大きく動かした場合はその方向へ、軽いタップの場合はタップ位置（左半分＝前／右半分＝次）で判定する。
 // 拡大表示ステージの操作をまとめて処理するコントローラーを作る。
@@ -10911,6 +11141,7 @@ function initApp(){
   initPinAddDrag();
   initFileDropButtons();
   initCropHandlers();
+  initPhotoMarkHandlers();
   photoViewerCtl = createZoomSwipeController('photoViewStage', 'photoViewImg', photoViewerNav);
   specViewerCtl = createZoomSwipeController('specViewStage', 'specViewImg', specViewerNav);
   document.getElementById('appVersionLabel').textContent = 'v'+APP_VERSION;
