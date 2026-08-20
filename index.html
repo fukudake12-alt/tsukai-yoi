@@ -76,7 +76,7 @@ header{
 .sheet-tab-add:active{background:#dde2ea;}
 .btbar{
   height:54px;background:#ffffff;border-top:1px solid #d8dce3;
-  display:flex;align-items:center;justify-content:space-around;
+  display:flex;align-items:center;justify-content:center;gap:4px;
   padding:0 4px;flex-shrink:0;z-index:100;overflow-x:auto;
 }
 /* 下部ツールバーを「モード切替／編集操作／履歴」の3グループに分け、
@@ -905,6 +905,7 @@ header{
         <button class="di" id="bScaffSusp" onclick="setScaffTool('susp')" style="margin-top:4px;">🪝 吊り足場</button>
         <button class="di" id="bScaffInternal" onclick="setScaffTool('internal')" style="margin-top:4px;">🏢 内部足場</button>
         <button class="di" id="bScaffOverhang" onclick="setScaffTool('overhang')" style="margin-top:4px;">📐 張出足場</button>
+        <button class="di" id="bScaffYagura" onclick="setScaffTool('yagura')" style="margin-top:4px;">🗼 櫓</button>
         <button class="di" id="bScaffSite" onclick="setScaffTool('site')" style="margin-top:4px;">🗺 敷地</button>
       </div>
     </div>
@@ -1292,6 +1293,15 @@ header{
       <input type="text" id="pinFluidField" list="pinFluidOptions" placeholder="流体（手入力）">
       <datalist id="pinFluidOptions"></datalist>
     </div>
+    <div class="pin-field">
+      <div class="pin-editor-label">断熱</div>
+      <input type="text" id="pinInsulField" list="pinInsulOptions" placeholder="例：保温、保冷">
+      <datalist id="pinInsulOptions">
+        <option value="保温"></option>
+        <option value="保冷"></option>
+        <option value="なし"></option>
+      </datalist>
+    </div>
     </div>
     <div class="pin-editor-label">色</div>
     <div class="pin-color-row" id="pinColorRow"></div>
@@ -1360,6 +1370,7 @@ header{
       <button class="mark-color-btn" data-color="#0a84ff" style="background:#0a84ff" onclick="setMarkColor('#0a84ff')" title="青"></button>
     </div>
     <button class="mark-undo-btn" onclick="undoMarkStroke()">↩ 戻す</button>
+    <button class="mark-undo-btn" onclick="redoMarkStroke()">↪ 進む</button>
     <button class="mark-cancel-btn" onclick="cancelPhotoMark()">✕ キャンセル</button>
     <button class="mark-confirm-btn" onclick="confirmPhotoMark()">✓ 確定</button>
   </div>
@@ -1439,10 +1450,10 @@ var ISO_ANGLE_STEP_DEG  = 30; // 既定値（初回起動時のみ使用。以�
 var PLAN_ANGLE_STEP_DEG = 15; // 既定値（互換のため残置。実際の判定はS.angleStepDegを参照）
 
 // ── 足場・敷地 ──────────────────────────────────
-var SCAFF_KIND_LABELS = {asm:'組足場', susp:'吊り足場', internal:'内部足場', overhang:'張出足場', site:'敷地'};
-var SCAFF_KIND_ABBR   = {asm:'組', susp:'吊', internal:'内', overhang:'張', site:'敷'};
-var SCAFF_KIND_ORDER  = ['asm','susp','internal','overhang','site'];
-var SCAFF_KIND_ICON   = {asm:'🏗', susp:'🪝', internal:'🏢', overhang:'📐', site:'🗺'};
+var SCAFF_KIND_LABELS = {asm:'組足場', susp:'吊り足場', internal:'内部足場', overhang:'張出足場', yagura:'櫓', site:'敷地'};
+var SCAFF_KIND_ABBR   = {asm:'組', susp:'吊', internal:'内', overhang:'張', yagura:'櫓', site:'敷'};
+var SCAFF_KIND_ORDER  = ['asm','susp','internal','overhang','yagura','site'];
+var SCAFF_KIND_ICON   = {asm:'🏗', susp:'🪝', internal:'🏢', overhang:'📐', yagura:'🗼', site:'🗺'};
 var SCAFF_COLORS = ['#0277bd','#d32f2f','#2e7d32','#f57f17','#6a1b9a','#00838f','#8d6e63','#c2185b','#455a64','#000000'];
 
 // ── ライセンスキー管理 ─────────────────────────
@@ -1533,7 +1544,7 @@ var S = {
   drawingLeader:false, leaderStart:null, leaderPrev:null,
   // 足場・敷地（矩形）の描画状態
   scaffSub:null, scaffDrawing:false, scaffStart:null, scaffPrev:null,
-  scaffCounters:{asm:0, susp:0, internal:0, overhang:0, site:0},
+  scaffCounters:{asm:0, susp:0, internal:0, overhang:0, yagura:0, site:0},
   lastScaffHeight:2, lastScaffColor:null, scaffListOpen:false,
   // 物差し（背景PDF/写真の縮尺校正）
   rulerDrawing:false, rulerStart:null, rulerPrev:null,
@@ -1699,10 +1710,10 @@ function genScaffUid(){ return 'sc'+(Date.now())+'_'+(scaffUidSeq++); }
 function setScaffTool(sub){
   S.scaffSub = sub;
   setTool('scaff');
-  ['bScaffAsm','bScaffSusp','bScaffInternal','bScaffOverhang','bScaffSite'].forEach(function(id){
+  ['bScaffAsm','bScaffSusp','bScaffInternal','bScaffOverhang','bScaffYagura','bScaffSite'].forEach(function(id){
     var b=document.getElementById(id); if(b) b.classList.remove('on');
   });
-  var idMap={asm:'bScaffAsm',susp:'bScaffSusp',internal:'bScaffInternal',overhang:'bScaffOverhang',site:'bScaffSite'};
+  var idMap={asm:'bScaffAsm',susp:'bScaffSusp',internal:'bScaffInternal',overhang:'bScaffOverhang',yagura:'bScaffYagura',site:'bScaffSite'};
   var btn=document.getElementById(idMap[sub]); if(btn) btn.classList.add('on');
   showToast(SCAFF_KIND_LABELS[sub]+'：0.5m単位で矩形をドラッグして作成してください');
 }
@@ -5641,7 +5652,7 @@ function handleDown(pos){
       S.pinPlacing = null;
       var newPin = {id:'pin_'+Date.now()+'_'+Math.floor(Math.random()*10000),
         wx:anchorPin.x, wy:anchorPin.y, lx:wpCont.x, ly:wpCont.y, bends:bendsPin,
-        name:'', item:'', seibi:'', rating:'', size:'', type:'', gasket:'', law:'', fluid:'', memo:'', photos:[], specs:[], color:PIN_COLORS[0]};
+        name:'', item:'', seibi:'', rating:'', size:'', type:'', gasket:'', law:'', fluid:'', insul:'', memo:'', photos:[], specs:[], color:PIN_COLORS[0]};
       render();
       openPinEditor(newPin, true);
       return;
@@ -5652,7 +5663,7 @@ function handleDown(pos){
     // 風船式（引き出し線）で置きたい場合は、このタップ操作ではなく「長押し」を使う（startPress側で開始される）。
     var wp = s2w(pos.x,pos.y);
     var newPinSimple = {id:'pin_'+Date.now()+'_'+Math.floor(Math.random()*10000),
-      wx:wp.x, wy:wp.y, name:'', item:'', seibi:'', rating:'', size:'', type:'', gasket:'', law:'', fluid:'', memo:'', photos:[], specs:[], color:PIN_COLORS[0]};
+      wx:wp.x, wy:wp.y, name:'', item:'', seibi:'', rating:'', size:'', type:'', gasket:'', law:'', fluid:'', insul:'', memo:'', photos:[], specs:[], color:PIN_COLORS[0]};
     openPinEditor(newPinSimple, true);
     return;
   }
@@ -6717,7 +6728,7 @@ function updatePinListPanel(){
   var html='';
   items.forEach(function(p, i){
     var nm = p.name ? p.name : ('ピン'+(i+1));
-    var sub = [p.item, p.rating, p.size, p.type, p.gasket, p.law, p.fluid, p.memo].filter(function(v){return v;}).join(' ／ ');
+    var sub = [p.item, p.rating, p.size, p.type, p.gasket, p.law, p.fluid, p.insul, p.memo].filter(function(v){return v;}).join(' ／ ');
     html += '<div class="pin-list-row" onclick="selectPinFromList(\''+p.id+'\')">'+
       '<span class="chip" style="background:'+(p.color||PIN_COLORS[0])+';"></span>'+
       '<span class="info"><span class="nm">'+(i+1)+'. '+escapeHtml(nm)+'</span>'+(sub?('<br><span class="mm">'+escapeHtml(sub)+'</span>'):'')+'</span>'+
@@ -6856,7 +6867,8 @@ function openPhotoMark(){
   S.photoMark = {
     idx: S.photoViewer.idx, natW: img.naturalWidth, natH: img.naturalHeight,
     dispW: dispW, dispH: dispH, shape:'circle', color:'#ff3b30',
-    strokes:[], drawing:false, cur:null, ctx:ctx
+    strokes:[], drawing:false, cur:null, ctx:ctx,
+    selectedIdx:null, redoStack:[], dragMode:null, dragHandle:null, dragStart:null, dragOrig:null
   };
   canvas.style.display = 'block';
   document.getElementById('photoMarkToolbar').style.display = 'flex';
@@ -6868,16 +6880,28 @@ function openPhotoMark(){
 function setMarkShape(shape){
   if(!S.photoMark) return;
   S.photoMark.shape = shape;
+  S.photoMark.selectedIdx = null; // 新規描画モードに切り替えるので選択は解除する
   document.querySelectorAll('.mark-shape-btn').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-shape')===shape); });
+  renderMarkCanvas();
 }
 function setMarkColor(color){
   if(!S.photoMark) return;
   S.photoMark.color = color;
   document.querySelectorAll('.mark-color-btn').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-color')===color); });
 }
+// 「戻す」「進む」：描いた（追加した）図形1つ分だけを対象とする。移動・リサイズはこの履歴に含めない。
 function undoMarkStroke(){
-  if(!S.photoMark) return;
-  S.photoMark.strokes.pop();
+  var pm = S.photoMark; if(!pm || !pm.strokes.length) return;
+  var s = pm.strokes.pop();
+  pm.redoStack.push(s);
+  pm.selectedIdx = null;
+  renderMarkCanvas();
+}
+function redoMarkStroke(){
+  var pm = S.photoMark; if(!pm || !pm.redoStack.length) return;
+  var s = pm.redoStack.pop();
+  pm.strokes.push(s);
+  pm.selectedIdx = null;
   renderMarkCanvas();
 }
 function closePhotoMarkUI(){
@@ -6899,6 +6923,64 @@ function renderMarkCanvas(){
   ctx.clearRect(0,0,pm.dispW,pm.dispH);
   var list = pm.cur ? pm.strokes.concat([pm.cur]) : pm.strokes;
   list.forEach(function(s){ drawMarkStroke(ctx, s, 4); });
+  if(pm.selectedIdx!=null && pm.strokes[pm.selectedIdx]){
+    drawMarkSelection(ctx, pm.strokes[pm.selectedIdx]);
+  }
+}
+// 選択中の図形の枠とハンドルを描く。丸は角の2点をつまんでリサイズできるようにする。
+function drawMarkSelection(ctx, s){
+  ctx.save();
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = '#0277bd';
+  if(s.type==='circle'){
+    var minX=Math.min(s.x0,s.x1), minY=Math.min(s.y0,s.y1);
+    var w=Math.abs(s.x1-s.x0), h=Math.abs(s.y1-s.y0);
+    ctx.setLineDash([4,3]);
+    ctx.strokeRect(minX-4, minY-4, w+8, h+8);
+    ctx.setLineDash([]);
+    [{x:s.x0,y:s.y0},{x:s.x1,y:s.y1}].forEach(function(hp){
+      ctx.beginPath(); ctx.arc(hp.x, hp.y, 7, 0, Math.PI*2);
+      ctx.fillStyle = '#fff'; ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = '#0277bd'; ctx.stroke();
+    });
+  } else if(s.type==='free' && s.pts && s.pts.length){
+    var xs=s.pts.map(function(p){return p.x;}), ys=s.pts.map(function(p){return p.y;});
+    var minX2=Math.min.apply(null,xs), maxX2=Math.max.apply(null,xs);
+    var minY2=Math.min.apply(null,ys), maxY2=Math.max.apply(null,ys);
+    ctx.setLineDash([4,3]);
+    ctx.strokeRect(minX2-6, minY2-6, (maxX2-minX2)+12, (maxY2-minY2)+12);
+    ctx.setLineDash([]);
+  }
+  ctx.restore();
+}
+// タップ位置が図形の上かどうかを判定する（丸＝内側／フリーハンド＝線の近く）。後ろ（新しく描いた方）から探す。
+function hitTestMarkStroke(pm, x, y){
+  for(var i=pm.strokes.length-1;i>=0;i--){
+    var s = pm.strokes[i];
+    if(s.type==='circle'){
+      var cx=(s.x0+s.x1)/2, cy=(s.y0+s.y1)/2;
+      var rx=Math.abs(s.x1-s.x0)/2, ry=Math.abs(s.y1-s.y0)/2;
+      if(rx<1 || ry<1) continue;
+      var nx=(x-cx)/rx, ny=(y-cy)/ry;
+      if(nx*nx+ny*ny <= 1.2*1.2) return i; // 枠のすぐ外側まで少し余裕を持たせて当たり判定にする
+    } else if(s.type==='free' && s.pts && s.pts.length>1){
+      for(var j=0;j<s.pts.length-1;j++){
+        if(distToSegment(x,y,s.pts[j].x,s.pts[j].y,s.pts[j+1].x,s.pts[j+1].y) < 14){ return i; }
+      }
+    }
+  }
+  return -1;
+}
+// 選択中の丸のリサイズハンドル（対角2点）に当たっているか判定する
+function hitTestMarkHandle(pm, x, y){
+  if(pm.selectedIdx==null) return null;
+  var s = pm.strokes[pm.selectedIdx];
+  if(!s || s.type!=='circle') return null;
+  var handles = [{k:'x0y0',x:s.x0,y:s.y0},{k:'x1y1',x:s.x1,y:s.y1}];
+  for(var i=0;i<handles.length;i++){
+    if(Math.hypot(x-handles[i].x, y-handles[i].y) < 16) return handles[i].k;
+  }
+  return null;
 }
 function drawMarkStroke(ctx, s, lineWidth){
   ctx.lineWidth = lineWidth;
@@ -6932,6 +7014,28 @@ function initPhotoMarkHandlers(){
     e.stopPropagation();
     try{ canvas.setPointerCapture(e.pointerId); }catch(err){}
     var p = getPos(e);
+    // ① 選択中の丸のハンドルをつまんだら：半径のリサイズを開始（対角の点はそのまま固定）
+    var handle = hitTestMarkHandle(pm, p.x, p.y);
+    if(handle){
+      pm.dragMode = 'resize'; pm.dragHandle = handle; pm.dragStart = p;
+      var sSel = pm.strokes[pm.selectedIdx];
+      pm.dragOrig = {x0:sSel.x0, y0:sSel.y0, x1:sSel.x1, y1:sSel.y1};
+      return;
+    }
+    // ② 既存の図形の上をつまんだら：選択してそのまま移動を開始
+    var hitIdx = hitTestMarkStroke(pm, p.x, p.y);
+    if(hitIdx>=0){
+      pm.selectedIdx = hitIdx;
+      pm.dragMode = 'move'; pm.dragStart = p;
+      var sMv = pm.strokes[hitIdx];
+      pm.dragOrig = (sMv.type==='circle')
+        ? {x0:sMv.x0,y0:sMv.y0,x1:sMv.x1,y1:sMv.y1}
+        : {pts: sMv.pts.map(function(pt){ return {x:pt.x,y:pt.y}; })};
+      renderMarkCanvas();
+      return;
+    }
+    // ③ 何もない場所：選択を解除して新規に描き始める
+    pm.selectedIdx = null;
     if(pm.shape === 'circle'){
       pm.cur = {type:'circle', x0:p.x, y0:p.y, x1:p.x, y1:p.y, color:pm.color};
     } else {
@@ -6940,24 +7044,52 @@ function initPhotoMarkHandlers(){
     pm.drawing = true;
   });
   canvas.addEventListener('pointermove', function(e){
-    var pm = S.photoMark;
-    if(!pm || !pm.drawing || !pm.cur) return;
+    var pm = S.photoMark; if(!pm) return;
     e.stopPropagation();
     var p = getPos(e);
+    if(pm.dragMode==='move' && pm.dragOrig){
+      var dx = p.x - pm.dragStart.x, dy = p.y - pm.dragStart.y;
+      var s = pm.strokes[pm.selectedIdx];
+      if(s.type==='circle'){
+        s.x0 = pm.dragOrig.x0+dx; s.y0 = pm.dragOrig.y0+dy;
+        s.x1 = pm.dragOrig.x1+dx; s.y1 = pm.dragOrig.y1+dy;
+      } else {
+        s.pts = pm.dragOrig.pts.map(function(pt){ return {x:pt.x+dx, y:pt.y+dy}; });
+      }
+      renderMarkCanvas();
+      return;
+    }
+    if(pm.dragMode==='resize' && pm.dragOrig){
+      var s2 = pm.strokes[pm.selectedIdx];
+      if(pm.dragHandle==='x1y1'){ s2.x1 = p.x; s2.y1 = p.y; }
+      else { s2.x0 = p.x; s2.y0 = p.y; }
+      renderMarkCanvas();
+      return;
+    }
+    if(!pm.drawing || !pm.cur) return;
     if(pm.cur.type === 'circle'){ pm.cur.x1 = p.x; pm.cur.y1 = p.y; }
     else { pm.cur.pts.push(p); }
     renderMarkCanvas();
   });
   function endStroke(e){
-    var pm = S.photoMark;
-    if(!pm || !pm.drawing) return;
+    var pm = S.photoMark; if(!pm) return;
     if(e) e.stopPropagation();
+    if(pm.dragMode){
+      // 移動・リサイズの確定（この操作自体は「戻す／進む」の対象には含めない）
+      pm.dragMode = null; pm.dragHandle = null; pm.dragOrig = null;
+      renderMarkCanvas();
+      return;
+    }
+    if(!pm.drawing) return;
     pm.drawing = false;
     if(pm.cur){
       var valid = pm.cur.type==='circle'
         ? (Math.abs(pm.cur.x1-pm.cur.x0)>4 && Math.abs(pm.cur.y1-pm.cur.y0)>4)
         : (pm.cur.pts.length>1);
-      if(valid) pm.strokes.push(pm.cur);
+      if(valid){
+        pm.strokes.push(pm.cur);
+        pm.redoStack = []; // 新しく描いたら「進む」履歴は破棄する
+      }
     }
     pm.cur = null;
     renderMarkCanvas();
@@ -7259,7 +7391,7 @@ function initPinAddDrag(){
     S.pinDragGhostPos = null;
     if(S.pinPaletteDragMoved && ghost){
       var wp = s2w(ghost.x, ghost.y);
-      var newPin = {id:'pin_'+Date.now()+'_'+Math.floor(Math.random()*10000), wx:wp.x, wy:wp.y, name:'', item:'', seibi:'', rating:'', size:'', type:'', gasket:'', law:'', fluid:'', memo:'', photos:[], specs:[], color:PIN_COLORS[0]};
+      var newPin = {id:'pin_'+Date.now()+'_'+Math.floor(Math.random()*10000), wx:wp.x, wy:wp.y, name:'', item:'', seibi:'', rating:'', size:'', type:'', gasket:'', law:'', fluid:'', insul:'', memo:'', photos:[], specs:[], color:PIN_COLORS[0]};
       openPinEditor(newPin, true);
     }
     render();
@@ -8055,6 +8187,7 @@ function openPinEditor(pin, isNew){
   document.getElementById('pinGasketField').value = pin.gasket || '';
   document.getElementById('pinLawField').value = pin.law || '';
   document.getElementById('pinFluidField').value = pin.fluid || '';
+  document.getElementById('pinInsulField').value = pin.insul || '';
   document.getElementById('pinMemoField').value = pin.memo || '';
   document.getElementById('pinDeleteBtn').style.display = isNew ? 'none' : 'block';
   if(!pin.photos) pin.photos=[];
@@ -8089,6 +8222,7 @@ function savePinEditor(){
   p.gasket = document.getElementById('pinGasketField').value.trim();
   p.law = document.getElementById('pinLawField').value.trim();
   p.fluid = document.getElementById('pinFluidField').value.trim();
+  p.insul = document.getElementById('pinInsulField').value.trim();
   p.memo = document.getElementById('pinMemoField').value.trim();
   if(!S.pins) S.pins=[];
   if(S.isNewPin){
@@ -8192,8 +8326,9 @@ function applyImportedPinRows(rows){
     var gasket = pinFieldFromRow(r, ['ガスケット','gasket']);
     var law = pinFieldFromRow(r, ['適用法規','law']);
     var fluid = pinFieldFromRow(r, ['流体','fluid']);
+    var insul = pinFieldFromRow(r, ['断熱','insul']);
     var memo = pinFieldFromRow(r, ['メモ','memo','備考','MEMO']);
-    if(!name && !size && !memo && !item && !seibi && !rating && !type && !gasket && !law && !fluid) return; // 空行はスキップ
+    if(!name && !size && !memo && !item && !seibi && !rating && !type && !gasket && !law && !fluid && !insul) return; // 空行はスキップ
     var existing = name ? S.pins.filter(function(p){ return p.name===name; })[0] : null;
     if(existing){
       if(item!=null) existing.item = item;
@@ -8204,6 +8339,7 @@ function applyImportedPinRows(rows){
       if(gasket!=null) existing.gasket = gasket;
       if(law!=null) existing.law = law;
       if(fluid!=null) existing.fluid = fluid;
+      if(insul!=null) existing.insul = insul;
       if(memo!=null) existing.memo = memo;
       updated++;
     } else {
@@ -8214,7 +8350,7 @@ function applyImportedPinRows(rows){
         wx:centerW.x, wy:centerW.y,
         name:name||('取込ピン'+(added+1)),
         item:item||'', seibi:seibi||'', rating:rating||'', size:size||'',
-        type:type||'', gasket:gasket||'', law:law||'', fluid:fluid||'', memo:memo||'',
+        type:type||'', gasket:gasket||'', law:law||'', fluid:fluid||'', insul:insul||'', memo:memo||'',
         photos:[], specs:[], color:PIN_COLORS[0]
       });
       addIdx++; added++;
@@ -8521,7 +8657,7 @@ function setTool(t, silent, keepDrawer){
   var bPin=document.getElementById('bPin');
   if(bPin) bPin.classList.toggle('on', t==='addpin');
   if(t!=='scaff'){
-    ['bScaffAsm','bScaffSusp','bScaffInternal','bScaffOverhang','bScaffSite'].forEach(function(id){
+    ['bScaffAsm','bScaffSusp','bScaffInternal','bScaffOverhang','bScaffYagura','bScaffSite'].forEach(function(id){
       var b=document.getElementById(id); if(b) b.classList.remove('on');
     });
   }
@@ -8807,7 +8943,7 @@ function redoAct(){
 function clearAll(){
   if(!S.els.length) return;
   if(!confirm('全要素を削除しますか？')) return;
-  saveH();S.els=[];S.sel=null;hidePop();if(S.dragMode)endDragMode();S.scaffCounters={asm:0,susp:0,internal:0,overhang:0,site:0};render();
+  saveH();S.els=[];S.sel=null;hidePop();if(S.dragMode)endDragMode();S.scaffCounters={asm:0,susp:0,internal:0,overhang:0,yagura:0,site:0};render();
 }
 
 // ── PROPS ──────────────────────────────────────
@@ -9759,16 +9895,16 @@ function buildQuantityRows(items, baseRow){
 }
 // ピン一覧の行データを作る（baseRow行目からヘッダーを始める）。写真アンカーの行位置もbaseRowに合わせてずらす。
 function buildPinRows(pins, baseRow, zip, ctx){
-  var headers = ['名称','ITEM','整備','レーティング','サイズ','TYPE','ガスケット','適用法規','流体','メモ','仕様書(件)'];
+  var headers = ['名称','ITEM','整備','レーティング','サイズ','TYPE','ガスケット','適用法規','流体','断熱','メモ','仕様書(件)'];
   var rows = [];
   var headerCells = headers.map(function(v,i){ return xlsxTextCell(xlsxColLetter(i+1)+baseRow, v); }).join('');
   rows.push('<row r="'+baseRow+'">'+headerCells+'</row>');
   var anchorsXml = [], mediaRels = [], shapeId = 1;
   (pins||[]).forEach(function(p, i){
     var r = baseRow+1+i;
-    var textVals = [p.name, p.item, p.seibi, p.rating, p.size, p.type, p.gasket, p.law, p.fluid, p.memo];
+    var textVals = [p.name, p.item, p.seibi, p.rating, p.size, p.type, p.gasket, p.law, p.fluid, p.insul, p.memo];
     var cells = textVals.map(function(v, ci){ return xlsxTextCell(xlsxColLetter(ci+1)+r, v||''); }).join('');
-    cells += xlsxNumCell(xlsxColLetter(11)+r, (p.specs||[]).length);
+    cells += xlsxNumCell(xlsxColLetter(12)+r, (p.specs||[]).length);
     var photos = (p.photos||[]).slice(0, PIN_PHOTO_MAX);
     var rowAttrs = photos.length ? ' ht="70" customHeight="1"' : '';
     rows.push('<row r="'+r+'"'+rowAttrs+'>'+cells+'</row>');
@@ -9813,8 +9949,8 @@ function buildQtyAndPinSheetXml(items, pins, zip, ctx){
   '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
   '<dimension ref="A1"/><sheetViews><sheetView workbookViewId="0"/></sheetViews>'+
   '<sheetFormatPr defaultRowHeight="15"/>'+
-  '<cols><col min="1" max="1" width="18" customWidth="1"/><col min="2" max="10" width="14" customWidth="1"/>'+
-  '<col min="11" max="11" width="10" customWidth="1"/>'+
+  '<cols><col min="1" max="1" width="18" customWidth="1"/><col min="2" max="11" width="14" customWidth="1"/>'+
+  '<col min="12" max="12" width="10" customWidth="1"/>'+
   '<col min="'+(PIN_PHOTO_COL0+1)+'" max="'+lastPhotoCol+'" width="13" customWidth="1"/></cols>'+
   '<sheetData>'+rows.join('')+'</sheetData>'+
   '<pageMargins left="0.3" right="0.3" top="0.3" bottom="0.3" header="0" footer="0"/>'+
@@ -9823,7 +9959,7 @@ function buildQtyAndPinSheetXml(items, pins, zip, ctx){
   return {sheetXml: sheetXml, anchorsXml: p.anchorsXml, mediaRels: p.mediaRels};
 }
 var PIN_PHOTO_MAX = 6; // 1ピンあたりExcelに埋め込む写真の上限（多すぎるとファイルが重くなるため）
-var PIN_PHOTO_COL0 = 11; // 写真を並べ始める列（0始まり＝L列から）
+var PIN_PHOTO_COL0 = 12; // 写真を並べ始める列（0始まり＝M列から、断熱列追加で1列後ろにずれた）
 var PIN_PHOTO_PX = 90; // サムネイルの一辺(px)
 // data URL（"data:image/jpeg;base64,xxxx"等）からExcelメディアファイル用の拡張子とbase64本体を取り出す
 function parseDataUrlImage(url){
@@ -10821,7 +10957,7 @@ function scheduleAutosave(){
           localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(payload));
         }catch(quotaErr){
           // 背景画像・写真を含めると容量超過する場合は、それらを省いて作図データだけでも自動保存する
-          var slimOut = S.sheets.map(function(s){ return {name:s.name, els:s.els, pins:(s.pins||[]).map(function(p){ return {id:p.id,wx:p.wx,wy:p.wy,name:p.name,item:p.item,seibi:p.seibi,rating:p.rating,size:p.size,type:p.type,gasket:p.gasket,law:p.law,fluid:p.fluid,memo:p.memo,color:p.color,photos:[],specs:[]}; }), bg:null}; });
+          var slimOut = S.sheets.map(function(s){ return {name:s.name, els:s.els, pins:(s.pins||[]).map(function(p){ return {id:p.id,wx:p.wx,wy:p.wy,name:p.name,item:p.item,seibi:p.seibi,rating:p.rating,size:p.size,type:p.type,gasket:p.gasket,law:p.law,fluid:p.fluid,insul:p.insul,memo:p.memo,color:p.color,photos:[],specs:[]}; }), bg:null}; });
           try{ localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ savedAt:Date.now(), sheets:slimOut, activeSheet:S.activeSheet, slim:true })); }catch(e2){ /* それでも保存できない環境では諦める */ }
           if(!S._slimAutosaveWarned){
             S._slimAutosaveWarned = true;
