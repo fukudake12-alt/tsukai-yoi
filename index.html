@@ -1214,6 +1214,29 @@ header{
       </datalist>
     </div>
     <div class="pin-field">
+      <div class="pin-editor-label">適用法規</div>
+      <input type="text" id="pinLawField" list="pinLawOptions" placeholder="例：NONE">
+      <datalist id="pinLawOptions">
+        <option value="NONE"></option>
+        <option value="消防"></option>
+        <option value="高圧ガス"></option>
+        <option value="低圧ガス"></option>
+      </datalist>
+    </div>
+    <div class="pin-field">
+      <div class="pin-editor-label">TYPE</div>
+      <input type="text" id="pinTypeField" list="pinTypeOptions" placeholder="例：ｹﾞｰﾄ弁">
+      <datalist id="pinTypeOptions">
+        <option value="ｹﾞｰﾄ弁"></option>
+        <option value="ｸﾞﾛｰﾌﾞ弁"></option>
+        <option value="ﾎﾞｰﾙ弁"></option>
+        <option value="ﾁｪｯｷ弁"></option>
+        <option value="ﾊﾞﾀﾌﾗｲ弁"></option>
+        <option value="ﾀﾞｲﾔﾌﾗﾑ弁"></option>
+        <option value="ﾆｰﾄﾞﾙ弁"></option>
+      </datalist>
+    </div>
+    <div class="pin-field">
       <div class="pin-editor-label">レーティング</div>
       <input type="text" id="pinRatingField" list="pinRatingOptions" placeholder="例：JIS10k">
       <datalist id="pinRatingOptions">
@@ -1251,19 +1274,6 @@ header{
       </datalist>
     </div>
     <div class="pin-field">
-      <div class="pin-editor-label">TYPE</div>
-      <input type="text" id="pinTypeField" list="pinTypeOptions" placeholder="例：ｹﾞｰﾄ弁">
-      <datalist id="pinTypeOptions">
-        <option value="ｹﾞｰﾄ弁"></option>
-        <option value="ｸﾞﾛｰﾌﾞ弁"></option>
-        <option value="ﾎﾞｰﾙ弁"></option>
-        <option value="ﾁｪｯｷ弁"></option>
-        <option value="ﾊﾞﾀﾌﾗｲ弁"></option>
-        <option value="ﾀﾞｲﾔﾌﾗﾑ弁"></option>
-        <option value="ﾆｰﾄﾞﾙ弁"></option>
-      </datalist>
-    </div>
-    <div class="pin-field">
       <div class="pin-editor-label">ガスケット</div>
       <input type="text" id="pinGasketField" list="pinGasketOptions" placeholder="例：V6500">
       <datalist id="pinGasketOptions">
@@ -1279,14 +1289,9 @@ header{
       </datalist>
     </div>
     <div class="pin-field">
-      <div class="pin-editor-label">適用法規</div>
-      <input type="text" id="pinLawField" list="pinLawOptions" placeholder="例：NONE">
-      <datalist id="pinLawOptions">
-        <option value="NONE"></option>
-        <option value="消防"></option>
-        <option value="高圧ガス"></option>
-        <option value="低圧ガス"></option>
-      </datalist>
+      <div class="pin-editor-label">ボルトナット</div>
+      <input type="text" id="pinBoltNutField" list="pinBoltNutOptions" placeholder="例：M16×80">
+      <datalist id="pinBoltNutOptions"></datalist>
     </div>
     <div class="pin-field">
       <div class="pin-editor-label">流体</div>
@@ -6728,7 +6733,7 @@ function updatePinListPanel(){
   var html='';
   items.forEach(function(p, i){
     var nm = p.name ? p.name : ('ピン'+(i+1));
-    var sub = [p.item, p.rating, p.size, p.type, p.gasket, p.law, p.fluid, p.insul, p.memo].filter(function(v){return v;}).join(' ／ ');
+    var sub = [p.item, p.rating, p.size, p.type, p.gasket, p.boltNut, p.law, p.fluid, p.insul, p.memo].filter(function(v){return v;}).join(' ／ ');
     html += '<div class="pin-list-row" onclick="selectPinFromList(\''+p.id+'\')">'+
       '<span class="chip" style="background:'+(p.color||PIN_COLORS[0])+';"></span>'+
       '<span class="info"><span class="nm">'+(i+1)+'. '+escapeHtml(nm)+'</span>'+(sub?('<br><span class="mm">'+escapeHtml(sub)+'</span>'):'')+'</span>'+
@@ -8185,6 +8190,7 @@ function openPinEditor(pin, isNew){
   document.getElementById('pinSizeField').value = pin.size || '';
   document.getElementById('pinTypeField').value = pin.type || '';
   document.getElementById('pinGasketField').value = pin.gasket || '';
+  document.getElementById('pinBoltNutField').value = pin.boltNut || '';
   document.getElementById('pinLawField').value = pin.law || '';
   document.getElementById('pinFluidField').value = pin.fluid || '';
   document.getElementById('pinInsulField').value = pin.insul || '';
@@ -8220,6 +8226,7 @@ function savePinEditor(){
   p.size = document.getElementById('pinSizeField').value.trim();
   p.type = document.getElementById('pinTypeField').value.trim();
   p.gasket = document.getElementById('pinGasketField').value.trim();
+  p.boltNut = document.getElementById('pinBoltNutField').value.trim();
   p.law = document.getElementById('pinLawField').value.trim();
   p.fluid = document.getElementById('pinFluidField').value.trim();
   p.insul = document.getElementById('pinInsulField').value.trim();
@@ -8324,11 +8331,12 @@ function applyImportedPinRows(rows){
     var size = pinFieldFromRow(r, ['サイズ','size','SIZE']);
     var type = pinFieldFromRow(r, ['TYPE','type','種類']);
     var gasket = pinFieldFromRow(r, ['ガスケット','gasket']);
+    var boltNut = pinFieldFromRow(r, ['ボルトナット','boltNut','ボルト・ナット']);
     var law = pinFieldFromRow(r, ['適用法規','law']);
     var fluid = pinFieldFromRow(r, ['流体','fluid']);
     var insul = pinFieldFromRow(r, ['断熱','insul']);
     var memo = pinFieldFromRow(r, ['メモ','memo','備考','MEMO']);
-    if(!name && !size && !memo && !item && !seibi && !rating && !type && !gasket && !law && !fluid && !insul) return; // 空行はスキップ
+    if(!name && !size && !memo && !item && !seibi && !rating && !type && !gasket && !boltNut && !law && !fluid && !insul) return; // 空行はスキップ
     var existing = name ? S.pins.filter(function(p){ return p.name===name; })[0] : null;
     if(existing){
       if(item!=null) existing.item = item;
@@ -8337,6 +8345,7 @@ function applyImportedPinRows(rows){
       if(size!=null) existing.size = size;
       if(type!=null) existing.type = type;
       if(gasket!=null) existing.gasket = gasket;
+      if(boltNut!=null) existing.boltNut = boltNut;
       if(law!=null) existing.law = law;
       if(fluid!=null) existing.fluid = fluid;
       if(insul!=null) existing.insul = insul;
@@ -8350,7 +8359,7 @@ function applyImportedPinRows(rows){
         wx:centerW.x, wy:centerW.y,
         name:name||('取込ピン'+(added+1)),
         item:item||'', seibi:seibi||'', rating:rating||'', size:size||'',
-        type:type||'', gasket:gasket||'', law:law||'', fluid:fluid||'', insul:insul||'', memo:memo||'',
+        type:type||'', gasket:gasket||'', boltNut:boltNut||'', law:law||'', fluid:fluid||'', insul:insul||'', memo:memo||'',
         photos:[], specs:[], color:PIN_COLORS[0]
       });
       addIdx++; added++;
@@ -9895,16 +9904,16 @@ function buildQuantityRows(items, baseRow){
 }
 // ピン一覧の行データを作る（baseRow行目からヘッダーを始める）。写真アンカーの行位置もbaseRowに合わせてずらす。
 function buildPinRows(pins, baseRow, zip, ctx){
-  var headers = ['名称','ITEM','整備','レーティング','サイズ','TYPE','ガスケット','適用法規','流体','断熱','メモ','仕様書(件)'];
+  var headers = ['名称','ITEM','整備','レーティング','サイズ','TYPE','ガスケット','ボルトナット','適用法規','流体','断熱','メモ','仕様書(件)'];
   var rows = [];
   var headerCells = headers.map(function(v,i){ return xlsxTextCell(xlsxColLetter(i+1)+baseRow, v); }).join('');
   rows.push('<row r="'+baseRow+'">'+headerCells+'</row>');
   var anchorsXml = [], mediaRels = [], shapeId = 1;
   (pins||[]).forEach(function(p, i){
     var r = baseRow+1+i;
-    var textVals = [p.name, p.item, p.seibi, p.rating, p.size, p.type, p.gasket, p.law, p.fluid, p.insul, p.memo];
+    var textVals = [p.name, p.item, p.seibi, p.rating, p.size, p.type, p.gasket, p.boltNut, p.law, p.fluid, p.insul, p.memo];
     var cells = textVals.map(function(v, ci){ return xlsxTextCell(xlsxColLetter(ci+1)+r, v||''); }).join('');
-    cells += xlsxNumCell(xlsxColLetter(12)+r, (p.specs||[]).length);
+    cells += xlsxNumCell(xlsxColLetter(13)+r, (p.specs||[]).length);
     var photos = (p.photos||[]).slice(0, PIN_PHOTO_MAX);
     var rowAttrs = photos.length ? ' ht="70" customHeight="1"' : '';
     rows.push('<row r="'+r+'"'+rowAttrs+'>'+cells+'</row>');
@@ -9949,8 +9958,8 @@ function buildQtyAndPinSheetXml(items, pins, zip, ctx){
   '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
   '<dimension ref="A1"/><sheetViews><sheetView workbookViewId="0"/></sheetViews>'+
   '<sheetFormatPr defaultRowHeight="15"/>'+
-  '<cols><col min="1" max="1" width="18" customWidth="1"/><col min="2" max="11" width="14" customWidth="1"/>'+
-  '<col min="12" max="12" width="10" customWidth="1"/>'+
+  '<cols><col min="1" max="1" width="18" customWidth="1"/><col min="2" max="12" width="14" customWidth="1"/>'+
+  '<col min="13" max="13" width="10" customWidth="1"/>'+
   '<col min="'+(PIN_PHOTO_COL0+1)+'" max="'+lastPhotoCol+'" width="13" customWidth="1"/></cols>'+
   '<sheetData>'+rows.join('')+'</sheetData>'+
   '<pageMargins left="0.3" right="0.3" top="0.3" bottom="0.3" header="0" footer="0"/>'+
@@ -9959,7 +9968,7 @@ function buildQtyAndPinSheetXml(items, pins, zip, ctx){
   return {sheetXml: sheetXml, anchorsXml: p.anchorsXml, mediaRels: p.mediaRels};
 }
 var PIN_PHOTO_MAX = 6; // 1ピンあたりExcelに埋め込む写真の上限（多すぎるとファイルが重くなるため）
-var PIN_PHOTO_COL0 = 12; // 写真を並べ始める列（0始まり＝M列から、断熱列追加で1列後ろにずれた）
+var PIN_PHOTO_COL0 = 13; // 写真を並べ始める列（0始まり＝N列から、ボルトナット列追加で1列後ろにずれた）
 var PIN_PHOTO_PX = 90; // サムネイルの一辺(px)
 // data URL（"data:image/jpeg;base64,xxxx"等）からExcelメディアファイル用の拡張子とbase64本体を取り出す
 function parseDataUrlImage(url){
@@ -10009,6 +10018,18 @@ function pinIconStandaloneSvg(p, idx){
       var bs = w2s(b.x,b.y);
       return {x:(bs.x-anchorScr.x)*M, y:(bs.y-anchorScr.y)*M};
     });
+    // Excel出力時、アイコン拡大用の倍率Mが引出線の長さにもそのまま掛かってしまい、
+    // 画面上のバランスに対して線だけが不自然に長くなることがあるため、
+    // アンカーからバルーン中心までの直線距離をアイコン半径Rの何倍までかに上限を設ける。
+    // 折れ点(bends)も同じ比率で縮め、線の向き・形はそのまま保つ。
+    var LEADER_MAX_RATIO = 4; // アイコン半径Rの何倍まで許容するか（目安値。現場感覚に応じて調整可）
+    var leaderDist = Math.hypot(bcx, bcy);
+    var leaderMax = R * LEADER_MAX_RATIO;
+    if(leaderDist > leaderMax && leaderDist > 0){
+      var leaderShrink = leaderMax / leaderDist;
+      bcx *= leaderShrink; bcy *= leaderShrink;
+      bendsLocal = bendsLocal.map(function(pt){ return {x:pt.x*leaderShrink, y:pt.y*leaderShrink}; });
+    }
     if(hasName){
       ctx.font = 'bold '+fs.toFixed(2)+'px system-ui,sans-serif';
       var tw2 = ctx.measureText(disp).width;
@@ -10957,7 +10978,7 @@ function scheduleAutosave(){
           localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(payload));
         }catch(quotaErr){
           // 背景画像・写真を含めると容量超過する場合は、それらを省いて作図データだけでも自動保存する
-          var slimOut = S.sheets.map(function(s){ return {name:s.name, els:s.els, pins:(s.pins||[]).map(function(p){ return {id:p.id,wx:p.wx,wy:p.wy,name:p.name,item:p.item,seibi:p.seibi,rating:p.rating,size:p.size,type:p.type,gasket:p.gasket,law:p.law,fluid:p.fluid,insul:p.insul,memo:p.memo,color:p.color,photos:[],specs:[]}; }), bg:null}; });
+          var slimOut = S.sheets.map(function(s){ return {name:s.name, els:s.els, pins:(s.pins||[]).map(function(p){ return {id:p.id,wx:p.wx,wy:p.wy,name:p.name,item:p.item,seibi:p.seibi,rating:p.rating,size:p.size,type:p.type,gasket:p.gasket,boltNut:p.boltNut,law:p.law,fluid:p.fluid,insul:p.insul,memo:p.memo,color:p.color,photos:[],specs:[]}; }), bg:null}; });
           try{ localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ savedAt:Date.now(), sheets:slimOut, activeSheet:S.activeSheet, slim:true })); }catch(e2){ /* それでも保存できない環境では諦める */ }
           if(!S._slimAutosaveWarned){
             S._slimAutosaveWarned = true;
