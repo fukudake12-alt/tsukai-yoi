@@ -276,6 +276,13 @@ header{
   display:flex;align-items:center;gap:5px;padding:3px 4px;border-radius:5px;
   background:#eef1f6;margin-bottom:3px;cursor:pointer;-webkit-tap-highlight-color:transparent;
 }
+.pin-list-row.dragging{
+  position:relative;z-index:20;box-shadow:0 4px 12px rgba(0,0,0,0.28);background:#dbe6f5;opacity:0.95;
+}
+.pin-list-row .pin-drag-handle{
+  flex-shrink:0;width:16px;text-align:center;color:#9aa3b5;font-size:var(--fs-3);line-height:1;
+  cursor:grab;touch-action:none;-webkit-tap-highlight-color:transparent;padding:4px 0;
+}
 .pin-list-row .chip{width:10px;height:10px;border-radius:50%;flex-shrink:0;border:1px solid rgba(0,0,0,0.2);}
 .pin-list-row .no{
   width:26px;flex-shrink:0;text-align:center;padding:2px 0;border-radius:5px;
@@ -6757,8 +6764,9 @@ function updatePinListPanel(){
   items.forEach(function(p, i){
     var nm = p.name ? p.name : ('ピン'+(i+1));
     var sub = [p.item, p.rating, p.size, p.type, p.gasket, p.boltNut, p.law, p.fluid, p.insul, p.memo].filter(function(v){return v;}).join(' ／ ');
-    html += '<div class="pin-list-row" onclick="selectPinFromList(\''+p.id+'\')">'+
-      '<input class="no" type="number" min="1" step="1" value="'+(i+1)+'" title="番号を変更すると並び順を変更できます" '+
+    html += '<div class="pin-list-row" data-id="'+p.id+'" onclick="selectPinFromList(\''+p.id+'\')">'+
+      '<span class="pin-drag-handle" onclick="event.stopPropagation();" title="ドラッグして並び順を変更">⠿</span>'+
+      '<input class="no" type="number" min="1" step="1" value="'+(i+1)+'" title="番号を書き換えても並び順を変更できます" '+
         'onclick="event.stopPropagation();" onchange="reorderPinFromList(\''+p.id+'\', this.value); event.stopPropagation();">'+
       '<span class="chip" style="background:'+(p.color||PIN_COLORS[0])+';"></span>'+
       '<span class="info"><span class="nm">'+escapeHtml(nm)+'</span>'+(sub?('<br><span class="mm">'+escapeHtml(sub)+'</span>'):'')+'</span>'+
@@ -6766,6 +6774,92 @@ function updatePinListPanel(){
       '</div>';
   });
   body.innerHTML = html || '<div class="pin-list-empty">ピンはまだありません</div>';
+  initPinListDrag();
+}
+// ピン一覧パネル：各行の「⠿」をドラッグして並び順を入れ替えられるようにする（番号欄への手入力と併用可）。
+// パネルは番号一覧を書き換えるたびinnerHTMLごと作り直すため、リスナーは親要素(pinListBody)に一度だけ
+// 委譲で登録し、実際にどの行を掴んだかはpointerdown時のe.targetから都度判定する。
+function initPinListDrag(){
+  var body = document.getElementById('pinListBody');
+  if(!body || body._pinDragInit) return;
+  body._pinDragInit = true;
+  var dragRow=null, pointerId=null, startY=0, curTranslate=0;
+
+  function isPinRow(el){ return el && el.classList && el.classList.contains('pin-list-row'); }
+
+  function maybeSwap(clientY){
+    var rect = dragRow.getBoundingClientRect();
+    var centerY = rect.top + rect.height/2;
+    var prev = dragRow.previousElementSibling;
+    if(isPinRow(prev)){
+      var prevRect = prev.getBoundingClientRect();
+      if(centerY < prevRect.top + prevRect.height/2){
+        var beforeTop = dragRow.offsetTop;
+        body.insertBefore(dragRow, prev);
+        var afterTop = dragRow.offsetTop;
+        startY -= (beforeTop - afterTop);
+        curTranslate = clientY - startY;
+        dragRow.style.transform = 'translateY('+curTranslate+'px)';
+        maybeSwap(clientY);
+        return;
+      }
+    }
+    var next = dragRow.nextElementSibling;
+    if(isPinRow(next)){
+      var nextRect = next.getBoundingClientRect();
+      if(centerY > nextRect.top + nextRect.height/2){
+        var beforeTop2 = dragRow.offsetTop;
+        body.insertBefore(dragRow, next.nextSibling);
+        var afterTop2 = dragRow.offsetTop;
+        startY -= (beforeTop2 - afterTop2);
+        curTranslate = clientY - startY;
+        dragRow.style.transform = 'translateY('+curTranslate+'px)';
+        maybeSwap(clientY);
+      }
+    }
+  }
+
+  body.addEventListener('pointerdown', function(e){
+    var handle = e.target.closest ? e.target.closest('.pin-drag-handle') : null;
+    if(!handle) return;
+    var row = handle.closest('.pin-list-row');
+    if(!row) return;
+    e.preventDefault();
+    dragRow = row;
+    pointerId = e.pointerId;
+    startY = e.clientY;
+    curTranslate = 0;
+    row.classList.add('dragging');
+    row.style.transition = 'none';
+    try{ handle.setPointerCapture(pointerId); }catch(err){}
+  });
+  body.addEventListener('pointermove', function(e){
+    if(!dragRow || e.pointerId!==pointerId) return;
+    e.preventDefault();
+    curTranslate = e.clientY - startY;
+    dragRow.style.transform = 'translateY('+curTranslate+'px)';
+    maybeSwap(e.clientY);
+  });
+  function endDrag(e){
+    if(!dragRow) return;
+    dragRow.classList.remove('dragging');
+    dragRow.style.transition = '';
+    dragRow.style.transform = '';
+    // 現在のDOM順から並びを読み取り、実データ(S.pins)へ反映する
+    var order = Array.prototype.map.call(body.querySelectorAll('.pin-list-row'), function(el){ return el.getAttribute('data-id'); });
+    var pins = S.pins || [];
+    var byId = {};
+    pins.forEach(function(p){ byId[p.id]=p; });
+    var newPins = order.map(function(id){ return byId[id]; }).filter(function(p){ return !!p; });
+    // 万一data-idと一致しないピンがあれば末尾に残す（データ欠落防止）
+    pins.forEach(function(p){ if(newPins.indexOf(p)===-1) newPins.push(p); });
+    S.pins = newPins;
+    dragRow = null; pointerId = null;
+    updatePinListPanel();
+    render();
+  }
+  body.addEventListener('pointerup', endDrag);
+  body.addEventListener('pointercancel', endDrag);
 }
 // ピン一覧パネル上で番号欄を書き換えたときに、その位置へピンを並べ替える（ピン編集画面の番号欄と同じロジック）
 function reorderPinFromList(id, newVal){
