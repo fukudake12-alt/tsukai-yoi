@@ -265,7 +265,7 @@ header{
 .bg-panel label{display:flex;align-items:center;gap:5px;font-size:var(--fs-2);color:#5c6b8a;margin-top:4px;}
 /* ピン一覧パネル：足場・敷地一覧と同じ構造を流用 */
 .pin-list-panel{
-  position:absolute;top:56px;right:8px;width:160px;
+  position:absolute;top:56px;right:8px;width:190px;
   background:#ffffff;border:1px solid #0277bd;border-radius:var(--radius-lg);
   padding:8px;z-index:150;display:none;box-shadow:0 4px 16px rgba(0,0,0,0.18);
   max-height:calc(100% - 76px);overflow-y:auto;font-size:var(--fs-3);
@@ -277,6 +277,12 @@ header{
   background:#eef1f6;margin-bottom:3px;cursor:pointer;-webkit-tap-highlight-color:transparent;
 }
 .pin-list-row .chip{width:10px;height:10px;border-radius:50%;flex-shrink:0;border:1px solid rgba(0,0,0,0.2);}
+.pin-list-row .no{
+  width:26px;flex-shrink:0;text-align:center;padding:2px 0;border-radius:5px;
+  border:1px solid #c3cad9;background:#ffffff;color:#0277bd;font-weight:700;font-size:var(--fs-1);
+  -moz-appearance:textfield;
+}
+.pin-list-row .no::-webkit-outer-spin-button,.pin-list-row .no::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 .pin-list-row .info{flex:1;line-height:1.25;font-size:var(--fs-2);color:#1a1d27;overflow:hidden;}
 .pin-list-row .info .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .pin-list-row .info .mm{color:#5c6b8a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -289,8 +295,7 @@ header{
   box-sizing:border-box;padding:8px 9px;border:1.5px solid #d8dce3;border-radius:7px;
   background:#eef1f6;color:#1a1d27;font-size:14px;font-family:inherit;
 }
-.pin-editor-sheet input[type=text]{width:100%;}
-#pinOrderField{width:100px;}
+.pin-editor-sheet input[type=text],.pin-editor-sheet textarea{width:100%;}
 .pin-editor-sheet textarea{resize:vertical;min-height:70px;}
 .pin-photo-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;border-radius:8px;transition:background 0.1s;min-height:52px;align-items:center;}
 .pin-photo-row.drag-over{background:rgba(2,119,189,0.1);outline:2px dashed #0277bd;outline-offset:2px;}
@@ -350,6 +355,8 @@ header{
 .pin-field-grid .pin-field{min-width:0;}
 .pin-field-grid .pin-editor-label{margin:8px 0 4px;}
 .pin-field-grid input[type=text]{width:100%;}
+.pin-order-title-row{display:grid;grid-template-columns:84px 1fr;column-gap:8px;}
+.pin-order-title-row input[type=number],.pin-order-title-row input[type=text]{width:100%;box-sizing:border-box;}
 .pin-editor-btns{display:flex;gap:8px;margin-top:12px;}
 .pin-editor-btns.pin-editor-btns-top{margin-top:0;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #e3e7f0;}
 .pin-editor-btns button{flex:1;padding:10px;border-radius:var(--radius-md);border:none;font-size:14px;cursor:pointer;}
@@ -1196,8 +1203,6 @@ header{
       <button class="pe-cancel" onclick="cancelPinEditor()">キャンセル</button>
       <button class="pe-save" onclick="savePinEditor()">保存</button>
     </div>
-    <div class="pin-editor-label">番号（並び順）</div>
-    <input type="number" id="pinOrderField" min="1" step="1" style="width:100px;" placeholder="1" title="この番号を書き換えると、ピン一覧・キャンバス上の番号の並び順を変更できます">
     <div class="pin-editor-label">写真</div>
     <div class="pin-photo-section" id="pinPhotoSection">
       <div class="pin-photo-row" id="pinPhotoRow"></div>
@@ -1207,8 +1212,16 @@ header{
     <div class="pin-spec-section" id="pinSpecSection">
       <div class="pin-spec-row" id="pinSpecRow"></div>
     </div>
-    <div class="pin-editor-label">タイトル</div>
-    <input type="text" id="pinNameField" placeholder="例：V-1">
+    <div class="pin-order-title-row">
+      <div class="pin-field">
+        <div class="pin-editor-label">番号</div>
+        <input type="number" id="pinOrderField" min="1" step="1" placeholder="1" title="この番号を書き換えると、ピン一覧・キャンバス上の番号の並び順を変更できます">
+      </div>
+      <div class="pin-field">
+        <div class="pin-editor-label">タイトル</div>
+        <input type="text" id="pinNameField" placeholder="例：V-1">
+      </div>
+    </div>
     <div class="pin-field-grid">
     <div class="pin-field">
       <div class="pin-editor-label">ITEM</div>
@@ -6745,12 +6758,30 @@ function updatePinListPanel(){
     var nm = p.name ? p.name : ('ピン'+(i+1));
     var sub = [p.item, p.rating, p.size, p.type, p.gasket, p.boltNut, p.law, p.fluid, p.insul, p.memo].filter(function(v){return v;}).join(' ／ ');
     html += '<div class="pin-list-row" onclick="selectPinFromList(\''+p.id+'\')">'+
+      '<input class="no" type="number" min="1" step="1" value="'+(i+1)+'" title="番号を変更すると並び順を変更できます" '+
+        'onclick="event.stopPropagation();" onchange="reorderPinFromList(\''+p.id+'\', this.value); event.stopPropagation();">'+
       '<span class="chip" style="background:'+(p.color||PIN_COLORS[0])+';"></span>'+
-      '<span class="info"><span class="nm">'+(i+1)+'. '+escapeHtml(nm)+'</span>'+(sub?('<br><span class="mm">'+escapeHtml(sub)+'</span>'):'')+'</span>'+
+      '<span class="info"><span class="nm">'+escapeHtml(nm)+'</span>'+(sub?('<br><span class="mm">'+escapeHtml(sub)+'</span>'):'')+'</span>'+
       '<span class="del" onclick="event.stopPropagation();deletePinByIdFromList(\''+p.id+'\')">✕</span>'+
       '</div>';
   });
   body.innerHTML = html || '<div class="pin-list-empty">ピンはまだありません</div>';
+}
+// ピン一覧パネル上で番号欄を書き換えたときに、その位置へピンを並べ替える（ピン編集画面の番号欄と同じロジック）
+function reorderPinFromList(id, newVal){
+  var pins = S.pins || [];
+  var p = pins.filter(function(x){ return x.id===id; })[0];
+  if(!p) return;
+  var curIdx = pins.indexOf(p);
+  pins.splice(curIdx, 1);
+  var maxPos = pins.length+1;
+  var v = parseInt(newVal, 10);
+  if(!v || v<1) v = maxPos;
+  if(v>maxPos) v = maxPos;
+  pins.splice(v-1, 0, p);
+  S.pins = pins;
+  updatePinListPanel();
+  render();
 }
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; });
