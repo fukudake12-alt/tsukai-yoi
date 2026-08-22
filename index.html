@@ -285,10 +285,12 @@ header{
 /* ピン編集シート（共有シートと同じ下からのスライドパネル様式を流用） */
 .pin-editor-sheet{max-height:85vh;overflow-y:auto;}
 .pin-editor-label{font-size:var(--fs-2);color:#5c6b8a;font-weight:700;margin:8px 0 4px;}
-.pin-editor-sheet input[type=text],.pin-editor-sheet textarea{
-  width:100%;box-sizing:border-box;padding:8px 9px;border:1.5px solid #d8dce3;border-radius:7px;
+.pin-editor-sheet input[type=text],.pin-editor-sheet input[type=number],.pin-editor-sheet textarea{
+  box-sizing:border-box;padding:8px 9px;border:1.5px solid #d8dce3;border-radius:7px;
   background:#eef1f6;color:#1a1d27;font-size:14px;font-family:inherit;
 }
+.pin-editor-sheet input[type=text]{width:100%;}
+#pinOrderField{width:100px;}
 .pin-editor-sheet textarea{resize:vertical;min-height:70px;}
 .pin-photo-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;border-radius:8px;transition:background 0.1s;min-height:52px;align-items:center;}
 .pin-photo-row.drag-over{background:rgba(2,119,189,0.1);outline:2px dashed #0277bd;outline-offset:2px;}
@@ -312,6 +314,12 @@ header{
 .pin-photo-thumb .pin-photo-recompress{
   position:absolute;right:-5px;bottom:-5px;width:16px;height:16px;border-radius:50%;
   background:#0277bd;color:#fff;font-size:9px;line-height:16px;text-align:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.25);
+}
+/* 写真帳（Excel出力）に使われる1枚目の写真だと分かるよう、赤枠＋ラベルを付ける */
+.pin-photo-thumb.pin-photo-export-mark img{border:2px solid #d32f2f;}
+.pin-photo-thumb .pin-photo-export-label{
+  position:absolute;top:-5px;left:-5px;background:#d32f2f;color:#fff;font-size:7px;line-height:1.3;
+  padding:1px 3px;border-radius:4px;pointer-events:none;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,0.25);
 }
 /* 仕様書：写真とは別枠で保存するファイル添付（PDF/画像/Office文書など）。一覧はファイル名付きの横並びチップで表示する */
 .pin-spec-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;border-radius:8px;transition:background 0.1s;min-height:32px;align-items:center;}
@@ -1188,6 +1196,8 @@ header{
       <button class="pe-cancel" onclick="cancelPinEditor()">キャンセル</button>
       <button class="pe-save" onclick="savePinEditor()">保存</button>
     </div>
+    <div class="pin-editor-label">番号（並び順）</div>
+    <input type="number" id="pinOrderField" min="1" step="1" style="width:100px;" placeholder="1" title="この番号を書き換えると、ピン一覧・キャンバス上の番号の並び順を変更できます">
     <div class="pin-editor-label">写真</div>
     <div class="pin-photo-section" id="pinPhotoSection">
       <div class="pin-photo-row" id="pinPhotoRow"></div>
@@ -6799,7 +6809,9 @@ function renderPinPhotoRow(){
   var html='';
   photos.forEach(function(url, idx){
     var sizeLabel = formatBytesJP(estimateDataUrlBytes(url));
-    html += '<div class="pin-photo-thumb" onclick="openPhotoViewer('+idx+')" title="タップして拡大表示"><img src="'+url+'">'
+    var isExportPhoto = idx===0; // 写真帳（Excel出力）では1枚目だけが使われる
+    html += '<div class="pin-photo-thumb'+(isExportPhoto?' pin-photo-export-mark':'')+'" onclick="openPhotoViewer('+idx+')" title="タップして拡大表示'+(isExportPhoto?'（赤枠＝写真帳Excel出力対象）':'')+'"><img src="'+url+'">'
+      +(isExportPhoto?'<div class="pin-photo-export-label">帳票</div>':'')
       +'<div class="pin-photo-size">'+sizeLabel+'</div>'
       +'<div class="pin-photo-recompress" onclick="event.stopPropagation();recompressSinglePhoto('+idx+')" title="この写真だけ再圧縮">🗜</div>'
       +'<div class="pin-photo-del" onclick="event.stopPropagation();removePinPhoto('+idx+')">✕</div></div>';
@@ -8183,6 +8195,8 @@ function openPinEditor(pin, isNew){
   S.currentEditPin = pin;
   S.isNewPin = !!isNew;
   document.getElementById('pinEditorTitle').textContent = isNew ? 'ピンを追加' : 'ピン情報';
+  var curIdx = (S.pins||[]).indexOf(pin);
+  document.getElementById('pinOrderField').value = isNew ? ((S.pins?S.pins.length:0)+1) : (curIdx+1);
   document.getElementById('pinNameField').value = pin.name || '';
   document.getElementById('pinItemField').value = pin.item || '';
   document.getElementById('pinSeibiField').value = pin.seibi || '';
@@ -8232,8 +8246,15 @@ function savePinEditor(){
   p.insul = document.getElementById('pinInsulField').value.trim();
   p.memo = document.getElementById('pinMemoField').value.trim();
   if(!S.pins) S.pins=[];
+  // 既存ピンなら一旦配列から取り除き、番号欄で指定された位置へ挿入し直す（＝並び順の変更）
+  var existingIdx = S.pins.indexOf(p);
+  if(existingIdx>=0) S.pins.splice(existingIdx,1);
+  var maxPos = S.pins.length+1;
+  var orderVal = parseInt(document.getElementById('pinOrderField').value,10);
+  if(!orderVal || orderVal<1) orderVal = maxPos;
+  if(orderVal>maxPos) orderVal = maxPos;
+  S.pins.splice(orderVal-1, 0, p);
   if(S.isNewPin){
-    S.pins.push(p);
     showToast('ピンを追加しました');
   } else {
     showToast('ピン情報を更新しました');
@@ -10369,6 +10390,128 @@ async function xlsxAppendSheetPair(zip, sheetName, rect, ctx){
     name: sanitizeXlsxSheetName(sheetName+'_物量ピン一覧', ctx.usedNames),
     sheetId: ctx.sheetId++, rId: 'rId'+qpWsIdx, fileIndex: qpWsIdx
   });
+
+  // ── 写真帳シート（写真を持つピンだけを対象に、1枚目の写真＋全項目キャプションを6枚/ページで出力）──
+  await xlsxAppendPhotoAlbumSheets(zip, sheetName, S.pins, ctx);
+}
+
+// ── Excel出力：写真帳シート ─────────────────────────────
+// ピン一覧（テキスト中心・写真は添え物）とは別に、写真を主役にした台帳を作る機能。
+// ・対象は「1枚以上写真があるピン」のみ（写真が無いピンは台帳に載せる意味がないため除外）
+// ・1ピンにつき1枚目の写真だけを使用（2枚目以降は使わない）
+// ・以前は6枚/4枚をまとめて1枚のPNGに焼き付けていたが、それだとExcel上で個別に動かせず
+//   順番の入れ替えができなかったため、写真は独立した画像オブジェクトとして1枚ずつ貼り付け、
+//   情報（名称/ITEM/整備/レーティング等）は実際のセルに文字として入力する方式に変更した。
+// ・これにより、写真をドラッグで動かす／行ごと切り取って並べ替える／文字を直接修正する、が
+//   すべてExcel上でそのまま行える。
+var PHOTO_ALBUM_FIELDS = [
+  {key:'name', label:'名称'}, {key:'item', label:'ITEM'}, {key:'seibi', label:'整備'},
+  {key:'rating', label:'レーティング'}, {key:'size', label:'サイズ'}, {key:'type', label:'TYPE'},
+  {key:'gasket', label:'ガスケット'}, {key:'boltNut', label:'ボルトナット'}, {key:'law', label:'適用法規'},
+  {key:'fluid', label:'流体'}, {key:'insul', label:'断熱'}, {key:'memo', label:'メモ'}
+];
+// data URLから<img>を読み込む（失敗してもnullを返して台帳全体を止めない＝縦横比不明の場合は仮の比率を使う）
+function loadImageFromUrl(url){
+  return new Promise(function(resolve){
+    var img = new Image();
+    img.onload = function(){ resolve(img); };
+    img.onerror = function(){ resolve(null); };
+    img.src = url;
+  });
+}
+// 写真を持つピンだけを対象に、1ピン＝「独立した写真1枚（縦横比そのまま）＋情報セル」のブロックを
+// 縦に並べたシートを作る（焼き付けなし＝写真もセルもExcel上でそのまま編集・移動できる）
+async function xlsxAppendPhotoAlbumSheets(zip, sheetName, pins, ctx){
+  var target = (pins||[]).filter(function(p){ return p.photos && p.photos.length; });
+  if(!target.length) return; // 写真を持つピンが1つも無ければ写真帳シート自体を作らない
+
+  var PHOTO_TARGET_PX = 260; // 写真の長辺の目安サイズ（縦横比は保持したまま貼り付ける＝トリミングしない）
+  var PHOTO_JPEG_QUALITY = 0.72; // Excelに貼る写真はここで縮小・再圧縮してファイルを軽くする
+  var PX_TO_PT = 72/96; // px→pt換算（Excel既定の96dpiを基準にした簡易換算）
+  var CAP_ROWS = 6; // キャプション欄：12項目を2列×6行で配置
+  var CAP_ROW_HT = 15; // キャプション行の高さ(pt)＝Excelの既定値のまま
+  var BLOCK_GAP_ROWS = 1; // ブロック間の空白行（見た目の区切り・並べ替え時の目印用）
+
+  var rows = [], anchorsXml = [], mediaRels = [], shapeId = 1;
+  var r = 1; // 現在書き込み中の行（1始まり）
+  for(var i=0; i<target.length; i++){
+    var pin = target[i];
+    var url = pin.photos[0];
+    // Excelに埋め込む前に縮小・再圧縮する（表示サイズだけでなく実データも軽くする）
+    var compressedUrl = await compressImageDataUrl(url, PHOTO_TARGET_PX, PHOTO_JPEG_QUALITY);
+    var info = parseDataUrlImage(compressedUrl);
+    var img = await loadImageFromUrl(compressedUrl);
+    var photoWpx = (img && img.width) || PHOTO_TARGET_PX;
+    var photoHpx = (img && img.height) || Math.round(PHOTO_TARGET_PX*0.75);
+    var photoRow = r;
+    var photoRowHt = Math.max(CAP_ROW_HT, photoHpx*PX_TO_PT);
+    rows.push('<row r="'+photoRow+'" ht="'+photoRowHt.toFixed(1)+'" customHeight="1"></row>');
+
+    if(info){
+      var mediaName = 'image'+(ctx.mediaIndex++)+'.'+info.ext;
+      zip.file('xl/media/'+mediaName, info.base64, {base64:true});
+      var relId = 'rIdAlbum'+shapeId;
+      mediaRels.push({id:relId, target:'../media/'+mediaName});
+      var cx = photoWpx*9525, cy = photoHpx*9525; // px→EMU
+      anchorsXml.push(
+        '<xdr:oneCellAnchor>'+
+        '<xdr:from><xdr:col>0</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>'+(photoRow-1)+'</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>'+
+        '<xdr:ext cx="'+cx+'" cy="'+cy+'"/>'+
+        '<xdr:pic>'+
+        '<xdr:nvPicPr><xdr:cNvPr id="'+(shapeId+1)+'" name="写真'+shapeId+'"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>'+
+        '<xdr:blipFill><a:blip r:embed="'+relId+'"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>'+
+        '<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+cx+'" cy="'+cy+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr>'+
+        '</xdr:pic><xdr:clientData/></xdr:oneCellAnchor>'
+      );
+      shapeId++;
+    }
+    r++; // キャプション開始行へ
+
+    for(var cr=0; cr<CAP_ROWS; cr++){
+      var f1 = PHOTO_ALBUM_FIELDS[cr*2], f2 = PHOTO_ALBUM_FIELDS[cr*2+1];
+      var cells = xlsxTextCell('C'+r, f1.label)+xlsxTextCell('D'+r, pin[f1.key]||'');
+      if(f2) cells += xlsxTextCell('E'+r, f2.label)+xlsxTextCell('F'+r, pin[f2.key]||'');
+      rows.push('<row r="'+r+'">'+cells+'</row>');
+      r++;
+    }
+    r += BLOCK_GAP_ROWS;
+  }
+
+  ctx.wsFileIndex++;
+  var wsIdx = ctx.wsFileIndex;
+  var sheetXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
+  '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
+  '<dimension ref="A1"/><sheetViews><sheetView workbookViewId="0"/></sheetViews>'+
+  '<sheetFormatPr defaultRowHeight="15"/>'+
+  '<cols><col min="1" max="1" width="34" customWidth="1"/><col min="2" max="2" width="2" customWidth="1"/>'+
+  '<col min="3" max="3" width="12" customWidth="1"/><col min="4" max="4" width="20" customWidth="1"/>'+
+  '<col min="5" max="5" width="12" customWidth="1"/><col min="6" max="6" width="20" customWidth="1"/></cols>'+
+  '<sheetData>'+rows.join('')+'</sheetData>'+
+  '<pageMargins left="0.3" right="0.3" top="0.3" bottom="0.3" header="0" footer="0"/>'+
+  '<pageSetup paperSize="9" orientation="portrait" horizontalDpi="300" verticalDpi="300"/>'+
+  (anchorsXml.length ? '<drawing r:id="rIdDraw"/>' : '')+
+  '</worksheet>';
+  zip.file('xl/worksheets/sheet'+wsIdx+'.xml', sheetXml);
+
+  if(anchorsXml.length){
+    ctx.drawingIndex++;
+    var drawingIdx = ctx.drawingIndex;
+    var drawingXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
+      '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
+      anchorsXml.join('')+'</xdr:wsDr>';
+    zip.file('xl/drawings/drawing'+drawingIdx+'.xml', drawingXml);
+    var drawingRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+      mediaRels.map(function(rr){ return '<Relationship Id="'+rr.id+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="'+rr.target+'"/>'; }).join('')+
+      '</Relationships>';
+    zip.file('xl/drawings/_rels/drawing'+drawingIdx+'.xml.rels', drawingRels);
+    zip.file('xl/worksheets/_rels/sheet'+wsIdx+'.xml.rels', xlsxWorksheetRelsXml('drawing'+drawingIdx+'.xml'));
+  }
+
+  ctx.sheetDefs.push({
+    name: sanitizeXlsxSheetName(sheetName+'_写真帳', ctx.usedNames),
+    sheetId: ctx.sheetId++, rId: 'rId'+wsIdx, fileIndex: wsIdx
+  });
 }
 
 // Excel出力本体：プロジェクト内のすべてのシート（階）を対象に、シートごとに
@@ -10429,7 +10572,7 @@ async function exportAllSheetsXlsx(){
   var fname = 'pipe-iso-'+ts.getFullYear()+pad(ts.getMonth()+1)+pad(ts.getDate())+'-'+pad(ts.getHours())+pad(ts.getMinutes())+'.xlsx';
   var a = document.createElement('a');
   a.download = fname; a.href = URL.createObjectURL(blob); a.click();
-  showToast('Excelを保存しました（全'+targets.length+'シート／各シート「配管図」「物量ピン一覧」の2枚ずつ出力・配管図の中身は全部まとめて1つのグループにしています。個別に動かす時はグループ解除してください）');
+  showToast('Excelを保存しました（各シート「配管図」「物量ピン一覧」に加え、写真を持つピンがあれば「写真帳」も出力・配管図の中身は全部まとめて1つのグループにしています。個別に動かす時はグループ解除してください）');
 }
 
 function exportSVG(){
