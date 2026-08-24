@@ -2789,7 +2789,20 @@ function drawFit(el, sel){
   var isPlan = !!el.plan; // 平面図用（傾きなし）で設置された継手か
   var drawColor = el.color ? el.color : (sel ? '#d32f2f' : PIPE_COLOR); // 色指定時は選択中でもその色を表示。未指定の間だけ選択中／直前設置を赤で示す
   var ang  = ((el.angle || 0) * Math.PI / 180);
-  var tiltDeg = isPlan ? 0 : 30; // 平面図用は記号自体の傾きを付けない
+  // アイソメ用の記号の「立体風の傾き」：配管の実際の角度(el.angle)にそのまま連動させると、
+  // 30°刻み以外の角度（15°等）では中途半端に傾いて見えてしまう（水平に近い配管なのに
+  // フランジが斜めに寝て見える等）。逆に常に画面の真上に固定してしまうと、今度は配管が
+  // 垂直に近いときに記号が配管の向きと関係なく単調に見えてしまう。
+  // そこで「記号の見た目」は配管の実角度に一番近い30°刻みの向きに揃え（＝これまで通りの
+  // 完成された12方向の見た目をそのまま再利用）、位置・全体の向き（ang）自体は
+  // 配管の実角度に正確に追従させる。結果として水平に近い配管ではまっすぐ、
+  // 垂直に近い配管ではその向きなりの見た目になる。
+  var angRaw = el.angle || 0;
+  // 30°刻みへの丸めはプラス・マイナスで対称になるようにする。
+  // （JSのMath.roundは-15のような「ちょうど半分」の値を0寄りに丸めてしまい、
+  // 　+15°→30°なのに-15°→-30°ではなく0°になってしまう非対称バグがあったため）
+  var nearest30 = angRaw >= 0 ? Math.round(angRaw/30)*30 : -Math.round(-angRaw/30)*30;
+  var tiltDeg = isPlan ? 0 : (30 + (nearest30 - angRaw)); // 平面図用は記号自体の傾きを付けない
   var r    = 18 * S.zoom * (el.scale||1);   // 記号の半径（尺度変更に対応）
   var lwd  = 1.8 * S.zoom;
   var hasFl= FL_TYPES.indexOf(el.ft) >= 0;
@@ -3572,6 +3585,15 @@ function rot30pt(cx, h, tiltDeg){ // cx=中心X、h=半高さ → {top, bot}
   };
 }
 
+// rot30ptと同じ「せん断」変換を任意の1点(px,py)に適用するヘルパー。
+// チャッキ弁の矢印など、本体（rot30pt使用）と同じtiltDegで一緒に傾けたい付属パーツに使う。
+// （本体パーツと傾きがズレると、配管の角度によって矢印だけ向きが合わなくなるバグの元になる）
+function shearPt(px, py, tiltDeg){
+  var t = (tiltDeg===undefined ? 30 : tiltDeg) * Math.PI/180;
+  var s = Math.sin(t), c = Math.cos(t);
+  return { x: px - py*s, y: py*c };
+}
+
 // 配管に対する相対角度theta（度・反時計回りを正）を保ちつつ、画面上で必ず上側に来るよう
 // 部品のローカル回転角（ラジアン）を計算する共通関数。
 // ※配管の角度(A)自体は呼び出し側（drawFit）の外側回転で別途適用されるため、戻り値には含めない。
@@ -3663,11 +3685,15 @@ function drawCheckValve(r, col, lwd, hasFl, drawCol, tiltDeg){
     ctx.stroke();
   }
 
-  // 流れ方向の矢印
+  // 流れ方向の矢印（本体と同じtiltDegで一緒に傾ける：ズレ防止）
+  var aA=shearPt(-r*0.3, r*0.95, tiltDeg);
+  var aB=shearPt(r*0.3, r*0.95, tiltDeg);
+  var aC=shearPt(r*0.08, r*0.95-r*0.18, tiltDeg);
+  var aE=shearPt(r*0.08, r*0.95+r*0.18, tiltDeg);
   ctx.lineWidth=lwd;
   ctx.beginPath();
-  ctx.moveTo(-r*0.3,r*0.95); ctx.lineTo(r*0.3,r*0.95);
-  ctx.moveTo(r*0.08,r*0.95-r*0.18); ctx.lineTo(r*0.3,r*0.95); ctx.lineTo(r*0.08,r*0.95+r*0.18);
+  ctx.moveTo(aA.x,aA.y); ctx.lineTo(aB.x,aB.y);
+  ctx.moveTo(aC.x,aC.y); ctx.lineTo(aB.x,aB.y); ctx.lineTo(aE.x,aE.y);
   ctx.stroke();
 }
 
@@ -5734,9 +5760,11 @@ function handleDown(pos){
       // 安全弁：配管の角度には追従させず、常に固定の向きで設置する（傾き補正済み：-15°→-7°→-2°、合計13°時計回り）
       placeAngle = -2;
     } else if(!isPlanFit){
-      // アイソメ用：配管の角度に自動で向きを合わせる（角度は30°刻みにスナップ）
+      // アイソメ用：配管の角度に自動で向きを合わせる（配管の実際の角度をそのまま使用。
+      // 以前は30°刻みにスナップしていたため、配管が15°など30の倍数以外の角度の場合に
+      // 継手だけ30°のままずれて表示される不具合があった）
       // 平面図用は記号に角度を付けないため、この自動合わせは行わない
-      var snapAng = Math.round(fp.angle/30)*30;
+      var snapAng = fp.angle;
       if(snapAng < 0) snapAng += 360;
       placeAngle = snapAng % 360;
     }
