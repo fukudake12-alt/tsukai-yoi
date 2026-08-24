@@ -1473,7 +1473,7 @@ function ensureXlsx(){ return loadScriptOnce(LIB_URLS.xlsx); }
 <script>
 // ── 定数 ──────────────────────────────────────
 // アプリのバージョン番号。改修（機能追加・修正）を行うたびに1ずつ増やすこと。
-var APP_VERSION  = 40;
+var APP_VERSION  = 44;
 var GRID_M       = 0.05; // 配管などの移動ピッチ
 var VISUAL_GRID_M = 0.1; // 画面に表示する背景グリッド線の間隔（移動ピッチとは別物。従来通り0.1m単位の見た目を維持）
 var PX_PER_M     = 80;
@@ -1569,7 +1569,7 @@ var photoViewerCtl = null, specViewerCtl = null;
 // ── STATE ──────────────────────────────────────
 var S = {
   tool:'pipe', pt:'CS', ft:'fl_gate', weldType:'weld_butt',
-  showGrid:true, showDim:true, zoom:1, px:0, py:0,
+  showGrid:false, showDim:true, zoom:1, px:0, py:0,
   // 配管を描くときの角度・長さの合わせ方：'iso'=アイソメ（30°刻み）／'plan'=平面図（15°刻み）
   pipeDrawMode:'iso',
   angleStepDeg:30,
@@ -9998,7 +9998,7 @@ function xlsxFormulaCell(ref, formula){
 // （集計行を含む）。ピン一覧をこの下に続けて配置するために使う。
 function buildQuantityRows(items, baseRow){
   var rows = [];
-  var headerCells = ['種類','番号','桁W(m)','布D(m)','高さ(m)','面積(m\u00b2)【仮式：桁×布】'].map(function(v,i){
+  var headerCells = ['種類','タイトル','桁W(m)','布D(m)','高さ(m)','面積(m\u00b2)【仮式：桁×布】'].map(function(v,i){
     return xlsxTextCell(xlsxColLetter(i+1)+baseRow, v);
   }).join('');
   rows.push('<row r="'+baseRow+'">'+headerCells+'</row>');
@@ -10008,7 +10008,7 @@ function buildQuantityRows(items, baseRow){
     var isSite = el.sub==='site';
     var cells = [
       xlsxTextCell('A'+r, SCAFF_KIND_LABELS[el.sub]||el.sub),
-      xlsxNumCell('B'+r, el.num),
+      xlsxTextCell('B'+r, scaffLabel(el)),
       xlsxNumCell('C'+r, el.w),
       xlsxNumCell('D'+r, el.d),
       isSite ? xlsxNumCell('E'+r, null) : xlsxNumCell('E'+r, el.height!=null?el.height:0),
@@ -10148,11 +10148,12 @@ function pinIconStandaloneSvg(p, idx){
   var M = 6*(S.pinScale||1); // 出力時のピンサイズ倍率（配管図に対して小さすぎるとの指摘のため6倍にしている。全体設定のピンサイズも反映）
   var R = 13*M*S.zoom;
   var color = p.color || PIN_COLORS[0];
-  var label = String(idx);
   var fs = 11*M*S.zoom;
   var hasName = !!p.name;
   var disp = hasName ? (p.name.length>18 ? p.name.slice(0,18)+'…' : p.name) : '';
-  var padX=5*M*S.zoom, padY=3*M*S.zoom, boxW=0, boxH=0, bx=0, by=0;
+  // 名称がある場合は画面表示と同じく横長の角丸カプセルにタイトルを白文字で収め、
+  // 名称が無い場合のみ従来通りの色付き丸（無地）にする。
+  var capPad = 14*M*S.zoom;
   // 風船式（アンカーと①バルーンの位置が離れている、または折れ線がある場合）：
   // 先端(0,0)＝実際の位置（アンカー）から、引き出し線を経て離れた位置にバルーンを描く
   if(pinHasLeader(p)){
@@ -10176,26 +10177,26 @@ function pinIconStandaloneSvg(p, idx){
       bcx *= leaderShrink; bcy *= leaderShrink;
       bendsLocal = bendsLocal.map(function(pt){ return {x:pt.x*leaderShrink, y:pt.y*leaderShrink}; });
     }
+    var capW2 = R*2;
     if(hasName){
       ctx.font = 'bold '+fs.toFixed(2)+'px system-ui,sans-serif';
       var tw2 = ctx.measureText(disp).width;
-      boxW = tw2+padX*2; boxH = fs*1.4+padY;
-      bx = bcx+R+4*M*S.zoom; by = bcy-boxH/2;
+      capW2 = Math.max(R*2, tw2 + capPad);
     }
     var anchorR = 5*M*S.zoom;
     var leaderPts = [{x:0,y:0}].concat(bendsLocal).concat([{x:bcx,y:bcy}]);
     var leaderPath = leaderPts.map(function(pt,ix){ return (ix===0?'M ':'L ')+pt.x.toFixed(2)+' '+pt.y.toFixed(2); }).join(' ');
     var body2 = '<path d="'+leaderPath+'" fill="none" stroke="'+color+'" stroke-width="'+(1.5*M*S.zoom).toFixed(2)+'"/>'+
-      '<circle cx="0" cy="0" r="'+anchorR.toFixed(2)+'" fill="'+color+'" stroke="#ffffff" stroke-width="'+(1.5*M*S.zoom).toFixed(2)+'"/>'+
-      '<circle cx="'+bcx.toFixed(2)+'" cy="'+bcy.toFixed(2)+'" r="'+R.toFixed(2)+'" fill="'+color+'" stroke="#ffffff" stroke-width="'+(2*M*S.zoom).toFixed(2)+'"/>'+
-      '<text x="'+bcx.toFixed(2)+'" y="'+bcy.toFixed(2)+'" text-anchor="middle" dominant-baseline="central" font-family="system-ui,sans-serif" font-weight="bold" font-size="'+fs.toFixed(2)+'" fill="#ffffff">'+escSvgText(label)+'</text>';
+      '<circle cx="0" cy="0" r="'+anchorR.toFixed(2)+'" fill="'+color+'" stroke="#ffffff" stroke-width="'+(1.5*M*S.zoom).toFixed(2)+'"/>';
     if(hasName){
-      body2 += '<rect x="'+bx.toFixed(2)+'" y="'+by.toFixed(2)+'" width="'+boxW.toFixed(2)+'" height="'+boxH.toFixed(2)+'" rx="'+(5*M*S.zoom).toFixed(2)+'" fill="rgba(255,255,255,0.92)" stroke="rgba(0,0,0,0.15)"/>'+
-        '<text x="'+(bx+padX).toFixed(2)+'" y="'+(bcy+1).toFixed(2)+'" text-anchor="start" dominant-baseline="central" font-family="system-ui,sans-serif" font-weight="bold" font-size="'+fs.toFixed(2)+'" fill="#1a1d27">'+escSvgText(disp)+'</text>';
+      body2 += '<rect x="'+(bcx-capW2/2).toFixed(2)+'" y="'+(bcy-R).toFixed(2)+'" width="'+capW2.toFixed(2)+'" height="'+(R*2).toFixed(2)+'" rx="'+R.toFixed(2)+'" fill="'+color+'" stroke="#ffffff" stroke-width="'+(2*M*S.zoom).toFixed(2)+'"/>'+
+        '<text x="'+bcx.toFixed(2)+'" y="'+bcy.toFixed(2)+'" text-anchor="middle" dominant-baseline="central" font-family="system-ui,sans-serif" font-weight="bold" font-size="'+fs.toFixed(2)+'" fill="#ffffff">'+escSvgText(disp)+'</text>';
+    } else {
+      body2 += '<circle cx="'+bcx.toFixed(2)+'" cy="'+bcy.toFixed(2)+'" r="'+R.toFixed(2)+'" fill="'+color+'" stroke="#ffffff" stroke-width="'+(2*M*S.zoom).toFixed(2)+'"/>';
     }
     var xs2 = [-anchorR, anchorR, bcx-R, bcx+R], ys2 = [-anchorR, anchorR, bcy-R, bcy+R];
     bendsLocal.forEach(function(pt){ xs2.push(pt.x); ys2.push(pt.y); });
-    if(hasName){ xs2.push(bx); xs2.push(bx+boxW); ys2.push(by); ys2.push(by+boxH); }
+    if(hasName){ xs2.push(bcx-capW2/2); xs2.push(bcx+capW2/2); }
     var minX2 = Math.min.apply(null, xs2) - 2, maxX2 = Math.max.apply(null, xs2) + 2;
     var minY2 = Math.min.apply(null, ys2) - 2, maxY2 = Math.max.apply(null, ys2) + 2;
     var vw2 = maxX2-minX2, vh2 = maxY2-minY2;
@@ -10204,22 +10205,22 @@ function pinIconStandaloneSvg(p, idx){
   }
   // 通常（後方互換）：アンカーと①バルーンが同じ位置＝従来通りの旗アイコン
   var cy = -R*1.5;
+  var capW = R*2;
   if(hasName){
     ctx.font = 'bold '+fs.toFixed(2)+'px system-ui,sans-serif';
     var tw = ctx.measureText(disp).width;
-    boxW = tw+padX*2; boxH = fs*1.4+padY;
-    bx = R+4*M*S.zoom; by = cy-boxH/2;
+    capW = Math.max(R*2, tw + capPad);
   }
-  var body = '<path d="M '+(-R*0.55).toFixed(2)+' '+(cy+R*0.75).toFixed(2)+' L '+(R*0.55).toFixed(2)+' '+(cy+R*0.75).toFixed(2)+' L 0 0 Z" fill="'+color+'"/>'+
-    '<circle cx="0" cy="'+cy.toFixed(2)+'" r="'+R.toFixed(2)+'" fill="'+color+'" stroke="#ffffff" stroke-width="'+(2*M*S.zoom).toFixed(2)+'"/>'+
-    '<text x="0" y="'+cy.toFixed(2)+'" text-anchor="middle" dominant-baseline="central" font-family="system-ui,sans-serif" font-weight="bold" font-size="'+fs.toFixed(2)+'" fill="#ffffff">'+escSvgText(label)+'</text>';
+  var body = '<path d="M '+(-R*0.55).toFixed(2)+' '+(cy+R*0.75).toFixed(2)+' L '+(R*0.55).toFixed(2)+' '+(cy+R*0.75).toFixed(2)+' L 0 0 Z" fill="'+color+'"/>';
   if(hasName){
-    body += '<rect x="'+bx.toFixed(2)+'" y="'+by.toFixed(2)+'" width="'+boxW.toFixed(2)+'" height="'+boxH.toFixed(2)+'" rx="'+(5*M*S.zoom).toFixed(2)+'" fill="rgba(255,255,255,0.92)" stroke="rgba(0,0,0,0.15)"/>'+
-      '<text x="'+(bx+padX).toFixed(2)+'" y="'+(cy+1).toFixed(2)+'" text-anchor="start" dominant-baseline="central" font-family="system-ui,sans-serif" font-weight="bold" font-size="'+fs.toFixed(2)+'" fill="#1a1d27">'+escSvgText(disp)+'</text>';
+    body += '<rect x="'+(-capW/2).toFixed(2)+'" y="'+(cy-R).toFixed(2)+'" width="'+capW.toFixed(2)+'" height="'+(R*2).toFixed(2)+'" rx="'+R.toFixed(2)+'" fill="'+color+'" stroke="#ffffff" stroke-width="'+(2*M*S.zoom).toFixed(2)+'"/>'+
+      '<text x="0" y="'+cy.toFixed(2)+'" text-anchor="middle" dominant-baseline="central" font-family="system-ui,sans-serif" font-weight="bold" font-size="'+fs.toFixed(2)+'" fill="#ffffff">'+escSvgText(disp)+'</text>';
+  } else {
+    body += '<circle cx="0" cy="'+cy.toFixed(2)+'" r="'+R.toFixed(2)+'" fill="'+color+'" stroke="#ffffff" stroke-width="'+(2*M*S.zoom).toFixed(2)+'"/>';
   }
-  var minX = Math.min(-R*0.6, hasName ? bx : -R*1.2) - 2;
-  var maxX = Math.max(R*0.6, hasName ? bx+boxW : R*1.2) + 2;
-  var minY = (hasName ? Math.min(cy-R, by) : cy-R) - 2;
+  var minX = Math.min(-R*0.6, hasName ? -capW/2 : -R*1.2) - 2;
+  var maxX = Math.max(R*0.6, hasName ? capW/2 : R*1.2) + 2;
+  var minY = (cy-R) - 2;
   var maxY = 2; // 先端(0,0)が最下点
   var vw = maxX-minX, vh = maxY-minY;
   var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="'+vw.toFixed(2)+'" height="'+vh.toFixed(2)+'" viewBox="'+minX.toFixed(2)+' '+minY.toFixed(2)+' '+vw.toFixed(2)+' '+vh.toFixed(2)+'">'+body+'</svg>';
