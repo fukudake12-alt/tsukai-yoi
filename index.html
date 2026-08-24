@@ -1123,6 +1123,8 @@ header{
     <button class="bt on" id="bPipe" onclick="setTool('pipe')"><span class="ic">╱</span>配管</button>
     <button class="bt"    id="bRot"  onclick="rotateStep()"><span class="ic">🔄</span>回転</button>
     <button class="bt"    id="bMir"  onclick="toggleMirror()"><span class="ic">⇌</span>鏡像</button>
+    <button class="bt"    id="bTiltDn" onclick="tiltAdjustStep(-5)" title="継手の見た目の傾きを微調整"><span class="ic">↙</span>傾き-</button>
+    <button class="bt"    id="bTiltUp" onclick="tiltAdjustStep(5)" title="継手の見た目の傾きを微調整"><span class="ic">↗</span>傾き+</button>
     <button class="bt"    id="bScale" onclick="scaleAction()"><span class="ic">⤢</span>尺度変更</button>
     <button class="bt"    id="bErs"  onclick="eraseAction()"><span class="ic">✕</span>消去</button>
   </div>
@@ -1697,6 +1699,37 @@ function rotateStep(){
   S.sel = target;
   if(!S.dragMode) S.lastFit = (target.kind==='fitting' || target.kind==='northarrow') ? target : null;
   updateSt();
+  render();
+}
+
+// ── 継手の「見た目の傾き」だけを微調整 ─────────────────────
+// アイソメ表示では継手の絵柄に自動で立体風の傾き（配管の角度に一番近い30°刻みに
+// 揃える計算）を付けているが、まれに自動計算だけでは意図した見た目にならない
+// ケースがあるため、個々の継手ごとに手動で少しだけ傾きを補正できるようにする。
+// 配管への追従（位置・全体の向き）には影響せず、絵柄の見た目だけがずれる。
+function tiltAdjustStep(delta){
+  var target = currentRotateTarget();
+  if(!target || target.kind!=='fitting'){
+    showToast('継手を長押し・タップで選択してから傾きを調整できます');
+    return;
+  }
+  saveH();
+  target.tiltAdjust = ((target.tiltAdjust||0) + delta);
+  S.sel = target;
+  if(!S.dragMode) S.lastFit = target;
+  updateSt();
+  render();
+}
+function tiltAdjustReset(){
+  var target = currentRotateTarget();
+  if(!target || target.kind!=='fitting'){
+    showToast('継手を長押し・タップで選択してから傾きを調整できます');
+    return;
+  }
+  if(!target.tiltAdjust){ return; }
+  saveH();
+  target.tiltAdjust = 0;
+  S.sel = target;
   render();
 }
 
@@ -2802,7 +2835,9 @@ function drawFit(el, sel){
   // （JSのMath.roundは-15のような「ちょうど半分」の値を0寄りに丸めてしまい、
   // 　+15°→30°なのに-15°→-30°ではなく0°になってしまう非対称バグがあったため）
   var nearest30 = angRaw >= 0 ? Math.round(angRaw/30)*30 : -Math.round(-angRaw/30)*30;
-  var tiltDeg = isPlan ? 0 : (30 + (nearest30 - angRaw)); // 平面図用は記号自体の傾きを付けない
+  // 自動計算だけでは意図した見た目にならない場合のために、継手ごとに手動で
+  // 傾きを微調整できる（tiltAdjustStep/tiltAdjustReset）。既定は0（自動のまま）。
+  var tiltDeg = isPlan ? 0 : (30 + (nearest30 - angRaw) + (el.tiltAdjust||0)); // 平面図用は記号自体の傾きを付けない
   var r    = 18 * S.zoom * (el.scale||1);   // 記号の半径（尺度変更に対応）
   var lwd  = 1.8 * S.zoom;
   var hasFl= FL_TYPES.indexOf(el.ft) >= 0;
@@ -6266,6 +6301,11 @@ function openContextMenu(pos){
     }
     if(h.el.kind==='fitting'){
       items.push({label:'鏡像反転',fn:function(){ S.sel=h.el; S.lastFit=h.el; toggleMirror(); }});
+      items.push({label:'見た目の傾き +5°',fn:function(){ S.sel=h.el; S.lastFit=h.el; tiltAdjustStep(5); }});
+      items.push({label:'見た目の傾き -5°',fn:function(){ S.sel=h.el; S.lastFit=h.el; tiltAdjustStep(-5); }});
+      if(h.el.tiltAdjust){
+        items.push({label:'見た目の傾きを自動に戻す',fn:function(){ S.sel=h.el; S.lastFit=h.el; tiltAdjustReset(); }});
+      }
     }
     items.push({label:'尺度変更',fn:function(){ applyScaleToTargets([h.el]); }});
     items.push({sep:true});
