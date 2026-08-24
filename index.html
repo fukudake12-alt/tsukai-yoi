@@ -10414,7 +10414,9 @@ function xlsxScaffoldShapeXml(el, rect, emuPerPx, shapeId, asGroupChild){
   var cx=Math.max(1,Math.round(rw*emuPerPx)), cy=Math.max(1,Math.round(rh*emuPerPx));
   var isSite = el.sub==='site';
   var hex = xlsxColorHex(el.color, SCAFF_COLORS[0]);
-  var lines = [scaffLabel(el), scaffSizeLine(el)];
+  // 図面が密集すると寸法まで書き込んだラベルが読みにくくなるため、枠内には呼び名のみ表示する。
+  // 詳細（サイズ・高さ）は図面の右側にリストとしてまとめて表示する（xlsxAppendSheetPair側）。
+  var lines = [scaffLabel(el)];
   var paras = lines.map(function(ln){
     return '<a:p><a:pPr algn="ctr"/><a:r><a:rPr lang="ja-JP" sz="900" b="1"><a:solidFill><a:srgbClr val="1A1D27"/></a:solidFill></a:rPr><a:t>'+escSvgText(ln)+'</a:t></a:r></a:p>';
   }).join('');
@@ -10539,6 +10541,49 @@ async function xlsxAppendSheetPair(zip, sheetName, rect, ctx){
     '</xdr:grpSp>'+
     '<xdr:clientData/></xdr:absoluteAnchor>'
   ];
+
+  // ⑥ 足場・敷地の詳細（サイズ・高さ）リスト：枠内はラベルのみにした分、図面の右側にテキストで
+  // まとめて表示する（密集した図面でも各記号の内容が読み取れるようにするため）。
+  var scaffListItems = S.els.filter(function(e){ return e.kind==='scaffold'; });
+  if(scaffListItems.length){
+    var listFs = 12;
+    var listLineH = listFs*1.6;
+    var listPadding = 8;
+    var listTitle = '足場・敷地 一覧';
+    var listLines = scaffListItems.map(function(e){ return scaffLabel(e)+'　'+scaffSizeLine(e); });
+    // 注意：この関数の引数名「ctx」はExcel出力用の管理オブジェクト（mediaIndex等）であり、
+    // キャンバス描画用の2Dコンテキストとは別物。テキスト幅測定には専用の一時canvasを使う。
+    var measureCv = document.createElement('canvas');
+    var measureCtx = measureCv.getContext('2d');
+    measureCtx.font = listFs+'px sans-serif';
+    var listTextW = Math.max(
+      measureCtx.measureText(listTitle).width,
+      listLines.reduce(function(m,ln){ return Math.max(m, measureCtx.measureText(ln).width); }, 0)
+    );
+    var listW = Math.ceil(listTextW) + listPadding*2;
+    var listH = Math.ceil(listLineH*(listLines.length+1)) + listPadding*2;
+    var listSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="'+listW+'" height="'+listH+'">'+
+      '<rect x="0.5" y="0.5" width="'+(listW-1)+'" height="'+(listH-1)+'" fill="#ffffff" stroke="#c7cdda"/>'+
+      '<text x="'+listPadding+'" y="'+(listPadding+listFs).toFixed(1)+'" font-family="sans-serif" font-size="'+listFs+'" font-weight="bold" fill="#1a1d27">'+escSvgText(listTitle)+'</text>'+
+      listLines.map(function(ln,i){
+        var ty = listPadding+listLineH*(i+2)-listFs*0.3;
+        return '<text x="'+listPadding+'" y="'+ty.toFixed(1)+'" font-family="sans-serif" font-size="'+listFs+'" fill="#1a1d27">'+escSvgText(ln)+'</text>';
+      }).join('')+
+      '</svg>';
+    var listRasterScale = TARGET_DPI/96; // 画面px基準のSVGをTARGET_DPI相当の解像度でラスタライズする（実寸=listW/listHは変えない）
+    var listPxW = Math.max(1, Math.round(listW*listRasterScale));
+    var listPxH = Math.max(1, Math.round(listH*listRasterScale));
+    var listPng = await svgStringToPngDataUrl(listSvg, listPxW, listPxH, false);
+    var listImgName = 'image'+(ctx.mediaIndex++)+'.png';
+    zip.file('xl/media/'+listImgName, listPng.split(',')[1], {base64:true});
+    mediaRels.push({id:'rIdScaffList', target:'../media/'+listImgName});
+    var listMarginPx = 24;
+    var listOffX = cx + Math.round(listMarginPx*emuPerPx);
+    var listCxEmu = Math.round(listW*emuPerPx);
+    var listCyEmu = Math.round(listH*emuPerPx);
+    anchorsXml.push(xlsxPictureAnchorXml(listOffX, 0, listCxEmu, listCyEmu, 'rIdScaffList', '足場一覧', shapeId++, null, false));
+  }
+
 
   var drawingXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
     '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
