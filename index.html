@@ -7017,6 +7017,7 @@ function renderPinPhotoRow(){
 function openPhotoViewer(idx){
   var pin = S.currentEditPin;
   if(!pin || !pin.photos || !pin.photos[idx]) return;
+  if(S.photoMark){ closePhotoMarkUI(); S.photoMark = null; } // 前回の書き込み状態が残っていた場合の保険
   S.photoViewer = { idx: idx };
   updatePhotoViewer();
   document.getElementById('photoViewOverlay').classList.add('vis');
@@ -7043,6 +7044,13 @@ function photoViewerNav(dir){
   updatePhotoViewer();
 }
 function closePhotoViewer(){
+  // 書き込み（マーキング）の途中で✕閉じるが押された場合、後始末せずに閉じると
+  // キャンバスの表示や図形データが残ったまま次に開いた別の写真に重なって見えてしまうため、
+  // 未確定の書き込みは破棄したうえで必ずマーキングUIを完全に閉じてから拡大表示を閉じる。
+  if(S.photoMark){
+    closePhotoMarkUI();
+    S.photoMark = null;
+  }
   document.getElementById('photoViewOverlay').classList.remove('vis');
   S.photoViewer = null;
   if(photoViewerCtl) photoViewerCtl.reset();
@@ -7115,7 +7123,10 @@ function redoMarkStroke(){
   renderMarkCanvas();
 }
 function closePhotoMarkUI(){
-  document.getElementById('photoMarkCanvas').style.display = 'none';
+  var mc = document.getElementById('photoMarkCanvas');
+  var mctx = mc.getContext('2d');
+  if(mctx) mctx.clearRect(0,0,mc.width,mc.height); // 非表示にするだけでなく描画内容も消しておく（保険）
+  mc.style.display = 'none';
   document.getElementById('photoMarkToolbar').style.display = 'none';
   document.getElementById('photoViewBtns').style.display = 'flex';
   var photos = (S.currentEditPin && S.currentEditPin.photos) || [];
@@ -10214,7 +10225,10 @@ function buildBgOnlySvg(rect){
 // 世界座標が指す先端の点をローカル原点(0,0)とし、外接ボックス(bbox)を一緒に返すことで、
 // 呼び出し側が「先端の実座標＋このbboxの左上オフセット」から画像の貼り付け位置を計算できるようにしている。
 function pinIconStandaloneSvg(p, idx){
-  var M = 6*(S.pinScale||1); // 出力時のピンサイズ倍率（配管図に対して小さすぎるとの指摘のため6倍にしている。全体設定のピンサイズも反映）
+  // 出力時のピンサイズ倍率。以前「配管図に対して小さすぎる」との指摘で固定6倍にしていたが、
+  // 行き過ぎて巨大化してしまうため、画面上でのピンの見た目の大きさ（半径24px相当）に揃うよう
+  // 24/13倍を基準にする（全体設定「ピンの大きさ」もそのまま反映される）。
+  var M = (24/13)*(S.pinScale||1);
   var R = 13*M*S.zoom;
   var color = p.color || PIN_COLORS[0];
   var fs = 11*M*S.zoom;
