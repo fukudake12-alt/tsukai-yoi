@@ -10224,11 +10224,14 @@ function buildBgOnlySvg(rect){
 // Excel上で1つずつドラッグ移動できるように、他の継手等とは合成せず、ピン単体の画像として書き出すための関数。
 // 世界座標が指す先端の点をローカル原点(0,0)とし、外接ボックス(bbox)を一緒に返すことで、
 // 呼び出し側が「先端の実座標＋このbboxの左上オフセット」から画像の貼り付け位置を計算できるようにしている。
-function pinIconStandaloneSvg(p, idx){
+function pinIconStandaloneSvg(p, idx, boost){
   // 出力時のピンサイズ倍率。以前「配管図に対して小さすぎる」との指摘で固定6倍にしていたが、
   // 行き過ぎて巨大化してしまうため、画面上でのピンの見た目の大きさ（半径24px相当）に揃うよう
   // 24/13倍を基準にする（全体設定「ピンの大きさ」もそのまま反映される）。
-  var M = (24/13)*(S.pinScale||1);
+  // boost：寸法線・引出線の文字（xlsxTextBoost）と同じ考え方で、fitScaleによる縮小分を
+  // あらかじめ打ち消しておく係数。これが無いと、大きな図面ほどfitScaleが小さくなり、
+  // ピンだけ画面表示に対して不自然に小さく出力されてしまう（文字は既に補正済みだった）。
+  var M = (24/13)*(S.pinScale||1)*(boost||1);
   var R = 13*M*S.zoom;
   var color = p.color || PIN_COLORS[0];
   var fs = 11*M*S.zoom;
@@ -10531,9 +10534,14 @@ async function xlsxAppendSheetPair(zip, sheetName, rect, ctx){
   groupChildrenXml.push(xlsxPictureAnchorXml(0, 0, cx, cy, 'rIdIconImg', '継手・文字等', shapeId++, 'rIdIconSvg', true));
 
   // ⑤ ピン：一番手前（100個規模を想定）
+  // 寸法線・引出線の文字（xlsxTextBoost）と同じく、fitScaleによる縮小分を打ち消す方向に
+  // あらかじめ拡大しておく（大きい図面ほど強くかかるが、上限4倍まで）。
+  // これが無いと、図面全体の縮小率（fitScale）がそのままピンの物理サイズにも掛かってしまい、
+  // 大きな配管図ほどピンだけ画面表示より小さく出力されてしまっていた。
+  var pinBoost = Math.min(4, 1/fitScale);
   for(var pi2=0; pi2<(S.pins||[]).length; pi2++){
     var pinObj = S.pins[pi2];
-    var pinGeo = pinIconStandaloneSvg(pinObj, pi2+1);
+    var pinGeo = pinIconStandaloneSvg(pinObj, pi2+1, pinBoost);
     var pinOutWmm = pinGeo.vw*scale, pinOutHmm = pinGeo.vh*scale;
     var pinPxW = Math.max(1, Math.round((pinOutWmm/25.4)*TARGET_DPI));
     var pinPxH = Math.max(1, Math.round((pinOutHmm/25.4)*TARGET_DPI));
