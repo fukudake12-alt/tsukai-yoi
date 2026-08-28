@@ -9857,7 +9857,8 @@ function computeSheetContentScreenRect(sheetData){
   var x0 = Math.min(p1.x,p2.x), y0 = Math.min(p1.y,p2.y);
   var x1 = Math.max(p1.x,p2.x), y1 = Math.max(p1.y,p2.y);
   var PAD = 60; // 継手アイコン・寸法文字・ラベルがはみ出さないよう、画面px単位で余白を持たせる
-  return {x:x0-PAD, y:y0-PAD, w:(x1-x0)+PAD*2, h:(y1-y0)+PAD*2};
+  // pad: Excel出力側でも同じ値を参照できるようにする（fitScale計算からPAD分を除外するため）
+  return {x:x0-PAD, y:y0-PAD, w:(x1-x0)+PAD*2, h:(y1-y0)+PAD*2, pad:PAD};
 }
 // 従来呼び出し箇所との互換用：現在アクティブなシートの内容だけで計算する
 function computeFullContentScreenRect(){
@@ -10454,7 +10455,13 @@ async function xlsxAppendSheetPair(zip, sheetName, rect, ctx){
   // 小さい図面を無理にA4いっぱいまで拡大することはしない（fitScaleの上限を1に制限）。
   var MM_PER_M = 10; // 印刷スケールの目安（1m＝10mm）。現場の縮尺感に合わせて調整可能
   var basePxToMm = MM_PER_M/(PX_PER_M*S.zoom); // 画面ズームに依存しない、実寸(m)基準のmm/px換算
-  var naturalWmm = rect.w*basePxToMm, naturalHmm = rect.h*basePxToMm;
+  // fitScale（用紙に収めるための縮小倍率）は、図面の「正味の実寸」だけで判定する。
+  // rect.w/hには継手アイコン等がはみ出さないための固定60px余白(PAD)が加算済みだが、
+  // これは画面ズームに関わらず常に固定pxのため、そのまま計算に含めると余白の占める割合が
+  // ズーム倍率によって変動し、fitScale（ひいてはピンの棒の長さ等、出力物の物理サイズ全般）が
+  // 出力時のズーム状態によってブレる原因になっていた。そのためPAD分を除いてから判定する。
+  var padPx = rect.pad||0;
+  var naturalWmm = Math.max(1, rect.w-padPx*2)*basePxToMm, naturalHmm = Math.max(1, rect.h-padPx*2)*basePxToMm;
   var fitScale = Math.min(1, availWMm/naturalWmm, availHMm/naturalHmm);
   var scale = basePxToMm*fitScale; // mm / スクリーンpx（emuPerPx計算にそのまま使う）
   var emuPerPx = scale*36000;
@@ -10670,6 +10677,17 @@ async function xlsxAppendPhotoAlbumSheets(zip, sheetName, pins, ctx){
   var CAP_ROWS = 6; // キャプション欄：12項目を2列×6行で配置
   var CAP_ROW_HT = 15; // キャプション行の高さ(pt)＝Excelの既定値のまま
   var BLOCK_GAP_ROWS = 1; // ブロック間の空白行（見た目の区切り・並べ替え時の目印用）
+  var DEFAULT_ROW_HT = 15; // sheetFormatPr defaultRowHeightと合わせる（gap行の高さ計算用）
+
+  // 1ブロック（写真＋キャプション）がページの途中で分断されて写真だけ次ページに
+  // はみ出すのを防ぐため、ページの印刷可能な高さ(pt)を計算し、ブロックを積み上げる際に
+  // それを超える手前で明示的に改ページを入れる。
+  // A4縦・上下マージン0.3in（xlsxSheetXml側のpageSetup/pageMarginsと合わせる）。
+  var PAGE_H_MM = 297, MARGIN_IN = 0.3, MM_TO_PT = 72/25.4;
+  var PAGE_SAFETY_PT = 6; // 端数・丸め誤差用の安全マージン
+  var PAGE_USABLE_PT = (PAGE_H_MM*MM_TO_PT) - (MARGIN_IN*72*2) - PAGE_SAFETY_PT;
+  var pageUsedPt = 0; // 現在のページで既に使った高さ(pt)
+  var manualBreakRows = []; // 改ページを入れる行番号（この行の直後で改ページ）
 
   var rows = [], anchorsXml = [], mediaRels = [], shapeId = 1;
   var r = 1; // 現在書き込み中の行（1始まり）
@@ -10682,8 +10700,16 @@ async function xlsxAppendPhotoAlbumSheets(zip, sheetName, pins, ctx){
     var img = await loadImageFromUrl(compressedUrl);
     var photoWpx = (img && img.width) || PHOTO_TARGET_PX;
     var photoHpx = (img && img.height) || Math.round(PHOTO_TARGET_PX*0.75);
-    var photoRow = r;
     var photoRowHt = Math.max(CAP_ROW_HT, photoHpx*PX_TO_PT);
+    // このブロック（写真行＋キャプション6行＋間の空白行）の合計高さ(pt)
+    var blockHeightPt = photoRowHt + CAP_ROWS*CAP_ROW_HT + BLOCK_GAP_ROWS*DEFAULT_ROW_HT;
+    // 2ブロック目以降で、今のページの残り高さに収まらない場合は、直前の行の後ろで改ページする
+    if(i>0 && (pageUsedPt+blockHeightPt) > PAGE_USABLE_PT){
+      manualBreakRows.push(r-1);
+      pageUsedPt = 0;
+    }
+    pageUsedPt += blockHeightPt;
+    var photoRow = r;
     rows.push('<row r="'+photoRow+'" ht="'+photoRowHt.toFixed(1)+'" customHeight="1"></row>');
 
     if(info){
@@ -10728,6 +10754,8 @@ async function xlsxAppendPhotoAlbumSheets(zip, sheetName, pins, ctx){
   '<sheetData>'+rows.join('')+'</sheetData>'+
   '<pageMargins left="0.3" right="0.3" top="0.3" bottom="0.3" header="0" footer="0"/>'+
   '<pageSetup paperSize="9" orientation="portrait" horizontalDpi="300" verticalDpi="300"/>'+
+  (manualBreakRows.length ? '<rowBreaks count="'+manualBreakRows.length+'" manualBreakCount="'+manualBreakRows.length+'">'+
+    manualBreakRows.map(function(id){ return '<brk id="'+id+'" max="16383" man="1"/>'; }).join('')+'</rowBreaks>' : '')+
   (anchorsXml.length ? '<drawing r:id="rIdDraw"/>' : '')+
   '</worksheet>';
   zip.file('xl/worksheets/sheet'+wsIdx+'.xml', sheetXml);
