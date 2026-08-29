@@ -10245,24 +10245,16 @@ function pinIconStandaloneSvg(p, idx, boost){
   if(pinHasLeader(p)){
     var anchorScr = w2s(p.wx, p.wy);
     var labelScr = w2s(p.lx, p.ly);
-    var bcx = (labelScr.x - anchorScr.x) * M; // バルーン中心のローカルx（先端(0,0)基準）
-    var bcy = (labelScr.y - anchorScr.y) * M; // バルーン中心のローカルy
+    // 引き出し線の長さ・向きは「ピンの大きさ」設定（M）とは無関係に、画面上でドラッグした
+    // 実際の距離をそのまま反映する（Mはアイコン本体の大きさだけに使う）。
+    // ここにMを掛けてしまうと、ピンの大きさ設定やfitScale補正のぶんだけ棒の長さまで
+    // 伸び縮みしてしまい、ピンごとに棒の長さがバラバラに見える原因になっていた。
+    var bcx = (labelScr.x - anchorScr.x); // バルーン中心のローカルx（先端(0,0)基準）
+    var bcy = (labelScr.y - anchorScr.y); // バルーン中心のローカルy
     var bendsLocal = (p.bends||[]).map(function(b){
       var bs = w2s(b.x,b.y);
-      return {x:(bs.x-anchorScr.x)*M, y:(bs.y-anchorScr.y)*M};
+      return {x:(bs.x-anchorScr.x), y:(bs.y-anchorScr.y)};
     });
-    // Excel出力時、アイコン拡大用の倍率Mが引出線の長さにもそのまま掛かってしまい、
-    // 画面上のバランスに対して線だけが不自然に長くなることがあるため、
-    // アンカーからバルーン中心までの直線距離をアイコン半径Rの何倍までかに上限を設ける。
-    // 折れ点(bends)も同じ比率で縮め、線の向き・形はそのまま保つ。
-    var LEADER_MAX_RATIO = 4; // アイコン半径Rの何倍まで許容するか（目安値。現場感覚に応じて調整可）
-    var leaderDist = Math.hypot(bcx, bcy);
-    var leaderMax = R * LEADER_MAX_RATIO;
-    if(leaderDist > leaderMax && leaderDist > 0){
-      var leaderShrink = leaderMax / leaderDist;
-      bcx *= leaderShrink; bcy *= leaderShrink;
-      bendsLocal = bendsLocal.map(function(pt){ return {x:pt.x*leaderShrink, y:pt.y*leaderShrink}; });
-    }
     var capW2 = R*2;
     if(hasName){
       ctx.font = 'bold '+fs.toFixed(2)+'px system-ui,sans-serif';
