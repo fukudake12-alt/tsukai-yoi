@@ -1571,7 +1571,7 @@ var photoViewerCtl = null, specViewerCtl = null;
 // ── STATE ──────────────────────────────────────
 var S = {
   tool:'pipe', pt:'CS', ft:'fl_gate', weldType:'weld_butt',
-  showGrid:false, showDim:true, zoom:1, px:0, py:0,
+  showGrid:false, showDim:false, zoom:1, px:0, py:0, // 寸法表示は初期状態OFF（ON/OFFトグルで切替可能）
   // 配管を描くときの角度・長さの合わせ方：'iso'=アイソメ（30°刻み）／'plan'=平面図（15°刻み）
   pipeDrawMode:'iso',
   angleStepDeg:30,
@@ -2772,7 +2772,7 @@ function drawDimOnLine(el,col,ghost,sel){
   var dx=el.wx2-el.wx1, dy=el.wy2-el.wy1;
   var len=Math.sqrt(dx*dx+dy*dy);
   if(len<0.05) return;
-  var disp = (el.dimText !== undefined) ? el.dimText : ''; // 寸法未設定時のデフォルトは「無」（自動計算値は表示しない）
+  var disp = (el.dimText !== undefined) ? el.dimText : (Math.round(len*100)/100).toFixed(2);
   if(disp === '') return; // 意図的に空欄にした場合は、背景の白帯も含め何も描画しない
   var p1=w2s(el.wx1,el.wy1), p2=w2s(el.wx2,el.wy2);
   var mx=(p1.x+p2.x)/2, my=(p1.y+p2.y)/2;
@@ -4457,7 +4457,7 @@ function hitTestDimLabel(sx,sy){
     var dx=e.wx2-e.wx1, dy=e.wy2-e.wy1;
     var len=Math.sqrt(dx*dx+dy*dy);
     if(len<0.05) continue;
-    var disp=(e.dimText!==undefined) ? e.dimText : ''; // 表示側と同じく、未設定時のデフォルトは「無」
+    var disp=(e.dimText!==undefined) ? e.dimText : (Math.round(len*100)/100).toFixed(2);
     if(disp==='') continue; // 空欄で非表示にしている寸法はタップ対象外
     var p1=w2s(e.wx1,e.wy1), p2=w2s(e.wx2,e.wy2);
     var mx=(p1.x+p2.x)/2, my=(p1.y+p2.y)/2;
@@ -9726,7 +9726,7 @@ function dimSvgMarkup(el,col){
   var dx=el.wx2-el.wx1, dy=el.wy2-el.wy1;
   var len=Math.sqrt(dx*dx+dy*dy);
   if(len<0.05) return '';
-  var disp=(el.dimText!==undefined) ? el.dimText : ''; // 表示・タップ判定と同じく、未設定時のデフォルトは「無」
+  var disp=(el.dimText!==undefined) ? el.dimText : (Math.round(len*100)/100).toFixed(2);
   if(disp === '') return ''; // 意図的に空欄にした場合はSVG/PDFにも何も出力しない
   var p1=w2s(el.wx1,el.wy1), p2=w2s(el.wx2,el.wy2);
   var mx=(p1.x+p2.x)/2, my=(p1.y+p2.y)/2;
@@ -11726,7 +11726,7 @@ function initApp(){
   photoViewerCtl = createZoomSwipeController('photoViewStage', 'photoViewImg', photoViewerNav);
   specViewerCtl = createZoomSwipeController('specViewStage', 'specViewImg', specViewerNav);
   document.getElementById('appVersionLabel').textContent = 'v'+APP_VERSION;
-  document.getElementById('bDimToggle').classList.add('on');
+  // 寸法表示の初期状態(OFF)に合わせてボタンの見た目を同期する
   S.px=canvas.width/2 - 2*PX_PER_M;
   S.py=canvas.height/2;
   S.els=[];
