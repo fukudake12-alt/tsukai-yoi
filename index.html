@@ -362,6 +362,10 @@ header{
 .pin-field-grid .pin-field{min-width:0;}
 .pin-field-grid .pin-editor-label{margin:8px 0 4px;}
 .pin-field-grid input[type=text]{width:100%;}
+.pin-date-row{display:flex;align-items:center;gap:4px;}
+.pin-date-row input[type=date]{flex:1;min-width:0;}
+.pin-date-clear{flex:none;width:26px;height:26px;border:none;border-radius:6px;background:#eef1f6;color:#5c6b8a;font-size:13px;line-height:1;cursor:pointer;}
+.pin-date-clear:active{background:#dde2ec;}
 .pin-order-title-row{display:grid;grid-template-columns:84px 1fr;column-gap:8px;}
 .pin-order-title-row input[type=number],.pin-order-title-row input[type=text]{width:100%;box-sizing:border-box;}
 .pin-editor-btns{display:flex;gap:8px;margin-top:12px;}
@@ -940,7 +944,7 @@ header{
       <div class="dg c1">
         <button class="di" id="bPin" draggable="false" onclick="setTool('addpin')" style="touch-action:none;user-select:none;-webkit-user-drag:none;" ondragstart="return false;" title="タップでその場に直接ピンを設置します。ドラッグすると、押した位置から離した位置まで引き出し線（風船式）を1回の操作で引けます（①はドラッグを離した位置）。その場で少し静止してから指を離す「長押し」でも引き出し線モードに入れ、その場合は続けてもう一度タップして①の位置を指定します（Shift＋タップで折れ点を追加でき、折れ線にできます）。既存ピンはドラッグ（他のツール中は長押しでつかんで）移動できます。ピンの情報編集はダブルタップで開きます。なおこのボタン自体を押したまま指をキャンバスまでスライドさせて離した場合は、引き出し線なしでその場に直接設置されます">📌 ピン追加</button>
         <button class="di" onclick="togglePinListPanel()" style="margin-top:4px;" title="設置済みのピン一覧を表示">📋 ピン一覧</button>
-        <button class="di" id="btnImportExcel" onclick="triggerImportPinList()" style="margin-top:4px;" title="Excel(.xlsx/.csv)の名称・ITEM・整備・レーティング・サイズ・TYPE・ガスケット・適用法規・流体・備考の各列を読み込み、名称が一致するピンへ反映します。画面へファイルをドラッグ&ドロップしても取込めます">📥 Excelから取込（D&D可）</button>
+        <button class="di" id="btnImportExcel" onclick="triggerImportPinList()" style="margin-top:4px;" title="Excel(.xlsx/.csv)の名称・ITEM・整備・レーティング・サイズ・TYPE・ガスケット・適用法規・流体・断熱・取外日・取付日・備考の各列を読み込み、名称が一致するピンへ反映します。画面へファイルをドラッグ&ドロップしても取込めます">📥 Excelから取込（D&D可）</button>
         <button class="di" id="pinScaleSwitch" onclick="cyclePinScale()" style="margin-top:4px;" title="ピンの表示サイズを一括で変更します（タップで70%/100%/130%/160%/200%を巡回）。画面表示・Excel出力の両方に反映されます">ピンの大きさ 100%</button>
       </div>
     </div>
@@ -1338,6 +1342,20 @@ header{
         <option value="保冷"></option>
         <option value="なし"></option>
       </datalist>
+    </div>
+    <div class="pin-field">
+      <div class="pin-editor-label">取外日</div>
+      <div class="pin-date-row">
+        <input type="date" id="pinRemoveDateField" onfocus="fillPinDateFieldToday(this)">
+        <button type="button" class="pin-date-clear" onclick="clearPinDateField('pinRemoveDateField')" title="取外日をクリア">✕</button>
+      </div>
+    </div>
+    <div class="pin-field">
+      <div class="pin-editor-label">取付日</div>
+      <div class="pin-date-row">
+        <input type="date" id="pinInstallDateField" onfocus="fillPinDateFieldToday(this)">
+        <button type="button" class="pin-date-clear" onclick="clearPinDateField('pinInstallDateField')" title="取付日をクリア">✕</button>
+      </div>
     </div>
     </div>
     <div class="pin-editor-label">色</div>
@@ -8395,6 +8413,19 @@ function removeSpecPage(pi){
   renderSpecPageGrid();
   renderPinSpecRow();
 }
+// 取外日・取付日：タップ（フォーカス）した時点で未入力なら本日の日付を自動セットする。
+// カレンダーからの選択操作自体はそのまま使えるので、後から日付を変更したい場合は通常通り選び直せる。
+function fillPinDateFieldToday(el){
+  if(el.value) return;
+  var d = new Date();
+  var pad = function(n){ return (n<10?'0':'')+n; };
+  el.value = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+// 取外日・取付日を間違えて入力した時に✕ボタンで空欄へ戻す
+function clearPinDateField(id){
+  var el = document.getElementById(id);
+  if(el) el.value = '';
+}
 function openPinEditor(pin, isNew){
   S.currentEditPin = pin;
   S.isNewPin = !!isNew;
@@ -8412,6 +8443,8 @@ function openPinEditor(pin, isNew){
   document.getElementById('pinLawField').value = pin.law || '';
   document.getElementById('pinFluidField').value = pin.fluid || '';
   document.getElementById('pinInsulField').value = pin.insul || '';
+  document.getElementById('pinRemoveDateField').value = pin.removeDate || '';
+  document.getElementById('pinInstallDateField').value = pin.installDate || '';
   document.getElementById('pinMemoField').value = pin.memo || '';
   document.getElementById('pinDeleteBtn').style.display = isNew ? 'none' : 'block';
   if(!pin.photos) pin.photos=[];
@@ -8448,6 +8481,8 @@ function savePinEditor(){
   p.law = document.getElementById('pinLawField').value.trim();
   p.fluid = document.getElementById('pinFluidField').value.trim();
   p.insul = document.getElementById('pinInsulField').value.trim();
+  p.removeDate = document.getElementById('pinRemoveDateField').value;
+  p.installDate = document.getElementById('pinInstallDateField').value;
   p.memo = document.getElementById('pinMemoField').value.trim();
   if(!S.pins) S.pins=[];
   // 既存ピンなら一旦配列から取り除き、番号欄で指定された位置へ挿入し直す（＝並び順の変更）
@@ -8560,8 +8595,10 @@ function applyImportedPinRows(rows){
     var law = pinFieldFromRow(r, ['適用法規','law']);
     var fluid = pinFieldFromRow(r, ['流体','fluid']);
     var insul = pinFieldFromRow(r, ['断熱','insul']);
+    var removeDate = pinFieldFromRow(r, ['取外日','removeDate']);
+    var installDate = pinFieldFromRow(r, ['取付日','installDate']);
     var memo = pinFieldFromRow(r, ['メモ','memo','備考','MEMO']);
-    if(!name && !size && !memo && !item && !seibi && !rating && !type && !gasket && !boltNut && !law && !fluid && !insul) return; // 空行はスキップ
+    if(!name && !size && !memo && !item && !seibi && !rating && !type && !gasket && !boltNut && !law && !fluid && !insul && !removeDate && !installDate) return; // 空行はスキップ
     var existing = name ? S.pins.filter(function(p){ return p.name===name; })[0] : null;
     if(existing){
       if(item!=null) existing.item = item;
@@ -8574,6 +8611,8 @@ function applyImportedPinRows(rows){
       if(law!=null) existing.law = law;
       if(fluid!=null) existing.fluid = fluid;
       if(insul!=null) existing.insul = insul;
+      if(removeDate!=null) existing.removeDate = removeDate;
+      if(installDate!=null) existing.installDate = installDate;
       if(memo!=null) existing.memo = memo;
       updated++;
     } else {
@@ -8584,7 +8623,8 @@ function applyImportedPinRows(rows){
         wx:centerW.x, wy:centerW.y,
         name:name||('取込ピン'+(added+1)),
         item:item||'', seibi:seibi||'', rating:rating||'', size:size||'',
-        type:type||'', gasket:gasket||'', boltNut:boltNut||'', law:law||'', fluid:fluid||'', insul:insul||'', memo:memo||'',
+        type:type||'', gasket:gasket||'', boltNut:boltNut||'', law:law||'', fluid:fluid||'', insul:insul||'',
+        removeDate:removeDate||'', installDate:installDate||'', memo:memo||'',
         photos:[], specs:[], color:PIN_COLORS[0]
       });
       addIdx++; added++;
@@ -10130,16 +10170,16 @@ function buildQuantityRows(items, baseRow){
 }
 // ピン一覧の行データを作る（baseRow行目からヘッダーを始める）。写真アンカーの行位置もbaseRowに合わせてずらす。
 function buildPinRows(pins, baseRow, zip, ctx){
-  var headers = ['名称','ITEM','整備','レーティング','サイズ','TYPE','ガスケット','ボルトナット','適用法規','流体','断熱','メモ','仕様書(件)'];
+  var headers = ['名称','ITEM','整備','レーティング','サイズ','TYPE','ガスケット','ボルトナット','適用法規','流体','断熱','取外日','取付日','メモ','仕様書(件)'];
   var rows = [];
   var headerCells = headers.map(function(v,i){ return xlsxTextCell(xlsxColLetter(i+1)+baseRow, v); }).join('');
   rows.push('<row r="'+baseRow+'">'+headerCells+'</row>');
   var anchorsXml = [], mediaRels = [], shapeId = 1;
   (pins||[]).forEach(function(p, i){
     var r = baseRow+1+i;
-    var textVals = [p.name, p.item, p.seibi, p.rating, p.size, p.type, p.gasket, p.boltNut, p.law, p.fluid, p.insul, p.memo];
+    var textVals = [p.name, p.item, p.seibi, p.rating, p.size, p.type, p.gasket, p.boltNut, p.law, p.fluid, p.insul, p.removeDate, p.installDate, p.memo];
     var cells = textVals.map(function(v, ci){ return xlsxTextCell(xlsxColLetter(ci+1)+r, v||''); }).join('');
-    cells += xlsxNumCell(xlsxColLetter(13)+r, (p.specs||[]).length);
+    cells += xlsxNumCell(xlsxColLetter(15)+r, (p.specs||[]).length);
     var photos = (p.photos||[]).slice(0, PIN_PHOTO_MAX);
     var rowAttrs = photos.length ? ' ht="70" customHeight="1"' : '';
     rows.push('<row r="'+r+'"'+rowAttrs+'>'+cells+'</row>');
@@ -10184,8 +10224,8 @@ function buildQtyAndPinSheetXml(items, pins, zip, ctx){
   '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
   '<dimension ref="A1"/><sheetViews><sheetView workbookViewId="0"/></sheetViews>'+
   '<sheetFormatPr defaultRowHeight="15"/>'+
-  '<cols><col min="1" max="1" width="18" customWidth="1"/><col min="2" max="12" width="14" customWidth="1"/>'+
-  '<col min="13" max="13" width="10" customWidth="1"/>'+
+  '<cols><col min="1" max="1" width="18" customWidth="1"/><col min="2" max="14" width="14" customWidth="1"/>'+
+  '<col min="15" max="15" width="10" customWidth="1"/>'+
   '<col min="'+(PIN_PHOTO_COL0+1)+'" max="'+lastPhotoCol+'" width="13" customWidth="1"/></cols>'+
   '<sheetData>'+rows.join('')+'</sheetData>'+
   '<pageMargins left="0.3" right="0.3" top="0.3" bottom="0.3" header="0" footer="0"/>'+
@@ -10194,7 +10234,7 @@ function buildQtyAndPinSheetXml(items, pins, zip, ctx){
   return {sheetXml: sheetXml, anchorsXml: p.anchorsXml, mediaRels: p.mediaRels};
 }
 var PIN_PHOTO_MAX = 6; // 1ピンあたりExcelに埋め込む写真の上限（多すぎるとファイルが重くなるため）
-var PIN_PHOTO_COL0 = 13; // 写真を並べ始める列（0始まり＝N列から、ボルトナット列追加で1列後ろにずれた）
+var PIN_PHOTO_COL0 = 15; // 写真を並べ始める列（0始まり＝P列から、取外日・取付日列追加で2列後ろにずれた）
 var PIN_PHOTO_PX = 90; // サムネイルの一辺(px)
 // data URL（"data:image/jpeg;base64,xxxx"等）からExcelメディアファイル用の拡張子とbase64本体を取り出す
 function parseDataUrlImage(url){
@@ -10668,7 +10708,8 @@ var PHOTO_ALBUM_FIELDS = [
   {key:'name', label:'名称'}, {key:'item', label:'ITEM'}, {key:'seibi', label:'整備'},
   {key:'rating', label:'レーティング'}, {key:'size', label:'サイズ'}, {key:'type', label:'TYPE'},
   {key:'gasket', label:'ガスケット'}, {key:'boltNut', label:'ボルトナット'}, {key:'law', label:'適用法規'},
-  {key:'fluid', label:'流体'}, {key:'insul', label:'断熱'}, {key:'memo', label:'メモ'}
+  {key:'fluid', label:'流体'}, {key:'insul', label:'断熱'}, {key:'memo', label:'メモ'},
+  {key:'removeDate', label:'取外日'}, {key:'installDate', label:'取付日'}
 ];
 // data URLから<img>を読み込む（失敗してもnullを返して台帳全体を止めない＝縦横比不明の場合は仮の比率を使う）
 function loadImageFromUrl(url){
@@ -10688,7 +10729,7 @@ async function xlsxAppendPhotoAlbumSheets(zip, sheetName, pins, ctx){
   var PHOTO_TARGET_PX = 260; // 写真の長辺の目安サイズ（縦横比は保持したまま貼り付ける＝トリミングしない）
   var PHOTO_JPEG_QUALITY = 0.72; // Excelに貼る写真はここで縮小・再圧縮してファイルを軽くする
   var PX_TO_PT = 72/96; // px→pt換算（Excel既定の96dpiを基準にした簡易換算）
-  var CAP_ROWS = 6; // キャプション欄：12項目を2列×6行で配置
+  var CAP_ROWS = 7; // キャプション欄：14項目を2列×7行で配置
   var CAP_ROW_HT = 15; // キャプション行の高さ(pt)＝Excelの既定値のまま
   var BLOCK_GAP_ROWS = 1; // ブロック間の空白行（見た目の区切り・並べ替え時の目印用）
   var DEFAULT_ROW_HT = 15; // sheetFormatPr defaultRowHeightと合わせる（gap行の高さ計算用）
@@ -11402,7 +11443,7 @@ function scheduleAutosave(){
           localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(payload));
         }catch(quotaErr){
           // 背景画像・写真を含めると容量超過する場合は、それらを省いて作図データだけでも自動保存する
-          var slimOut = S.sheets.map(function(s){ return {name:s.name, els:s.els, pins:(s.pins||[]).map(function(p){ return {id:p.id,wx:p.wx,wy:p.wy,name:p.name,item:p.item,seibi:p.seibi,rating:p.rating,size:p.size,type:p.type,gasket:p.gasket,boltNut:p.boltNut,law:p.law,fluid:p.fluid,insul:p.insul,memo:p.memo,color:p.color,photos:[],specs:[]}; }), bg:null}; });
+          var slimOut = S.sheets.map(function(s){ return {name:s.name, els:s.els, pins:(s.pins||[]).map(function(p){ return {id:p.id,wx:p.wx,wy:p.wy,name:p.name,item:p.item,seibi:p.seibi,rating:p.rating,size:p.size,type:p.type,gasket:p.gasket,boltNut:p.boltNut,law:p.law,fluid:p.fluid,insul:p.insul,removeDate:p.removeDate,installDate:p.installDate,memo:p.memo,color:p.color,photos:[],specs:[]}; }), bg:null}; });
           try{ localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ savedAt:Date.now(), sheets:slimOut, activeSheet:S.activeSheet, slim:true })); }catch(e2){ /* それでも保存できない環境では諦める */ }
           if(!S._slimAutosaveWarned){
             S._slimAutosaveWarned = true;
