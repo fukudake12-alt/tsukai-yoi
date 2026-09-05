@@ -362,6 +362,30 @@ header{
 .pin-field-grid .pin-field{min-width:0;}
 .pin-field-grid .pin-editor-label{margin:8px 0 4px;}
 .pin-field-grid input[type=text]{width:100%;}
+/* ピン編集フォームの選択欄（TYPE・ITEM等）：候補から選ぶ／手入力する／候補を削除する、の3つに対応するコンボ部品 */
+.pin-combo{position:relative;}
+.pin-combo-panel{
+  position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:50;
+  background:#fff;border:1px solid #d8dce3;border-radius:10px;
+  box-shadow:0 4px 16px rgba(0,0,0,0.18);max-height:240px;overflow-y:auto;
+}
+.pin-combo-list{padding:4px 0;}
+.pin-combo-item{
+  display:flex;align-items:center;justify-content:space-between;gap:6px;
+  padding:9px 12px;font-size:14px;color:#1a1d27;cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+.pin-combo-item:hover{background:#eef1f6;}
+.pin-combo-item .pci-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pin-combo-item .pci-del{
+  flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(211,47,47,0.1);
+  color:#d32f2f;font-size:12px;line-height:20px;text-align:center;cursor:pointer;
+}
+.pin-combo-empty{padding:9px 12px;font-size:13px;color:#8a93a3;}
+.pin-combo-manual-row{border-top:1px solid #e3e7f0;padding:6px 8px;}
+.pin-combo-manual-input{
+  box-sizing:border-box;width:100%;padding:7px 9px;border:1.5px solid #d8dce3;border-radius:7px;
+  background:#f7f9fb;color:#1a1d27;font-size:13px;font-family:inherit;
+}
 .pin-date-row{display:flex;align-items:center;gap:4px;}
 .pin-date-row input[type=date]{flex:1;min-width:0;}
 .pin-date-clear{flex:none;width:26px;height:26px;border:none;border-radius:6px;background:#eef1f6;color:#5c6b8a;font-size:13px;line-height:1;cursor:pointer;}
@@ -1238,110 +1262,103 @@ header{
     <div class="pin-field-grid">
     <div class="pin-field">
       <div class="pin-editor-label">ITEM</div>
-      <input type="text" id="pinItemField" list="pinItemOptions" placeholder="品名（手入力）">
-      <datalist id="pinItemOptions"></datalist>
+      <div class="pin-combo" data-field="item">
+        <input type="text" id="pinItemField" autocomplete="off" placeholder="品名（手入力）">
+        <div class="pin-combo-panel" id="pinItemField_panel" hidden>
+          <div class="pin-combo-list" id="pinItemField_list"></div>
+          <div class="pin-combo-manual-row"><input type="text" class="pin-combo-manual-input" id="pinItemField_manual" placeholder="手入力してEnterで確定・候補に追加"></div>
+        </div>
+      </div>
     </div>
     <div class="pin-field">
       <div class="pin-editor-label">整備</div>
-      <input type="text" id="pinSeibiField" list="pinSeibiOptions" placeholder="整備／更新など">
-      <datalist id="pinSeibiOptions">
-        <option value="整備"></option>
-        <option value="更新"></option>
-      </datalist>
+      <div class="pin-combo" data-field="seibi">
+        <input type="text" id="pinSeibiField" autocomplete="off" placeholder="整備／更新など">
+        <div class="pin-combo-panel" id="pinSeibiField_panel" hidden>
+          <div class="pin-combo-list" id="pinSeibiField_list"></div>
+          <div class="pin-combo-manual-row"><input type="text" class="pin-combo-manual-input" id="pinSeibiField_manual" placeholder="手入力してEnterで確定・候補に追加"></div>
+        </div>
+      </div>
     </div>
     <div class="pin-field">
       <div class="pin-editor-label">適用法規</div>
-      <input type="text" id="pinLawField" list="pinLawOptions" placeholder="例：NONE">
-      <datalist id="pinLawOptions">
-        <option value="NONE"></option>
-        <option value="消防"></option>
-        <option value="高圧ガス"></option>
-        <option value="低圧ガス"></option>
-      </datalist>
+      <div class="pin-combo" data-field="law">
+        <input type="text" id="pinLawField" autocomplete="off" placeholder="例：NONE">
+        <div class="pin-combo-panel" id="pinLawField_panel" hidden>
+          <div class="pin-combo-list" id="pinLawField_list"></div>
+          <div class="pin-combo-manual-row"><input type="text" class="pin-combo-manual-input" id="pinLawField_manual" placeholder="手入力してEnterで確定・候補に追加"></div>
+        </div>
+      </div>
     </div>
     <div class="pin-field">
       <div class="pin-editor-label">TYPE</div>
-      <input type="text" id="pinTypeField" list="pinTypeOptions" placeholder="例：ｹﾞｰﾄ弁">
-      <datalist id="pinTypeOptions">
-        <option value="ｹﾞｰﾄ弁"></option>
-        <option value="ｸﾞﾛｰﾌﾞ弁"></option>
-        <option value="ﾎﾞｰﾙ弁"></option>
-        <option value="ﾁｪｯｷ弁"></option>
-        <option value="ﾊﾞﾀﾌﾗｲ弁"></option>
-        <option value="ﾀﾞｲﾔﾌﾗﾑ弁"></option>
-        <option value="ﾆｰﾄﾞﾙ弁"></option>
-      </datalist>
+      <div class="pin-combo" data-field="type">
+        <input type="text" id="pinTypeField" autocomplete="off" placeholder="例：ｹﾞｰﾄ弁">
+        <div class="pin-combo-panel" id="pinTypeField_panel" hidden>
+          <div class="pin-combo-list" id="pinTypeField_list"></div>
+          <div class="pin-combo-manual-row"><input type="text" class="pin-combo-manual-input" id="pinTypeField_manual" placeholder="手入力してEnterで確定・候補に追加"></div>
+        </div>
+      </div>
     </div>
     <div class="pin-field">
       <div class="pin-editor-label">レーティング</div>
-      <input type="text" id="pinRatingField" list="pinRatingOptions" placeholder="例：JIS10k">
-      <datalist id="pinRatingOptions">
-        <option value="JIS10k"></option>
-        <option value="JIS20k"></option>
-        <option value="JPI#150"></option>
-        <option value="JPI#300"></option>
-      </datalist>
+      <div class="pin-combo" data-field="rating">
+        <input type="text" id="pinRatingField" autocomplete="off" placeholder="例：JIS10k">
+        <div class="pin-combo-panel" id="pinRatingField_panel" hidden>
+          <div class="pin-combo-list" id="pinRatingField_list"></div>
+          <div class="pin-combo-manual-row"><input type="text" class="pin-combo-manual-input" id="pinRatingField_manual" placeholder="手入力してEnterで確定・候補に追加"></div>
+        </div>
+      </div>
     </div>
     <div class="pin-field">
       <div class="pin-editor-label">サイズ</div>
-      <input type="text" id="pinSizeField" list="pinSizeOptions" placeholder="例：100A、4B">
-      <datalist id="pinSizeOptions">
-        <option value="10A"></option>
-        <option value="15A"></option>
-        <option value="20A"></option>
-        <option value="25A"></option>
-        <option value="32A"></option>
-        <option value="40A"></option>
-        <option value="50A"></option>
-        <option value="65A"></option>
-        <option value="80A"></option>
-        <option value="100A"></option>
-        <option value="125A"></option>
-        <option value="150A"></option>
-        <option value="200A"></option>
-        <option value="250A"></option>
-        <option value="300A"></option>
-        <option value="350A"></option>
-        <option value="400A"></option>
-        <option value="450A"></option>
-        <option value="500A"></option>
-        <option value="550A"></option>
-        <option value="600A"></option>
-      </datalist>
+      <div class="pin-combo" data-field="size">
+        <input type="text" id="pinSizeField" autocomplete="off" placeholder="例：100A、4B">
+        <div class="pin-combo-panel" id="pinSizeField_panel" hidden>
+          <div class="pin-combo-list" id="pinSizeField_list"></div>
+          <div class="pin-combo-manual-row"><input type="text" class="pin-combo-manual-input" id="pinSizeField_manual" placeholder="手入力してEnterで確定・候補に追加"></div>
+        </div>
+      </div>
     </div>
     <div class="pin-field">
       <div class="pin-editor-label">ガスケット</div>
-      <input type="text" id="pinGasketField" list="pinGasketOptions" placeholder="例：V6500">
-      <datalist id="pinGasketOptions">
-        <option value="V6500"></option>
-        <option value="V6500AC"></option>
-        <option value="GF300"></option>
-        <option value="V7026"></option>
-        <option value="V7010"></option>
-        <option value="V7020"></option>
-        <option value="V6596 EEE"></option>
-        <option value="V7596 EEE"></option>
-        <option value="V8596 EEE"></option>
-      </datalist>
+      <div class="pin-combo" data-field="gasket">
+        <input type="text" id="pinGasketField" autocomplete="off" placeholder="例：V6500">
+        <div class="pin-combo-panel" id="pinGasketField_panel" hidden>
+          <div class="pin-combo-list" id="pinGasketField_list"></div>
+          <div class="pin-combo-manual-row"><input type="text" class="pin-combo-manual-input" id="pinGasketField_manual" placeholder="手入力してEnterで確定・候補に追加"></div>
+        </div>
+      </div>
     </div>
     <div class="pin-field">
       <div class="pin-editor-label">ボルトナット</div>
-      <input type="text" id="pinBoltNutField" list="pinBoltNutOptions" placeholder="例：M16×80">
-      <datalist id="pinBoltNutOptions"></datalist>
+      <div class="pin-combo" data-field="boltNut">
+        <input type="text" id="pinBoltNutField" autocomplete="off" placeholder="例：M16×80">
+        <div class="pin-combo-panel" id="pinBoltNutField_panel" hidden>
+          <div class="pin-combo-list" id="pinBoltNutField_list"></div>
+          <div class="pin-combo-manual-row"><input type="text" class="pin-combo-manual-input" id="pinBoltNutField_manual" placeholder="手入力してEnterで確定・候補に追加"></div>
+        </div>
+      </div>
     </div>
     <div class="pin-field">
       <div class="pin-editor-label">流体</div>
-      <input type="text" id="pinFluidField" list="pinFluidOptions" placeholder="流体（手入力）">
-      <datalist id="pinFluidOptions"></datalist>
+      <div class="pin-combo" data-field="fluid">
+        <input type="text" id="pinFluidField" autocomplete="off" placeholder="流体（手入力）">
+        <div class="pin-combo-panel" id="pinFluidField_panel" hidden>
+          <div class="pin-combo-list" id="pinFluidField_list"></div>
+          <div class="pin-combo-manual-row"><input type="text" class="pin-combo-manual-input" id="pinFluidField_manual" placeholder="手入力してEnterで確定・候補に追加"></div>
+        </div>
+      </div>
     </div>
     <div class="pin-field">
       <div class="pin-editor-label">断熱</div>
-      <input type="text" id="pinInsulField" list="pinInsulOptions" placeholder="例：保温、保冷">
-      <datalist id="pinInsulOptions">
-        <option value="保温"></option>
-        <option value="保冷"></option>
-        <option value="なし"></option>
-      </datalist>
+      <div class="pin-combo" data-field="insul">
+        <input type="text" id="pinInsulField" autocomplete="off" placeholder="例：保温、保冷">
+        <div class="pin-combo-panel" id="pinInsulField_panel" hidden>
+          <div class="pin-combo-list" id="pinInsulField_list"></div>
+          <div class="pin-combo-manual-row"><input type="text" class="pin-combo-manual-input" id="pinInsulField_manual" placeholder="手入力してEnterで確定・候補に追加"></div>
+        </div>
+      </div>
     </div>
     <div class="pin-field">
       <div class="pin-editor-label">取外日</div>
@@ -1493,7 +1510,7 @@ function ensureXlsx(){ return loadScriptOnce(LIB_URLS.xlsx); }
 <script>
 // ── 定数 ──────────────────────────────────────
 // アプリのバージョン番号。改修（機能追加・修正）を行うたびに1ずつ増やすこと。
-var APP_VERSION  = 44;
+var APP_VERSION  = 45;
 var GRID_M       = 0.05; // 配管などの移動ピッチ
 var VISUAL_GRID_M = 0.1; // 画面に表示する背景グリッド線の間隔（移動ピッチとは別物。従来通り0.1m単位の見た目を維持）
 var PX_PER_M     = 80;
@@ -1519,6 +1536,133 @@ var LICENSE_KEYS = ['17341'];
 // 何日ごとに再入力を求めるか（約6か月=183日）
 var LICENSE_PERIOD_DAYS = 183;
 var LICENSE_STORAGE_KEY = 'pipeiso_license_v1';
+
+// ── ピン編集フォームの選択欄（TYPE・ITEM等）コンボ部品 ──────────
+// 候補一覧から選ぶ／自分でキーワードを打つ／間違えた候補を消す、の3つに対応する。
+// 候補はlocalStorageに保存し、端末ごとに育っていく（初回は既存の固定候補から始まる）。
+var PIN_COMBO_STORAGE_KEY = 'flpl_pinComboOptions_v1';
+var PIN_COMBO_DEFAULTS = {
+  item:    [],
+  seibi:   ['整備','更新'],
+  law:     ['NONE','消防','高圧ガス','低圧ガス'],
+  type:    ['ｹﾞｰﾄ弁','ｸﾞﾛｰﾌﾞ弁','ﾎﾞｰﾙ弁','ﾁｪｯｷ弁','ﾊﾞﾀﾌﾗｲ弁','ﾀﾞｲﾔﾌﾗﾑ弁','ﾆｰﾄﾞﾙ弁'],
+  rating:  ['JIS10k','JIS20k','JPI#150','JPI#300'],
+  size:    ['10A','15A','20A','25A','32A','40A','50A','65A','80A','100A','125A','150A','200A','250A','300A','350A','400A','450A','500A','550A','600A'],
+  gasket:  ['V6500','V6500AC','GF300','V7026','V7010','V7020','V6596 EEE','V7596 EEE','V8596 EEE'],
+  boltNut: [],
+  fluid:   [],
+  insul:   ['保温','保冷','なし']
+};
+var PIN_COMBO_FIELD_INPUT_ID = {
+  item:'pinItemField', seibi:'pinSeibiField', law:'pinLawField', type:'pinTypeField',
+  rating:'pinRatingField', size:'pinSizeField', gasket:'pinGasketField', boltNut:'pinBoltNutField',
+  fluid:'pinFluidField', insul:'pinInsulField'
+};
+function pinComboLoadAll(){
+  var obj = null;
+  try{ obj = JSON.parse(localStorage.getItem(PIN_COMBO_STORAGE_KEY) || 'null'); }catch(e){ obj = null; }
+  if(!obj || typeof obj !== 'object') obj = {};
+  var changed = false;
+  Object.keys(PIN_COMBO_DEFAULTS).forEach(function(key){
+    if(!Array.isArray(obj[key])){ obj[key] = PIN_COMBO_DEFAULTS[key].slice(); changed = true; }
+  });
+  if(changed) pinComboSaveAll(obj);
+  return obj;
+}
+function pinComboSaveAll(obj){
+  try{ localStorage.setItem(PIN_COMBO_STORAGE_KEY, JSON.stringify(obj)); }
+  catch(e){ /* 保存できない環境では次回また初期候補に戻る */ }
+}
+var PIN_COMBO_STORE = pinComboLoadAll();
+function pinComboAdd(fieldKey, value){
+  value = (value || '').trim();
+  if(!value) return;
+  var list = PIN_COMBO_STORE[fieldKey] || (PIN_COMBO_STORE[fieldKey] = []);
+  if(list.indexOf(value) < 0){ list.push(value); pinComboSaveAll(PIN_COMBO_STORE); }
+}
+function pinComboRemove(fieldKey, value){
+  var list = PIN_COMBO_STORE[fieldKey] || [];
+  var idx = list.indexOf(value);
+  if(idx >= 0){ list.splice(idx, 1); pinComboSaveAll(PIN_COMBO_STORE); }
+}
+function setupPinFieldCombos(){
+  Object.keys(PIN_COMBO_FIELD_INPUT_ID).forEach(function(fieldKey){
+    var inputId = PIN_COMBO_FIELD_INPUT_ID[fieldKey];
+    var input  = document.getElementById(inputId);
+    var panel  = document.getElementById(inputId + '_panel');
+    var listEl = document.getElementById(inputId + '_list');
+    var manual = document.getElementById(inputId + '_manual');
+    if(!input || !panel || !listEl || !manual) return;
+
+    function renderList(filterText){
+      var items = (PIN_COMBO_STORE[fieldKey] || []).slice();
+      var ft = (filterText || '').trim().toLowerCase();
+      if(ft) items = items.filter(function(v){ return v.toLowerCase().indexOf(ft) >= 0; });
+      listEl.innerHTML = '';
+      if(items.length === 0){
+        var empty = document.createElement('div');
+        empty.className = 'pin-combo-empty';
+        empty.textContent = '候補がありません';
+        listEl.appendChild(empty);
+        return;
+      }
+      items.forEach(function(v){
+        var row = document.createElement('div');
+        row.className = 'pin-combo-item';
+        var text = document.createElement('span');
+        text.className = 'pci-text';
+        text.textContent = v;
+        text.addEventListener('click', function(){
+          input.value = v;
+          hidePanel();
+          input.dispatchEvent(new Event('change'));
+        });
+        var del = document.createElement('span');
+        del.className = 'pci-del';
+        del.textContent = '✕';
+        del.title = 'この候補を削除';
+        del.addEventListener('click', function(e){
+          e.stopPropagation();
+          if(confirm('候補「' + v + '」を削除しますか？\n（すでに入力済みのピンの値は変わりません）')){
+            pinComboRemove(fieldKey, v);
+            renderList(input.value);
+          }
+        });
+        row.appendChild(text);
+        row.appendChild(del);
+        listEl.appendChild(row);
+      });
+    }
+    function showPanel(){ renderList(''); panel.hidden = false; }
+    function hidePanel(){ panel.hidden = true; }
+
+    input.addEventListener('focus', showPanel);
+    input.addEventListener('click', showPanel);
+    input.addEventListener('input', function(){ renderList(input.value); panel.hidden = false; });
+
+    manual.addEventListener('click', function(e){ e.stopPropagation(); });
+    manual.addEventListener('keydown', function(e){
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        var v = manual.value.trim();
+        if(v){
+          input.value = v;
+          pinComboAdd(fieldKey, v);
+          manual.value = '';
+          input.dispatchEvent(new Event('change'));
+        }
+        hidePanel();
+      }
+    });
+
+    document.addEventListener('click', function(e){
+      if(!panel.hidden && e.target !== input && !panel.contains(e.target)){
+        hidePanel();
+      }
+    });
+  });
+}
+setupPinFieldCombos();
 
 function licenseStorageGet(){
   try{ return JSON.parse(localStorage.getItem(LICENSE_STORAGE_KEY) || 'null'); }
