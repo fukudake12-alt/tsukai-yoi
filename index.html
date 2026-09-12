@@ -10279,12 +10279,20 @@ var XLSX_STYLES = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
 '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
 '<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>'+
 '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'+
-'<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>'+
+'<borders count="4"><border><left/><right/><top/><bottom/><diagonal/></border>'+
 '<border><left style="thin"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right>'+
+'<top style="thin"><color indexed="64"/></top><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border>'+
+// 写真帳シート：写真欄(B列)の右辺を太線にし、項目欄との区切りを分かりやすくする
+'<border><left style="thin"><color indexed="64"/></left><right style="thick"><color indexed="64"/></right>'+
+'<top style="thin"><color indexed="64"/></top><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border>'+
+// 写真帳シート：項目欄(C列)の左辺を太線にし、写真欄との区切りを分かりやすくする
+'<border><left style="thick"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right>'+
 '<top style="thin"><color indexed="64"/></top><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border></borders>'+
 '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
-'<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'+
-'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/></cellXfs>'+
+'<cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'+
+'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/>'+
+'<xf numFmtId="0" fontId="0" fillId="0" borderId="2" xfId="0" applyBorder="1"/>'+
+'<xf numFmtId="0" fontId="0" fillId="0" borderId="3" xfId="0" applyBorder="1"/></cellXfs>'+
 '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'+
 '</styleSheet>';
 var XLSX_THEME = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
@@ -10328,8 +10336,13 @@ function xlsxEmptyStyledCell(ref, style){
 function xlsxNumCell(ref, v){
   return (v==null || v==='') ? '<c r="'+ref+'"/>' : '<c r="'+ref+'"><v>'+v+'</v></c>';
 }
-function xlsxFormulaCell(ref, formula){
-  return '<c r="'+ref+'"><f>'+escSvgText(formula)+'</f></c>';
+// cachedValueを渡すと<f>（数式）に加えて<v>（計算済みキャッシュ値）も書き込む。
+// ExcelはfullCalcOnLoadで自動再計算されるが、他の表計算アプリ（Google スプレッドシート・Numbers等）は
+// 開いた時に自動再計算しないことがあるため、キャッシュ値を入れておくことで
+// どのアプリで開いても最初から正しい数値が表示され、かつセルは編集可能な数式のまま維持される。
+function xlsxFormulaCell(ref, formula, cachedValue){
+  var vTag = (cachedValue!=null && cachedValue!=='') ? ('<v>'+cachedValue+'</v>') : '';
+  return '<c r="'+ref+'"><f>'+escSvgText(formula)+'</f>'+vTag+'</c>';
 }
 // 物量集計シート（足場・敷地）：一覧データ本体＋種類別の個数・合計数量をExcelの数式(ROUND/SUMIF/COUNTIF)で算出する。
 // F列（数量）の計算式は種類ごとに以下の通り（桁＝C列、布＝D列、高さ＝E列＝座の高さ）。
@@ -10345,6 +10358,18 @@ function scaffQtyFormula(sub, r){
   if(sub==='yagura') return 'ROUND('+sum2+'*'+E+',2)';
   if(sub==='overhang' || sub==='susp') return 'ROUND('+sum2+'*1.5+('+C+'+'+D+'),2)';
   return 'ROUND('+C+'*'+D+',2)'; // 敷板・敷地はどちらも桁×布のみ
+}
+// scaffQtyFormulaと同じ計算式をJS側の数値でも算出する（Excelの数式セルに入れるキャッシュ値用）。
+// 数式と計算内容がずれないよう、必ずscaffQtyFormulaのコメントの計算式と対応させて修正すること。
+function scaffQtyValue(sub, w, d, height){
+  w = w||0; d = d||0; height = height||0;
+  var sum2 = w+w+d+d; // (桁+桁+布+布)
+  var v;
+  if(sub==='asm' || sub==='internal') v = sum2*(height+1)+(w*d);
+  else if(sub==='yagura') v = sum2*height;
+  else if(sub==='overhang' || sub==='susp') v = sum2*1.5+(w+d);
+  else v = w*d; // 敷板・敷地
+  return Math.round(v*100)/100;
 }
 // 物量表の行データを作る（baseRow行目からヘッダーを始める）。戻り値のlastRowは、この表が最後に使った行番号
 // （集計行を含む）。ピン一覧をこの下に続けて配置するために使う。
@@ -10364,7 +10389,7 @@ function buildQuantityRows(items, baseRow){
       xlsxNumCell('C'+r, el.w),
       xlsxNumCell('D'+r, el.d),
       noHeight ? xlsxNumCell('E'+r, null) : xlsxNumCell('E'+r, el.height!=null?el.height:0),
-      xlsxFormulaCell('F'+r, scaffQtyFormula(el.sub, r))
+      xlsxFormulaCell('F'+r, scaffQtyFormula(el.sub, r), scaffQtyValue(el.sub, el.w, el.d, noHeight?0:(el.height!=null?el.height:0)))
     ].join('');
     rows.push('<row r="'+r+'">'+cells+'</row>');
   });
@@ -10378,22 +10403,30 @@ function buildQuantityRows(items, baseRow){
     var dataRange = 'A'+firstDataRow+':A'+lastDataRow;
     var areaRange = 'F'+firstDataRow+':F'+lastDataRow;
     var sumRow = sumStartRow;
+    var totalCount = 0, totalArea = 0;
     SCAFF_KIND_ORDER.forEach(function(sub){
-      if(!items.some(function(e){ return e.sub===sub; })) return;
+      var subItems = items.filter(function(e){ return e.sub===sub; });
+      if(!subItems.length) return;
       sumRow++;
       var label = SCAFF_KIND_LABELS[sub];
+      var count = subItems.length;
+      var area = Math.round(subItems.reduce(function(acc, el){
+        var noHeight = !!SCAFF_NO_HEIGHT[el.sub];
+        return acc + scaffQtyValue(el.sub, el.w, el.d, noHeight?0:(el.height!=null?el.height:0));
+      }, 0)*100)/100;
+      totalCount += count; totalArea += area;
       var cells = [
         xlsxTextCell('A'+sumRow, label),
-        xlsxFormulaCell('B'+sumRow, 'COUNTIF('+dataRange+',"'+label+'")'),
-        xlsxFormulaCell('C'+sumRow, 'SUMIF('+dataRange+',"'+label+'",'+areaRange+')')
+        xlsxFormulaCell('B'+sumRow, 'COUNTIF('+dataRange+',"'+label+'")', count),
+        xlsxFormulaCell('C'+sumRow, 'SUMIF('+dataRange+',"'+label+'",'+areaRange+')', area)
       ].join('');
       rows.push('<row r="'+sumRow+'">'+cells+'</row>');
     });
     sumRow++;
     var totalCells = [
       xlsxTextCell('A'+sumRow, '合計'),
-      xlsxFormulaCell('B'+sumRow, 'SUM(B'+(sumStartRow+1)+':B'+(sumRow-1)+')'),
-      xlsxFormulaCell('C'+sumRow, 'SUM(C'+(sumStartRow+1)+':C'+(sumRow-1)+')')
+      xlsxFormulaCell('B'+sumRow, 'SUM(B'+(sumStartRow+1)+':B'+(sumRow-1)+')', totalCount),
+      xlsxFormulaCell('C'+sumRow, 'SUM(C'+(sumStartRow+1)+':C'+(sumRow-1)+')', Math.round(totalArea*100)/100)
     ].join('');
     rows.push('<row r="'+sumRow+'">'+totalCells+'</row>');
     lastRow = sumRow;
@@ -10839,9 +10872,9 @@ async function xlsxAppendSheetPair(zip, sheetName, rect, ctx){
   // まとめて表示する（密集した図面でも各記号の内容が読み取れるようにするため）。
   var scaffListItems = S.els.filter(function(e){ return e.kind==='scaffold'; });
   if(scaffListItems.length){
-    var listFs = 12;
+    var listFs = 24; // 表示サイズが小さく見つけにくいという要望に合わせ、元の2倍(12→24)に拡大
     var listLineH = listFs*1.6;
-    var listPadding = 8;
+    var listPadding = 16; // 文字サイズに合わせて余白も2倍(8→16)にし、全体のバランスを保つ
     var listTitle = '足場・敷地 一覧';
     var listLines = scaffListItems.map(function(e){ return scaffLabel(e)+'　'+scaffSizeLine(e); });
     // 注意：この関数の引数名「ctx」はExcel出力用の管理オブジェクト（mediaIndex等）であり、
@@ -10973,6 +11006,8 @@ async function xlsxAppendPhotoAlbumSheets(zip, sheetName, pins, ctx){
   var CAP_ROWS = 7; // 1ブロックの行数＝14項目を2列×7行で配置（テンプレートと同じ）
   var ROW_HT_PT = 38.25; // 行の高さ(pt)＝テンプレート「だめ_.xlsx」の値に合わせる
   var BORDER_S = 1; // styles.xml cellXfs[1]＝細線（全辺）。テンプレートは全セルに罫線があるため付与
+  var BORDER_PHOTO_EDGE = 2; // cellXfs[2]＝右辺だけ太線（写真欄側＝B列に使用）
+  var BORDER_CAPTION_EDGE = 3; // cellXfs[3]＝左辺だけ太線（項目欄側＝C列に使用）
   var BLOCKS_PER_PAGE = 3; // テンプレートはページ余白0でA4縦に3ブロックぴったり入る構成
   // 列幅(文字数単位)。A+B＝写真欄、C〜F＝キャプション欄
   // C〜Fは、たろさんがExcel上で4列とも同じ幅(15.85546875)に揃えたものをそのまま反映
@@ -11003,8 +11038,8 @@ async function xlsxAppendPhotoAlbumSheets(zip, sheetName, pins, ctx){
     for(var cr=0; cr<CAP_ROWS; cr++){
       var rr = blockStartRow+cr;
       var f1 = PHOTO_ALBUM_FIELDS[cr*2], f2 = PHOTO_ALBUM_FIELDS[cr*2+1];
-      var cells = xlsxEmptyStyledCell('A'+rr, BORDER_S)+xlsxEmptyStyledCell('B'+rr, BORDER_S)+
-        xlsxTextCell('C'+rr, f1.label, BORDER_S)+xlsxTextCell('D'+rr, pin[f1.key]||'', BORDER_S);
+      var cells = xlsxEmptyStyledCell('A'+rr, BORDER_S)+xlsxEmptyStyledCell('B'+rr, BORDER_PHOTO_EDGE)+
+        xlsxTextCell('C'+rr, f1.label, BORDER_CAPTION_EDGE)+xlsxTextCell('D'+rr, pin[f1.key]||'', BORDER_S);
       if(f2) cells += xlsxTextCell('E'+rr, f2.label, BORDER_S)+xlsxTextCell('F'+rr, pin[f2.key]||'', BORDER_S);
       rows.push('<row r="'+rr+'" ht="'+ROW_HT_PT+'" customHeight="1">'+cells+'</row>');
     }
