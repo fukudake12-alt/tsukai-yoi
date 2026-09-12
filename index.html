@@ -134,6 +134,24 @@ header{
 .dsec-toggle:active{background:#eef1f6;}
 .dcaret{float:right;font-size:var(--fs-3);transition:transform .15s;}
 .dcaret.collapsed{transform:rotate(-90deg);}
+/* 右メニューの「アイソメ用」「平面図用」見出し：タップでその配管モードに切り替わり、
+   自分のメニューが開く。現在選択中のモードの見出しには背景色を付けて分かるようにする。 */
+.pipe-mode-header{border-radius:var(--radius-sm);padding:6px 4px;margin:0 -4px;transition:background .15s ease;}
+.pipe-mode-header.mode-active{background:#eef1f6;}
+/* 右メニュー内「アイソメ用」「平面図用」の直上に置く、配管モード切替の専用ボタン */
+.pipe-mode-toggle{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;
+  background:#0277bd;color:#ffffff;font-size:var(--fs-3);font-weight:700;
+  padding:6px 12px;border-radius:var(--radius-md);cursor:pointer;
+  box-shadow:0 1px 4px rgba(0,0,0,0.18);
+  -webkit-tap-highlight-color:transparent;
+  transition:background .15s ease;
+}
+.pipe-mode-toggle.plan{background:#2e7d32;}
+.pipe-mode-toggle:active{opacity:0.85;}
+.pipe-mode-toggle .ic{font-size:18px;line-height:1;flex-shrink:0;}
+.pipe-mode-toggle-label{display:flex;flex-direction:column;line-height:1.3;text-align:left;white-space:nowrap;}
 .dg{display:grid;gap:3px;}
 .dg.c2{grid-template-columns:1fr 1fr;}
 .dg.c1{grid-template-columns:1fr;}
@@ -425,30 +443,6 @@ header{
   z-index:30;-webkit-tap-highlight-color:transparent;white-space:nowrap;
 }
 .ok-btn:active{background:#e8f5e9;}
-/* 配管の描画モード切替（アイソメ／平面図）：配管ツール使用中のみ、ツールバー直上・左側に表示 */
-.pipe-mode-switch{
-  position:absolute;left:8px;bottom:8px;
-  display:flex;align-items:center;gap:5px;
-  background:#0277bd;color:#ffffff;font-size:12px;font-weight:700;
-  padding:7px 12px;border-radius:var(--radius-pill);cursor:pointer;
-  box-shadow:0 2px 8px rgba(0,0,0,0.25);
-  z-index:40;-webkit-tap-highlight-color:transparent;
-  transition:background 0.15s ease;
-}
-.pipe-mode-switch.plan{background:#2e7d32;}
-.pipe-mode-switch:active{opacity:0.85;}
-.pipe-mode-switch .ic{font-size:14px;line-height:1;}
-/* 配管を描くときの角度固定（15°/30°/45°/90°刻み）：アイソメ／平面図どちらのモードでも共通で使う。
-   タップするたびに15°→30°→45°→90°と切り替わる単一ボタン。モード切替スイッチのすぐ上に配置する。 */
-.angle-step-switch{
-  position:absolute;left:8px;bottom:44px;
-  display:flex;align-items:center;
-  background:#5c6b8a;color:#ffffff;font-size:12px;font-weight:700;
-  padding:7px 12px;border-radius:var(--radius-pill);cursor:pointer;
-  box-shadow:0 2px 8px rgba(0,0,0,0.25);
-  z-index:40;-webkit-tap-highlight-color:transparent;
-}
-.angle-step-switch:active{opacity:0.85;}
 /* TOAST */
 .toast{
   position:fixed;top:56px;left:50%;transform:translateX(-50%);
@@ -725,7 +719,7 @@ header{
 /* PRINT */
 @media print{
   body{background:#ffffff;color:#000000;}
-  header,.btbar,.sheet-tabbar,.ovl,.esc-btn,.ok-btn,.drawer,.multisel-panel,.pipe-edit-panel,.scaff-edit-panel,.scaff-list-panel,.status,.toast,.text-input-overlay,.share-sheet-overlay,.ctx-menu,.bg-panel,.pipe-mode-switch,.angle-step-switch,.pin-list-panel{display:none!important;}
+  header,.btbar,.sheet-tabbar,.ovl,.esc-btn,.ok-btn,.drawer,.multisel-panel,.pipe-edit-panel,.scaff-edit-panel,.scaff-list-panel,.status,.toast,.text-input-overlay,.share-sheet-overlay,.ctx-menu,.bg-panel,.pin-list-panel{display:none!important;}
   .canvas-wrap{position:static;width:100%;height:100vh;}
 }
 </style>
@@ -770,12 +764,6 @@ header{
     <div class="ok-btn" onclick="confirmAtLastMouse()" title="直近でタップ/クリックした位置で確定します（Enterキーと同じ）">ENTER</div>
     <div class="status" id="status">配管</div>
     <div class="ctx-menu" id="ctxMenu"></div>
-    <div class="angle-step-switch" id="angleStepSwitch" onclick="cycleAngleStep()" title="配管を描くときの角度固定（タップで15°/30°/45°/90°を切替）" style="display:none;">
-      <span id="angleStepSwitchLabel">30°固定</span>
-    </div>
-    <div class="pipe-mode-switch" id="pipeModeSwitch" onclick="togglePipeDrawMode()" title="配管を描くときの角度・長さの合わせ方を切替" style="display:none;">
-      <span class="ic" id="pipeModeSwitchIcon">📐</span><span id="pipeModeSwitchLabel">アイソメ</span>
-    </div>
 
     <div class="ovl">
       <div class="ov-label-btn ov-primary" onclick="setToolFitting()" title="継手・ピン・足場・配管などをまとめたメニューを開閉します">
@@ -956,6 +944,7 @@ header{
         <button class="di" id="bScaffInternal" onclick="setScaffTool('internal')" style="margin-top:4px;">🏢 内部足場</button>
         <button class="di" id="bScaffOverhang" onclick="setScaffTool('overhang')" style="margin-top:4px;">📐 張出足場</button>
         <button class="di" id="bScaffYagura" onclick="setScaffTool('yagura')" style="margin-top:4px;">🗼 櫓</button>
+        <button class="di" id="bScaffBoard" onclick="setScaffTool('board')" style="margin-top:4px;">🟫 敷板</button>
         <button class="di" id="bScaffSite" onclick="setScaffTool('site')" style="margin-top:4px;">🗺 敷地</button>
       </div>
     </div>
@@ -1054,9 +1043,17 @@ header{
 
     
 
-    <!-- ■ アイソメ用（上段）：配管モード（アイソメ／平面図）の切替に合わせて自動でも開閉するが、
-         タップして手動で開閉することもできる -->
-    <div class="dsec dsec-toggle" onclick="toggleSection('iso')" title="タップで開閉できます（配管モードの切替でも自動的に開閉します）">
+    <!-- 配管モードの切替ボタン（アイソメ図／平面図）：下の「アイソメ用」「平面図用」見出しの
+         見出しをタップしても切り替わるが、より目立つ専用ボタンとしてここにも置く -->
+    <div class="dsec" style="display:flex;justify-content:center;">
+      <div class="pipe-mode-toggle" id="pipeModeToggleInline" onclick="togglePipeDrawMode()" title="配管を描くときのモードを切り替えます">
+        <span class="ic" id="pipeModeToggleInlineIcon">📐</span><span class="pipe-mode-toggle-label"><span id="pipeModeToggleInlineLabel1">アイソメ図</span><span id="pipeModeToggleInlineLabel2">モード</span></span>
+      </div>
+    </div>
+
+    <!-- ■ アイソメ用（上段）：タップするとアイソメ図モードに切り替わり、このメニューが開く
+         （もう一方の「平面図用」は自動で閉じる） -->
+    <div class="dsec dsec-toggle pipe-mode-header" id="pipeModeHeaderIso" onclick="choosePipeMode('iso')" title="タップでアイソメ図モードに切り替えて開きます">
       <div class="dlabel" style="color:#0277bd;">▷ アイソメ用 <span class="dcaret" id="caretIso">▾</span></div>
     </div>
     <div id="secIso">
@@ -1092,9 +1089,9 @@ header{
     </div>
     <div class="div"></div>
 
-    <!-- ■ 平面図用（下段）：配管モード（アイソメ／平面図）の切替に合わせて自動でも開閉するが、
-         タップして手動で開閉することもできる -->
-    <div class="dsec dsec-toggle" onclick="toggleSection('plan')" title="タップで開閉できます（配管モードの切替でも自動的に開閉します）">
+    <!-- ■ 平面図用（下段）：タップすると平面図モードに切り替わり、このメニューが開く
+         （もう一方の「アイソメ用」は自動で閉じる） -->
+    <div class="dsec dsec-toggle pipe-mode-header" id="pipeModeHeaderPlan" onclick="choosePipeMode('plan')" title="タップで平面図モードに切り替えて開きます">
       <div class="dlabel" style="color:#2e7d32;">▷ 平面図用 <span class="dcaret" id="caretPlan">▾</span></div>
     </div>
     <div id="secPlan">
@@ -1148,7 +1145,7 @@ header{
   </div>
   <div class="bt-divider"></div>
   <div class="bt-group">
-    <button class="bt on" id="bPipe" onclick="setTool('pipe')"><span class="ic">╱</span>配管</button>
+    <button class="bt on" id="bPipe" onclick="onPipeButtonTap()" title="タップで配管ツールを選択／選択中に再タップで角度固定(15°/30°/45°/90°)を切替"><span class="ic">╱</span><span id="bPipeLabel">配管</span></button>
     <button class="bt"    id="bRot"  onclick="rotateStep()"><span class="ic">🔄</span>回転</button>
     <button class="bt"    id="bMir"  onclick="toggleMirror()"><span class="ic">⇌</span>鏡像</button>
     <button class="bt"    id="bTiltDn" onclick="tiltAdjustStep(-5)" title="継手の見た目の傾きを微調整"><span class="ic">↙</span>傾き-</button>
@@ -1522,10 +1519,12 @@ var ISO_ANGLE_STEP_DEG  = 30; // 既定値（初回起動時のみ使用。以�
 var PLAN_ANGLE_STEP_DEG = 15; // 既定値（互換のため残置。実際の判定はS.angleStepDegを参照）
 
 // ── 足場・敷地 ──────────────────────────────────
-var SCAFF_KIND_LABELS = {asm:'組足場', susp:'吊り足場', internal:'内部足場', overhang:'張出足場', yagura:'櫓', site:'敷地'};
-var SCAFF_KIND_ABBR   = {asm:'組', susp:'吊', internal:'内', overhang:'張', yagura:'櫓', site:'敷'};
-var SCAFF_KIND_ORDER  = ['asm','susp','internal','overhang','yagura','site'];
-var SCAFF_KIND_ICON   = {asm:'🏗', susp:'🪝', internal:'🏢', overhang:'📐', yagura:'🗼', site:'🗺'};
+var SCAFF_KIND_LABELS = {asm:'組足場', susp:'吊り足場', internal:'内部足場', overhang:'張出足場', yagura:'櫓', board:'敷板', site:'敷地'};
+var SCAFF_KIND_ABBR   = {asm:'組', susp:'吊', internal:'内', overhang:'張', yagura:'櫓', board:'敷', site:'敷'};
+var SCAFF_KIND_ORDER  = ['asm','susp','internal','overhang','yagura','board','site'];
+// 高さ（座の高さ）の概念が無い種類：敷地＝区画のみ、敷板＝桁×布だけで数量計算するため高さ入力自体が不要
+var SCAFF_NO_HEIGHT = {site:true, board:true};
+var SCAFF_KIND_ICON   = {asm:'🏗', susp:'🪝', internal:'🏢', overhang:'📐', yagura:'🗼', board:'🟫', site:'🗺'};
 var SCAFF_COLORS = ['#0277bd','#d32f2f','#2e7d32','#f57f17','#6a1b9a','#00838f','#8d6e63','#c2185b','#455a64','#000000'];
 
 // ── ライセンスキー管理 ─────────────────────────
@@ -1734,12 +1733,15 @@ var photoViewerCtl = null, specViewerCtl = null;
 var S = {
   tool:'pipe', pt:'CS', ft:'fl_gate', weldType:'weld_butt',
   showGrid:false, showDim:false, zoom:1, px:0, py:0, // 寸法表示は初期状態OFF（ON/OFFトグルで切替可能）
-  // 配管を描くときの角度・長さの合わせ方：'iso'=アイソメ（30°刻み）／'plan'=平面図（15°刻み）
+  // 配管モード：'iso'=アイソメ図として描く／'plan'=平面図として描く（見た目の表現の切替。
+  // 角度の刻みはどちらのモードでも共通の角度固定ボタン（S.angleStepDeg）で設定する）
   pipeDrawMode:'iso',
   angleStepDeg:30,
   scaffRotateGuideShow:false, scaffRotateGuideDeg:0, scaffResize:null, // 足場・敷地：回転ハンドル用ガイド表示／辺ドラッグでのサイズ変更用
   els:[], sel:null, hist:[], histRedo:[],
   drawing:false, drawStart:null, prev:null, snapPt:null,
+  // 配管の長さを数値（mm）で直接入力するためのバッファ（始点を打った後、数字キーを押すと貯まる）
+  typedLen:'',
   drawingLeader:false, leaderStart:null, leaderPrev:null,
   // 足場・敷地（矩形）の描画状態
   scaffSub:null, scaffDrawing:false, scaffStart:null, scaffPrev:null,
@@ -1927,9 +1929,9 @@ function scaffLabel(el){
 function scaffAutoLabel(el){ return (SCAFF_KIND_ABBR[el.sub]||'?')+'-'+el.num; }
 // 寸法（および高さ）を1行にまとめる：ラベル表示を「種類」「サイズ」の2行構成にするための共通ヘルパー
 function scaffSizeLine(el){
-  var isSite = el.sub==='site';
+  var noHeight = !!SCAFF_NO_HEIGHT[el.sub];
   var txt = el.w.toFixed(1)+'×'+el.d.toFixed(1)+'m';
-  if(!isSite && el.height!=null) txt += '  H'+parseFloat(el.height).toFixed(1)+'m（座）';
+  if(!noHeight && el.height!=null) txt += '  H'+parseFloat(el.height).toFixed(1)+'m（座）';
   return txt;
 }
 // まだ作成していない要素向け：次に振られる予定の番号をプレビュー表示するための関数（カウンターは消費しない）
@@ -1940,10 +1942,10 @@ function genScaffUid(){ return 'sc'+(Date.now())+'_'+(scaffUidSeq++); }
 function setScaffTool(sub){
   S.scaffSub = sub;
   setTool('scaff');
-  ['bScaffAsm','bScaffSusp','bScaffInternal','bScaffOverhang','bScaffYagura','bScaffSite'].forEach(function(id){
+  ['bScaffAsm','bScaffSusp','bScaffInternal','bScaffOverhang','bScaffYagura','bScaffBoard','bScaffSite'].forEach(function(id){
     var b=document.getElementById(id); if(b) b.classList.remove('on');
   });
-  var idMap={asm:'bScaffAsm',susp:'bScaffSusp',internal:'bScaffInternal',overhang:'bScaffOverhang',yagura:'bScaffYagura',site:'bScaffSite'};
+  var idMap={asm:'bScaffAsm',susp:'bScaffSusp',internal:'bScaffInternal',overhang:'bScaffOverhang',yagura:'bScaffYagura',board:'bScaffBoard',site:'bScaffSite'};
   var btn=document.getElementById(idMap[sub]); if(btn) btn.classList.add('on');
   showToast(SCAFF_KIND_LABELS[sub]+'：0.5m単位で矩形をドラッグして作成してください');
 }
@@ -2111,6 +2113,19 @@ function render(){
   S.els.forEach(function(e){ if(e.kind==='pipe'||e.kind==='hose') drawEl(e, e===S.sel||e===S.dragEl||S.multiSel.indexOf(e)>=0, false, pipeCuts.get(e)); });
   S.els.forEach(function(e){ if(e.kind!=='pipe'&&e.kind!=='hose'&&e.kind!=='scaffold') drawEl(e, e===S.sel||e===S.dragEl||S.multiSel.indexOf(e)>=0, false); });
   if(S.prev) drawEl(S.prev, false, true);
+  if(S.drawing && S.typedLen && S.lastMousePos){
+    // 配管の長さ(mm)を数値入力中の見た目フィードバック（マウスカーソルの近くに表示）
+    ctx.save();
+    ctx.font='bold 14px system-ui, sans-serif';
+    ctx.textBaseline='middle';
+    var typedTxt = S.typedLen+' mm';
+    var ttx=S.lastMousePos.x+16, tty=S.lastMousePos.y-16;
+    ctx.lineWidth=3; ctx.strokeStyle='#ffffff';
+    ctx.strokeText(typedTxt, ttx, tty);
+    ctx.fillStyle='#d84315';
+    ctx.fillText(typedTxt, ttx, tty);
+    ctx.restore();
+  }
   if(S.anglePrev) drawAngleGrp(S.anglePrev, false, true);
   if(S.scaffPrev){
     drawEl({kind:'scaffold', sub:S.scaffSub||'asm', wx:(S.scaffPrev.x1+S.scaffPrev.x2)/2, wy:(S.scaffPrev.y1+S.scaffPrev.y2)/2, w:Math.abs(S.scaffPrev.x2-S.scaffPrev.x1), d:Math.abs(S.scaffPrev.y2-S.scaffPrev.y1), height:S.lastScaffHeight, color:S.lastScaffColor}, false, true);
@@ -3575,6 +3590,9 @@ function initCollapsedSections(){
 function syncFitSectionsWithPipeMode(){
   applySectionState('iso', S.pipeDrawMode!=='iso');
   applySectionState('plan', S.pipeDrawMode!=='plan');
+  var hIso=document.getElementById('pipeModeHeaderIso'), hPlan=document.getElementById('pipeModeHeaderPlan');
+  if(hIso) hIso.classList.toggle('mode-active', S.pipeDrawMode==='iso');
+  if(hPlan) hPlan.classList.toggle('mode-active', S.pipeDrawMode==='plan');
 }
 
 
@@ -5406,6 +5424,43 @@ function movePress(pos){
   }
 }
 
+// ── 配管の確定（アイソメ・平面図モード共通） ─────────────────
+// 始点(S.drawStart)から指定した終点(endPt)までの配管を確定する。
+// ・2回目のクリック／ドラッグを離した位置で確定する場合（endPress側）
+// ・始点を打った後、数字キーで長さ(mm)を入力してEnterで確定する場合（finishPipeWithTypedLength）
+// の両方から呼ばれる共通処理。
+function finishPipeAt(endPt, toastMsg){
+  var dx=endPt.x-S.drawStart.x, dy=endPt.y-S.drawStart.y;
+  var added=false;
+  if(Math.sqrt(dx*dx+dy*dy)>=GRID_M*0.5){
+    saveH();
+    S.els.push({kind:'pipe',pt:S.pt,wx1:S.drawStart.x,wy1:S.drawStart.y,wx2:endPt.x,wy2:endPt.y,color:S.drawColor||undefined,sz:S.drawThickness||undefined,crossPriority:S.drawCrossPriority||undefined});
+    added=true;
+  }
+  S.drawing=false; S.drawStart=null; S.prev=null; S.snapPt=null; S.typedLen='';
+  if(added && toastMsg) showToast(toastMsg);
+  render();
+}
+// 配管の始点を打った後、数字キー（0-9・小数点）を押すと長さ(mm)がS.typedLenに貯まっていく。
+// Enterを押すとここが呼ばれ、直前のプレビュー方向（マウス移動で決めた、角度固定ボタンの刻みに
+// スナップ済みの向き）に、入力した長さちょうどの配管を確定する。
+// 一度もマウスを動かさないまま数字だけ入力した場合は、水平（0°）方向を既定値とする。
+function finishPipeWithTypedLength(){
+  var mm = parseFloat(S.typedLen);
+  if(!S.drawStart || isNaN(mm) || mm<=0){
+    showToast('正しい数値（mm）を入力してください');
+    S.typedLen=''; render();
+    return;
+  }
+  var lenM = mm/1000;
+  var ang = 0;
+  if(S.prev){
+    var ddx=S.prev.wx2-S.drawStart.x, ddy=S.prev.wy2-S.drawStart.y;
+    if(Math.sqrt(ddx*ddx+ddy*ddy) > 1e-6) ang = Math.atan2(ddy,ddx);
+  }
+  var endPt = {x:S.drawStart.x+Math.cos(ang)*lenM, y:S.drawStart.y+Math.sin(ang)*lenM};
+  finishPipeAt(endPt, mm+'mm の配管を描きました');
+}
 function endPress(pos){
   cancelLongPress();
   if(S.angleDrawing){
@@ -5497,48 +5552,17 @@ function endPress(pos){
     S.drawing=false; S.prev=null;
     if(S.tool==='pipe'&&S.drawStart){
       var snap=findSnap(pos.x,pos.y,null,-1);
+      var endPt;
       if(snap){
         // 既存の配管の端点に重なった場合は、そのまま接続する（長さ確認はしない）
-        var dxSn=snap.x-S.drawStart.x, dySn=snap.y-S.drawStart.y;
-        if(Math.sqrt(dxSn*dxSn+dySn*dySn)>=GRID_M*0.5){
-          saveH();
-          S.els.push({kind:'pipe',pt:S.pt,wx1:S.drawStart.x,wy1:S.drawStart.y,wx2:snap.x,wy2:snap.y,color:S.drawColor||undefined,sz:S.drawThickness||undefined,crossPriority:S.drawCrossPriority||undefined});
-        }
-        S.snapPt=null; render(); return;
+        endPt = {x:snap.x, y:snap.y};
+      } else {
+        // 2回目のクリック（またはドラッグを離した位置）でそのまま終点を確定する（アイソメ・平面図共通）
+        var ss=w2s(S.drawStart.x,S.drawStart.y);
+        endPt = snapIso(ss.x,ss.y,pos.x,pos.y);
       }
-      if(S.pipeDrawMode==='plan'){
-        // 平面図モード：タップした点が始点、離した点は「向き」だけを決める（角度固定ボタンで選んだ刻みにスナップ）。
-        // 離したら実際の長さを数値で確認し、入力した長さ分だけその向きに配管を描く。
-        var weP=s2w(pos.x,pos.y);
-        var dxP=weP.x-S.drawStart.x, dyP=weP.y-S.drawStart.y;
-        var draggedLen=Math.sqrt(dxP*dxP+dyP*dyP);
-        if(draggedLen>=GRID_M*0.5){
-          var angP=Math.atan2(dyP,dxP)*180/Math.PI;
-          var angStepP = S.angleStepDeg || 15;
-          var sAngP=Math.round(angP/angStepP)*angStepP, radP=sAngP*Math.PI/180;
-          var uxP=Math.cos(radP), uyP=Math.sin(radP);
-          var startPtP={x:S.drawStart.x, y:S.drawStart.y};
-          var defaultLenP=(Math.round(draggedLen*100)/100).toFixed(2);
-          var ptP=S.pt, colorP=S.drawColor, thickP=S.drawThickness, crossP=S.drawCrossPriority;
-          openTextInput('何m描きますか？', defaultLenP, function(t){
-            var num=parseFloat(String(t).trim());
-            if(isNaN(num) || num<=0){ showToast('正の数値を入力してください'); return; }
-            saveH();
-            S.els.push({kind:'pipe',pt:ptP,wx1:startPtP.x,wy1:startPtP.y,wx2:startPtP.x+uxP*num,wy2:startPtP.y+uyP*num,color:colorP||undefined,sz:thickP||undefined,crossPriority:crossP||undefined});
-            showToast(num+'m の配管を描きました');
-            render();
-          }, true, '0.01', false);
-        }
-        S.snapPt=null; render(); return;
-      }
-      // アイソメモード：従来通り、離した時点の位置でそのまま確定する
-      var ss=w2s(S.drawStart.x,S.drawStart.y);
-      var we=snapIso(ss.x,ss.y,pos.x,pos.y);
-      var dx=we.x-S.drawStart.x,dy=we.y-S.drawStart.y;
-      if(Math.sqrt(dx*dx+dy*dy)>=GRID_M*0.5){
-        saveH();
-        S.els.push({kind:'pipe',pt:S.pt,wx1:S.drawStart.x,wy1:S.drawStart.y,wx2:we.x,wy2:we.y,color:S.drawColor||undefined,sz:S.drawThickness||undefined,crossPriority:S.drawCrossPriority||undefined});
-      }
+      finishPipeAt(endPt);
+      return;
     }
     S.snapPt=null; render(); return;
   }
@@ -5588,18 +5612,18 @@ function endPress(pos){
     var scCx=(scR.x1+scR.x2)/2, scCy=(scR.y1+scR.y2)/2;
     var scSub = S.scaffSub || 'asm';
     render();
-    openScaffInfo(scSub, scSub!=='site', String(S.lastScaffHeight||2), function(info){
+    openScaffInfo(scSub, !SCAFF_NO_HEIGHT[scSub], String(S.lastScaffHeight||2), function(info){
       saveH();
       var scNum = nextScaffNum(scSub);
       var newEl = {kind:'scaffold', sub:scSub, wx:scCx, wy:scCy, w:scW, d:scD, angle:0,
-        height: scSub==='site' ? null : info.height,
+        height: SCAFF_NO_HEIGHT[scSub] ? null : info.height,
         color: info.color, num:scNum,
         customLabel: info.customLabel || '',
         projectName: info.projectName, companyName: info.companyName,
         __uid:genScaffUid()};
       S.els.push(newEl);
       S.lastScaffColor = info.color;
-      if(scSub!=='site') S.lastScaffHeight = info.height;
+      if(!SCAFF_NO_HEIGHT[scSub]) S.lastScaffHeight = info.height;
       if(scSub==='site'){
         showToast('敷地 '+scaffLabel(newEl)+' を作成しました（桁'+scW.toFixed(1)+'m×布'+scD.toFixed(1)+'m）');
       } else {
@@ -6517,10 +6541,34 @@ document.addEventListener('keydown',function(e){
     escapeToNeutral();
     return;
   }
+  // 配管の始点を打った後（S.drawing中）に数字キーを押すと、長さ(mm)の直接入力を開始する。
+  // 例：始点をクリック→「1000」と入力→Enter＝その方向に1000mm(=1m)の配管を確定する。
+  if(S.tool==='pipe' && S.drawing && S.drawStart){
+    var tagN=(document.activeElement && document.activeElement.tagName)||'';
+    if(tagN!=='INPUT' && tagN!=='TEXTAREA'){
+      if(/^[0-9]$/.test(e.key) || (e.key==='.' && S.typedLen.indexOf('.')===-1)){
+        e.preventDefault();
+        S.typedLen = (S.typedLen||'') + e.key;
+        render();
+        return;
+      }
+      if(e.key==='Backspace' && S.typedLen){
+        e.preventDefault();
+        S.typedLen = S.typedLen.slice(0,-1);
+        render();
+        return;
+      }
+    }
+  }
   if(e.key==='Enter'){
     var tag=(document.activeElement && document.activeElement.tagName)||'';
     if(tag==='INPUT' || tag==='TEXTAREA') return; // 各入力欄は個別のEnter処理に任せる
     hideContextMenu();
+    if(S.tool==='pipe' && S.drawing && S.typedLen){
+      // 数値(mm)入力中にEnter＝入力した長さちょうどで配管を確定する
+      finishPipeWithTypedLength();
+      return;
+    }
     confirmAtLastMouse();
     return;
   }
@@ -6797,10 +6845,10 @@ function buildScaffEditPanel(el){
   }
   document.getElementById('scaffWVal').textContent = el.w.toFixed(1)+'m';
   document.getElementById('scaffDVal').textContent = el.d.toFixed(1)+'m';
-  var isSite = el.sub==='site';
-  document.getElementById('scaffHeightLabel').style.display = isSite ? 'none' : '';
-  document.getElementById('scaffHeightStepper').style.display = isSite ? 'none' : '';
-  if(!isSite) document.getElementById('scaffHVal').textContent = parseFloat(el.height||0).toFixed(1)+'m';
+  var noHeight = !!SCAFF_NO_HEIGHT[el.sub];
+  document.getElementById('scaffHeightLabel').style.display = noHeight ? 'none' : '';
+  document.getElementById('scaffHeightStepper').style.display = noHeight ? 'none' : '';
+  if(!noHeight) document.getElementById('scaffHVal').textContent = parseFloat(el.height||0).toFixed(1)+'m';
   var colorHost=document.getElementById('scaffEditColorSwatches');
   if(colorHost){
     var html='';
@@ -6830,7 +6878,7 @@ function adjustScaffDim(which, delta){
 }
 // 高さを0.1m単位で増減する（最小0.1m）
 function adjustScaffHeight(delta){
-  if(!S.dragEl || S.dragEl.kind!=='scaffold' || S.dragEl.sub==='site') return;
+  if(!S.dragEl || S.dragEl.kind!=='scaffold' || SCAFF_NO_HEIGHT[S.dragEl.sub]) return;
   saveH();
   var cur = S.dragEl.height || 2;
   var next = Math.max(0.1, Math.round((cur+delta)*10)/10);
@@ -6900,7 +6948,7 @@ function changeScaffSub(newSub){
   saveH();
   el.sub = newSub;
   el.num = nextScaffNum(newSub);
-  if(newSub==='site'){
+  if(SCAFF_NO_HEIGHT[newSub]){
     el.height = null;
   } else if(el.height==null){
     el.height = S.lastScaffHeight || 2;
@@ -6940,7 +6988,7 @@ function updateScaffListPanel(){
     if(!group.length) return;
     html += '<div class="scaff-list-group"><div class="scaff-list-group-title">'+SCAFF_KIND_LABELS[sub]+'（'+group.length+'）</div>';
     group.forEach(function(e){
-      var dimTxt = e.w.toFixed(1)+'×'+e.d.toFixed(1)+'m'+(e.sub==='site' ? '' : '　H'+parseFloat(e.height||0).toFixed(1)+'m（座）');
+      var dimTxt = e.w.toFixed(1)+'×'+e.d.toFixed(1)+'m'+(SCAFF_NO_HEIGHT[e.sub] ? '' : '　H'+parseFloat(e.height||0).toFixed(1)+'m（座）');
       html += '<div class="scaff-list-row" onclick="selectScaffFromList(\''+e.__uid+'\')">'+
         '<span class="chip" style="background:'+(e.color||'#000')+';"></span>'+
         '<span class="info">'+scaffLabel(e)+'<br>'+dimTxt+'</span>'+
@@ -8789,9 +8837,11 @@ function loadScaffInfoMemory(){
 function saveScaffInfoMemory(mem){
   try{ localStorage.setItem(SCAFF_INFO_STORAGE_KEY, JSON.stringify(mem)); }catch(e){}
 }
+// 種類ごとの初期色（敷地は濃いグレー、敷板は板材らしい茶系、それ以外は既定の青）
+var SCAFF_DEFAULT_COLOR_IDX = {site:8, board:6};
 function getScaffTypeDefault(sub){
   var mem = loadScaffInfoMemory();
-  return mem[sub] || {projectName:'', companyName:'', color: SCAFF_COLORS[sub==='site'?8:0]};
+  return mem[sub] || {projectName:'', companyName:'', color: SCAFF_COLORS[SCAFF_DEFAULT_COLOR_IDX[sub]!=null?SCAFF_DEFAULT_COLOR_IDX[sub]:0]};
 }
 function setScaffTypeDefault(sub, data){
   var mem = loadScaffInfoMemory();
@@ -9044,7 +9094,7 @@ function isPlacementInProgress(){
   return !!S.dragMode || S.drawing || S.drawingLeader || S.rangeSelecting || S.hoseDrawing || S.pendingScale || S.bgDragging || S.angleDrawing || S.scaffDrawing || S.rulerDrawing || S.freehandDrawing || (S.freehandBuffer && S.freehandBuffer.length>0) || !!S.pinPlacing;
 }
 function cancelInProgressDrawing(){
-  S.drawing=false; S.drawStart=null; S.prev=null; S.snapPt=null;
+  S.drawing=false; S.drawStart=null; S.prev=null; S.snapPt=null; S.typedLen='';
   S.drawingLeader=false; S.leaderStart=null; S.leaderPrev=null;
   S.hoseDrawing=false; S.hosePts=null;
   S.freehandDrawing=false; S.freehandPts=null; S.freehandBuffer=[];
@@ -9075,7 +9125,7 @@ function setTool(t, silent, keepDrawer){
   var bPin=document.getElementById('bPin');
   if(bPin) bPin.classList.toggle('on', t==='addpin');
   if(t!=='scaff'){
-    ['bScaffAsm','bScaffSusp','bScaffInternal','bScaffOverhang','bScaffYagura','bScaffSite'].forEach(function(id){
+    ['bScaffAsm','bScaffSusp','bScaffInternal','bScaffOverhang','bScaffYagura','bScaffBoard','bScaffSite'].forEach(function(id){
       var b=document.getElementById(id); if(b) b.classList.remove('on');
     });
   }
@@ -9093,20 +9143,32 @@ function initPipeDrawMode(){
   syncFitSectionsWithPipeMode();
 }
 function togglePipeDrawMode(){
-  S.pipeDrawMode = (S.pipeDrawMode==='plan') ? 'iso' : 'plan';
+  choosePipeMode(S.pipeDrawMode==='plan' ? 'iso' : 'plan');
+}
+// 右メニューの「▷ アイソメ用」「▷ 平面図用」見出しをタップした時に呼ばれる。
+// 指定したモードに切り替え、そのメニューを開く（もう一方は自動で閉じる）。
+function choosePipeMode(mode){
+  S.pipeDrawMode = (mode==='plan') ? 'plan' : 'iso';
   try{ localStorage.setItem(PIPE_DRAWMODE_STORAGE_KEY, S.pipeDrawMode); }catch(e){}
   updatePipeModeSwitch();
   syncFitSectionsWithPipeMode();
   showToast((S.pipeDrawMode==='plan' ? '平面図モード' : 'アイソメモード')+'：長さ0.01m単位で配管を描きます（角度は'+(S.angleStepDeg||30)+'°刻み）');
 }
 function updatePipeModeSwitch(){
-  var sw=document.getElementById('pipeModeSwitch');
+  var sw=document.getElementById('pipeModeToggleInline');
   if(!sw) return;
-  sw.style.display = (S.tool==='pipe') ? 'flex' : 'none'; // 配管ツール使用中のみ表示（描画モードに関係するボタンのため）
   sw.classList.toggle('plan', S.pipeDrawMode==='plan');
-  var icon=document.getElementById('pipeModeSwitchIcon'), label=document.getElementById('pipeModeSwitchLabel');
-  if(S.pipeDrawMode==='plan'){ if(icon) icon.textContent='📏'; if(label) label.textContent='平面図'; }
-  else { if(icon) icon.textContent='📐'; if(label) label.textContent='アイソメ'; }
+  var icon=document.getElementById('pipeModeToggleInlineIcon');
+  var l1=document.getElementById('pipeModeToggleInlineLabel1'), l2=document.getElementById('pipeModeToggleInlineLabel2');
+  if(S.pipeDrawMode==='plan'){
+    if(icon) icon.textContent='📏';
+    if(l1) l1.textContent='平面図';
+    if(l2) l2.textContent='モード';
+  } else {
+    if(icon) icon.textContent='📐';
+    if(l1) l1.textContent='アイソメ図';
+    if(l2) l2.textContent='モード';
+  }
 }
 // ── 配管の角度固定（15°/30°/45°/90°）：アイソメ・平面図どちらのモードでも共通の刻みを使う。
 // ボタンをタップするたびに15°→30°→45°→90°→15°…と巡回して切り替える。
@@ -9155,11 +9217,19 @@ function updatePinScaleSwitch(){
   var sw = document.getElementById('pinScaleSwitch');
   if(sw) sw.textContent = 'ピンの大きさ '+Math.round((S.pinScale||1)*100)+'%';
 }
+// 「配管」ボタン：まだ配管ツールを選んでいなければ選択する。既に選択中なら、
+// もう一度タップするたびに角度固定（15°→30°→45°→90°）を巡回切替する（左下にあった専用ボタンを統合）。
+function onPipeButtonTap(){
+  if(S.tool==='pipe'){
+    cycleAngleStep();
+  } else {
+    setTool('pipe');
+  }
+}
 function updateAngleStepSwitch(){
-  var sw = document.getElementById('angleStepSwitch');
-  if(sw) sw.style.display = (S.tool==='pipe') ? 'flex' : 'none'; // 配管ツール使用中のみ表示（角度固定は配管を描く時にしか使わないため）
-  var label = document.getElementById('angleStepSwitchLabel');
-  if(label) label.textContent = (S.angleStepDeg||30)+'°固定';
+  var label = document.getElementById('bPipeLabel');
+  if(!label) return;
+  label.textContent = (S.tool==='pipe') ? ('配管 '+(S.angleStepDeg||30)+'°') : '配管';
 }
 // ☰メニューはドロワー（基本操作／継手／ヘッダー等）の開閉だけを行い、ツールは切り替えない。
 // ※以前はここで強制的にツールを『継手』へ切り替えていたため、色・太さを選んだだけのつもりでも
@@ -9192,10 +9262,7 @@ function escapeToNeutral(){
   }
   S.pinDragging=false; S.pinDragTarget=null;
   cancelLongPress();
-  S.drawing=false; S.drawStart=null; S.prev=null; S.snapPt=null;
-  S.drawingLeader=false; S.leaderStart=null; S.leaderPrev=null;
-  S.rangeSelecting=false; S.rangeStart=null; S.rangeEnd=null;
-  S.sel=null; S.lastFit=null; S.pendingScale=false;
+  S.drawing=false; S.drawStart=null; S.prev=null; S.snapPt=null; S.typedLen='';
   // ピンをつかんで移動中（長押しでつかんだ後、まだ確定タップをしていない状態）にEscapeを押した場合は、
   // 単に今の位置で確定させる（setTool内部のendDragMode）のではなく、掴む前の位置に戻してキャンセルする。
   var cancelledDrag = cancelDragMode();
@@ -10212,9 +10279,12 @@ var XLSX_STYLES = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
 '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
 '<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>'+
 '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'+
-'<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'+
+'<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>'+
+'<border><left style="thin"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right>'+
+'<top style="thin"><color indexed="64"/></top><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border></borders>'+
 '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
-'<cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>'+
+'<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'+
+'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/></cellXfs>'+
 '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'+
 '</styleSheet>';
 var XLSX_THEME = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
@@ -10247,8 +10317,13 @@ function xlsxColLetter(n){
   while(n>0){ var r=(n-1)%26; s=String.fromCharCode(65+r)+s; n=Math.floor((n-1)/26); }
   return s;
 }
-function xlsxTextCell(ref, v){
-  return '<c r="'+ref+'" t="inlineStr"><is><t xml:space="preserve">'+escSvgText(v)+'</t></is></c>';
+function xlsxTextCell(ref, v, style){
+  return '<c r="'+ref+'"'+(style?' s="'+style+'"':'')+' t="inlineStr"><is><t xml:space="preserve">'+escSvgText(v)+'</t></is></c>';
+}
+// 文字を持たない罫線だけのセル（写真帳シートの写真欄A/B列など、結合セルの外周罫線を
+// 正しく描画するには結合範囲内の全セルに罫線スタイルを設定する必要があるため使用）
+function xlsxEmptyStyledCell(ref, style){
+  return '<c r="'+ref+'" s="'+style+'"/>';
 }
 function xlsxNumCell(ref, v){
   return (v==null || v==='') ? '<c r="'+ref+'"/>' : '<c r="'+ref+'"><v>'+v+'</v></c>';
@@ -10256,36 +10331,49 @@ function xlsxNumCell(ref, v){
 function xlsxFormulaCell(ref, formula){
   return '<c r="'+ref+'"><f>'+escSvgText(formula)+'</f></c>';
 }
-// 物量集計シート（足場・敷地）：一覧データ本体＋種類別の個数・合計面積をExcelの数式(ROUND/SUMIF/COUNTIF)で算出する。
-// 面積計算式は今後たろさんが持つ計算式に差し替え・拡張しやすいよう、F列（面積）はシンプルなROUND(C*D)の仮式にしてある。
+// 物量集計シート（足場・敷地）：一覧データ本体＋種類別の個数・合計数量をExcelの数式(ROUND/SUMIF/COUNTIF)で算出する。
+// F列（数量）の計算式は種類ごとに以下の通り（桁＝C列、布＝D列、高さ＝E列＝座の高さ）。
+// 　組足場・内部足場：(桁+桁+布+布)*(高さ+1)+(桁*布)　※高さは「座」の高さのため実際の高さは+1して計算
+// 　櫓　　　　　　　：(桁+桁+布+布)*高さ
+// 　張出足場・吊り足場：(桁+桁+布+布)*1.5+(桁+布)
+// 　敷板　　　　　　：桁*布
+// 　敷地（対象外）　：桁*布（従来通りの単純な区画面積のまま）
+function scaffQtyFormula(sub, r){
+  var C='C'+r, D='D'+r, E='E'+r;
+  var sum2 = '('+C+'+'+C+'+'+D+'+'+D+')'; // (桁+桁+布+布)
+  if(sub==='asm' || sub==='internal') return 'ROUND('+sum2+'*('+E+'+1)+('+C+'*'+D+'),2)';
+  if(sub==='yagura') return 'ROUND('+sum2+'*'+E+',2)';
+  if(sub==='overhang' || sub==='susp') return 'ROUND('+sum2+'*1.5+('+C+'+'+D+'),2)';
+  return 'ROUND('+C+'*'+D+',2)'; // 敷板・敷地はどちらも桁×布のみ
+}
 // 物量表の行データを作る（baseRow行目からヘッダーを始める）。戻り値のlastRowは、この表が最後に使った行番号
 // （集計行を含む）。ピン一覧をこの下に続けて配置するために使う。
 function buildQuantityRows(items, baseRow){
   var rows = [];
-  var headerCells = ['種類','タイトル','桁W(m)','布D(m)','高さ(m)','面積(m\u00b2)【仮式：桁×布】'].map(function(v,i){
+  var headerCells = ['種類','タイトル','桁W(m)','布D(m)','高さ(m)【座】','数量(m\u00b2)'].map(function(v,i){
     return xlsxTextCell(xlsxColLetter(i+1)+baseRow, v);
   }).join('');
   rows.push('<row r="'+baseRow+'">'+headerCells+'</row>');
   var firstDataRow = baseRow+1, lastDataRow = baseRow + items.length;
   items.forEach(function(el, i){
     var r = firstDataRow + i;
-    var isSite = el.sub==='site';
+    var noHeight = !!SCAFF_NO_HEIGHT[el.sub];
     var cells = [
       xlsxTextCell('A'+r, SCAFF_KIND_LABELS[el.sub]||el.sub),
       xlsxTextCell('B'+r, scaffLabel(el)),
       xlsxNumCell('C'+r, el.w),
       xlsxNumCell('D'+r, el.d),
-      isSite ? xlsxNumCell('E'+r, null) : xlsxNumCell('E'+r, el.height!=null?el.height:0),
-      xlsxFormulaCell('F'+r, 'ROUND(C'+r+'*D'+r+',2)')
+      noHeight ? xlsxNumCell('E'+r, null) : xlsxNumCell('E'+r, el.height!=null?el.height:0),
+      xlsxFormulaCell('F'+r, scaffQtyFormula(el.sub, r))
     ].join('');
     rows.push('<row r="'+r+'">'+cells+'</row>');
   });
   var lastRow = lastDataRow;
-  // 種類別の集計（個数・合計面積）：SCAFF_KIND_ORDERの順にCOUNTIF/SUMIFで算出する
+  // 種類別の集計（個数・合計数量）：SCAFF_KIND_ORDERの順にCOUNTIF/SUMIFで算出する
   var sumStartRow = lastDataRow + 3;
   if(items.length){
     rows.push('<row r="'+(sumStartRow-1)+'">'+xlsxTextCell('A'+(sumStartRow-1),'【種類別集計】')+'</row>');
-    var sumHeader = ['種類','個数','合計面積(m\u00b2)'].map(function(v,i){ return xlsxTextCell(xlsxColLetter(i+1)+sumStartRow, v); }).join('');
+    var sumHeader = ['種類','個数','合計数量(m\u00b2)'].map(function(v,i){ return xlsxTextCell(xlsxColLetter(i+1)+sumStartRow, v); }).join('');
     rows.push('<row r="'+sumStartRow+'">'+sumHeader+'</row>');
     var dataRange = 'A'+firstDataRow+':A'+lastDataRow;
     var areaRange = 'F'+firstDataRow+':F'+lastDataRow;
@@ -10864,62 +10952,73 @@ function loadImageFromUrl(url){
     img.src = url;
   });
 }
-// 写真を持つピンだけを対象に、1ピン＝「独立した写真1枚（縦横比そのまま）＋情報セル」のブロックを
-// 縦に並べたシートを作る（焼き付けなし＝写真もセルもExcel上でそのまま編集・移動できる）
+// 写真を持つピンだけを対象に、1ピン＝「写真（A:B列結合・7行ぶんの固定高さ）を左、
+// キャプション7行（C/D・E/F列）を右」に横並びで配置したブロックを、空白行を挟まず
+// 縦に積んだシートを作る（アップロードされたテンプレート「だめ_.xlsx」の構成に合わせたもの）。
+// 焼き付け（画像化）はせず、写真は独立した画像オブジェクト・キャプションは実セルの文字の
+// ままにしているので、Excel上で写真の移動や文字の修正がそのまま行える。
+function excelColWidthToPx(chars){
+  // Excel列幅(文字数単位)→px の近似変換（MDW=7、Calibri 11基準の一般的な近似式）。
+  // 厳密なピクセル一致は狙わず、写真を枠内に収める計算のための目安値として使う。
+  var MDW = 7;
+  return Math.floor(((256*chars + Math.floor(128/MDW))/256)*MDW);
+}
 async function xlsxAppendPhotoAlbumSheets(zip, sheetName, pins, ctx){
   var target = (pins||[]).filter(function(p){ return p.photos && p.photos.length; });
   if(!target.length) return; // 写真を持つピンが1つも無ければ写真帳シート自体を作らない
 
-  var PHOTO_TARGET_PX = 260; // 写真の長辺の目安サイズ（縦横比は保持したまま貼り付ける＝トリミングしない）
+  var PHOTO_TARGET_PX = 260; // 写真の長辺の目安サイズ（Excelに貼る前の縮小先）
   var PHOTO_JPEG_QUALITY = 0.72; // Excelに貼る写真はここで縮小・再圧縮してファイルを軽くする
-  var PX_TO_PT = 72/96; // px→pt換算（Excel既定の96dpiを基準にした簡易換算）
-  var CAP_ROWS = 7; // キャプション欄：14項目を2列×7行で配置
-  var CAP_ROW_HT = 15; // キャプション行の高さ(pt)＝Excelの既定値のまま
-  var BLOCK_GAP_ROWS = 1; // ブロック間の空白行（見た目の区切り・並べ替え時の目印用）
-  var DEFAULT_ROW_HT = 15; // sheetFormatPr defaultRowHeightと合わせる（gap行の高さ計算用）
+  var PT_TO_PX = 96/72; // pt→px換算（Excel既定の96dpiを基準にした簡易換算）
+  var CAP_ROWS = 7; // 1ブロックの行数＝14項目を2列×7行で配置（テンプレートと同じ）
+  var ROW_HT_PT = 38.25; // 行の高さ(pt)＝テンプレート「だめ_.xlsx」の値に合わせる
+  var BORDER_S = 1; // styles.xml cellXfs[1]＝細線（全辺）。テンプレートは全セルに罫線があるため付与
+  var BLOCKS_PER_PAGE = 3; // テンプレートはページ余白0でA4縦に3ブロックぴったり入る構成
+  // 列幅(文字数単位)。A+B＝写真欄、C〜F＝キャプション欄
+  // C〜Fは、たろさんがExcel上で4列とも同じ幅(15.85546875)に揃えたものをそのまま反映
+  var COL_W = {A:20.5703125, B:12.5703125, C:15.85546875, D:15.85546875, E:15.85546875, F:15.85546875};
+  // 写真を収める枠のpxサイズ（A+B列の幅×7行分の高さ）。写真はこの枠に収まるよう縦横比を保って縮小する。
+  var PHOTO_BOX_W_PX = excelColWidthToPx(COL_W.A) + excelColWidthToPx(COL_W.B);
+  var PHOTO_BOX_H_PX = CAP_ROWS*ROW_HT_PT*PT_TO_PX;
 
-  // 1ブロック（写真＋キャプション）がページの途中で分断されて写真だけ次ページに
-  // はみ出すのを防ぐため、ページの印刷可能な高さ(pt)を計算し、ブロックを積み上げる際に
-  // それを超える手前で明示的に改ページを入れる。
-  // A4縦・上下マージン0.3in（xlsxSheetXml側のpageSetup/pageMarginsと合わせる）。
-  var PAGE_H_MM = 297, MARGIN_IN = 0.3, MM_TO_PT = 72/25.4;
-  var PAGE_SAFETY_PT = 6; // 端数・丸め誤差用の安全マージン
-  var PAGE_USABLE_PT = (PAGE_H_MM*MM_TO_PT) - (MARGIN_IN*72*2) - PAGE_SAFETY_PT;
-  var pageUsedPt = 0; // 現在のページで既に使った高さ(pt)
-  var manualBreakRows = []; // 改ページを入れる行番号（この行の直後で改ページ）
-
-  var rows = [], anchorsXml = [], mediaRels = [], shapeId = 1;
-  var r = 1; // 現在書き込み中の行（1始まり）
+  var rows = [], anchorsXml = [], mediaRels = [], shapeId = 1, mergeCells = [], manualBreakRows = [];
+  var r = 1; // 現在の行（1始まり）＝各ブロックの先頭行
   for(var i=0; i<target.length; i++){
     var pin = target[i];
     var url = pin.photos[0];
-    // Excelに埋め込む前に縮小・再圧縮する（表示サイズだけでなく実データも軽くする）
     var compressedUrl = await compressImageDataUrl(url, PHOTO_TARGET_PX, PHOTO_JPEG_QUALITY);
     var info = parseDataUrlImage(compressedUrl);
     var img = await loadImageFromUrl(compressedUrl);
     var photoWpx = (img && img.width) || PHOTO_TARGET_PX;
     var photoHpx = (img && img.height) || Math.round(PHOTO_TARGET_PX*0.75);
-    var photoRowHt = Math.max(CAP_ROW_HT, photoHpx*PX_TO_PT);
-    // このブロック（写真行＋キャプション6行＋間の空白行）の合計高さ(pt)
-    var blockHeightPt = photoRowHt + CAP_ROWS*CAP_ROW_HT + BLOCK_GAP_ROWS*DEFAULT_ROW_HT;
-    // 2ブロック目以降で、今のページの残り高さに収まらない場合は、直前の行の後ろで改ページする
-    if(i>0 && (pageUsedPt+blockHeightPt) > PAGE_USABLE_PT){
-      manualBreakRows.push(r-1);
-      pageUsedPt = 0;
+
+    // 縦横比を保ったまま枠(PHOTO_BOX_W_PX×PHOTO_BOX_H_PX)に収め、余った分は中央寄せにする
+    // （引き伸ばし・トリミングはせず、写真本来の見え方を優先する方針のため）
+    var scale = Math.min(PHOTO_BOX_W_PX/photoWpx, PHOTO_BOX_H_PX/photoHpx);
+    var dispWpx = photoWpx*scale, dispHpx = photoHpx*scale;
+    var offXpx = (PHOTO_BOX_W_PX-dispWpx)/2, offYpx = (PHOTO_BOX_H_PX-dispHpx)/2;
+
+    var blockStartRow = r;
+    // キャプション7行を先に組み立てる（A/B列は写真欄＝罫線だけの空セル、C〜Fが項目）
+    for(var cr=0; cr<CAP_ROWS; cr++){
+      var rr = blockStartRow+cr;
+      var f1 = PHOTO_ALBUM_FIELDS[cr*2], f2 = PHOTO_ALBUM_FIELDS[cr*2+1];
+      var cells = xlsxEmptyStyledCell('A'+rr, BORDER_S)+xlsxEmptyStyledCell('B'+rr, BORDER_S)+
+        xlsxTextCell('C'+rr, f1.label, BORDER_S)+xlsxTextCell('D'+rr, pin[f1.key]||'', BORDER_S);
+      if(f2) cells += xlsxTextCell('E'+rr, f2.label, BORDER_S)+xlsxTextCell('F'+rr, pin[f2.key]||'', BORDER_S);
+      rows.push('<row r="'+rr+'" ht="'+ROW_HT_PT+'" customHeight="1">'+cells+'</row>');
     }
-    pageUsedPt += blockHeightPt;
-    var photoRow = r;
-    rows.push('<row r="'+photoRow+'" ht="'+photoRowHt.toFixed(1)+'" customHeight="1"></row>');
+    mergeCells.push('A'+blockStartRow+':B'+(blockStartRow+CAP_ROWS-1)); // 写真欄をA:B×7行で結合
 
     if(info){
       var mediaName = 'image'+(ctx.mediaIndex++)+'.'+info.ext;
       zip.file('xl/media/'+mediaName, info.base64, {base64:true});
       var relId = 'rIdAlbum'+shapeId;
       mediaRels.push({id:relId, target:'../media/'+mediaName});
-      var cx = photoWpx*9525, cy = photoHpx*9525; // px→EMU
+      var cx = Math.round(dispWpx*9525), cy = Math.round(dispHpx*9525); // px→EMU
       anchorsXml.push(
         '<xdr:oneCellAnchor>'+
-        '<xdr:from><xdr:col>0</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>'+(photoRow-1)+'</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>'+
+        '<xdr:from><xdr:col>0</xdr:col><xdr:colOff>'+Math.round(offXpx*9525)+'</xdr:colOff><xdr:row>'+(blockStartRow-1)+'</xdr:row><xdr:rowOff>'+Math.round(offYpx*9525)+'</xdr:rowOff></xdr:from>'+
         '<xdr:ext cx="'+cx+'" cy="'+cy+'"/>'+
         '<xdr:pic>'+
         '<xdr:nvPicPr><xdr:cNvPr id="'+(shapeId+1)+'" name="写真'+shapeId+'"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>'+
@@ -10929,16 +11028,11 @@ async function xlsxAppendPhotoAlbumSheets(zip, sheetName, pins, ctx){
       );
       shapeId++;
     }
-    r++; // キャプション開始行へ
 
-    for(var cr=0; cr<CAP_ROWS; cr++){
-      var f1 = PHOTO_ALBUM_FIELDS[cr*2], f2 = PHOTO_ALBUM_FIELDS[cr*2+1];
-      var cells = xlsxTextCell('C'+r, f1.label)+xlsxTextCell('D'+r, pin[f1.key]||'');
-      if(f2) cells += xlsxTextCell('E'+r, f2.label)+xlsxTextCell('F'+r, pin[f2.key]||'');
-      rows.push('<row r="'+r+'">'+cells+'</row>');
-      r++;
+    r += CAP_ROWS; // 空白行を挟まず次ブロックへ（テンプレートと同じ詰め配置）
+    if((i+1)%BLOCKS_PER_PAGE===0 && i+1<target.length){
+      manualBreakRows.push(r-1); // 3ブロックごとに改ページ
     }
-    r += BLOCK_GAP_ROWS;
   }
 
   ctx.wsFileIndex++;
@@ -10947,11 +11041,14 @@ async function xlsxAppendPhotoAlbumSheets(zip, sheetName, pins, ctx){
   '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
   '<dimension ref="A1"/><sheetViews><sheetView workbookViewId="0"/></sheetViews>'+
   '<sheetFormatPr defaultRowHeight="15"/>'+
-  '<cols><col min="1" max="1" width="34" customWidth="1"/><col min="2" max="2" width="2" customWidth="1"/>'+
-  '<col min="3" max="3" width="12" customWidth="1"/><col min="4" max="4" width="20" customWidth="1"/>'+
-  '<col min="5" max="5" width="12" customWidth="1"/><col min="6" max="6" width="20" customWidth="1"/></cols>'+
+  '<cols><col min="1" max="1" width="'+COL_W.A+'" customWidth="1"/><col min="2" max="2" width="'+COL_W.B+'" customWidth="1"/>'+
+  '<col min="3" max="3" width="'+COL_W.C+'" customWidth="1"/><col min="4" max="4" width="'+COL_W.D+'" customWidth="1"/>'+
+  '<col min="5" max="5" width="'+COL_W.E+'" customWidth="1"/><col min="6" max="6" width="'+COL_W.F+'" customWidth="1"/></cols>'+
   '<sheetData>'+rows.join('')+'</sheetData>'+
-  '<pageMargins left="0.3" right="0.3" top="0.3" bottom="0.3" header="0" footer="0"/>'+
+  (mergeCells.length ? '<mergeCells count="'+mergeCells.length+'">'+
+    mergeCells.map(function(m){ return '<mergeCell ref="'+m+'"/>'; }).join('')+'</mergeCells>' : '')+
+  // テンプレートに合わせて上下左右マージンを0にする（0.3inのままだと3ブロック/ページに収まらないため）
+  '<pageMargins left="0" right="0" top="0" bottom="0" header="0" footer="0"/>'+
   '<pageSetup paperSize="9" orientation="portrait" horizontalDpi="300" verticalDpi="300"/>'+
   (manualBreakRows.length ? '<rowBreaks count="'+manualBreakRows.length+'" manualBreakCount="'+manualBreakRows.length+'">'+
     manualBreakRows.map(function(id){ return '<brk id="'+id+'" max="16383" man="1"/>'; }).join('')+'</rowBreaks>' : '')+
