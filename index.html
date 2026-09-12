@@ -5202,7 +5202,11 @@ function movePress(pos){
   // ここで早期キャンセル→即タップ扱い（handleDown）にしてしまうと、長押し中の少しの指ぶれ・
   // マウスの微振動だけで「タップでその場に即設置」の分岐に化けてしまい、長押しが実質発火しなくなる。
   // そのためピン追加ツールに限り、指を離すまで（endPress側のcancelLongPress）は長押し判定を継続する。
-  if(S.tool!=='addpin' && S.longPressTimer && S.downPos && dist2(pos.x,pos.y,S.downPos.x,S.downPos.y) > MOVE_CANCEL_PX){
+  // 配管ツールは「長押しで引っ張って離す」ことで始点・終点が一発でできてしまう挙動を廃止したため、
+  // このドラッグ検知による即時開始（handleDownの早期呼び出し）からは除外する。
+  // 配管の始点・終点は、必ず1回目のクリック（タップ）で始点、2回目のクリック（タップ）で終点、
+  // という2回の操作で指定する（それぞれendPress側の処理で確定する。下のS.drawing判定を参照）。
+  if(S.tool!=='addpin' && S.tool!=='pipe' && S.longPressTimer && S.downPos && dist2(pos.x,pos.y,S.downPos.x,S.downPos.y) > MOVE_CANCEL_PX){
     cancelLongPress();
     if(!S.dragMode){ handleDown(S.downPos); }
   }
