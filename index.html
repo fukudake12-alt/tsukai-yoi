@@ -755,6 +755,7 @@ header{
   <input type="file" id="loadPdfInput" accept="application/pdf,image/*" style="display:none" onchange="handleLoadPdf(event)">
   <input type="file" id="loadPinListInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportPinList(event)">
   <input type="file" id="pinPhotoInput" accept="image/*" multiple style="display:none" onchange="handlePinPhotoAdd(event)">
+  <input type="file" id="scaffPhotoInput" accept="image/*" multiple style="display:none" onchange="handleScaffPhotoAdd(event)">
   <input type="file" id="pinSpecInput" accept="application/pdf,image/*,.doc,.docx,.xls,.xlsx,.pdf" multiple style="display:none" onchange="handlePinSpecAdd(event)">
 </header>
 
@@ -865,6 +866,8 @@ header{
       <div style="font-size:var(--fs-2);color:#5c6b8a;">施工会社名</div>
       <input type="text" id="scaffEditCompanyName" oninput="applyScaffEditCompanyName(this.value)" onchange="commitScaffEditInfoMemory()"
         style="width:100%;box-sizing:border-box;padding:5px 6px;font-size:var(--fs-4);border:1px solid #d8dce3;border-radius:var(--radius-sm);">
+      <div style="font-size:var(--fs-2);color:#5c6b8a;margin-top:6px;">写真資料</div>
+      <div class="pin-photo-row" id="scaffPhotoRow"></div>
       <button class="rot-close" onclick="deleteScaffSel()">🗑 削除</button>
     </div>
 
@@ -2465,23 +2468,32 @@ function distToSegment(px,py,x1,y1,x2,y2){
 function hitTestPinPart(sx,sy){
   if(!S.pins) return null;
   var Rb=24*(S.pinScale||1), lineTol=10;
+  // パス1：まず「頭」（番号バルーン／アンカー／通常ピン本体）だけを全ピン分チェックする。
+  // 別のピンの引き出し線がどこかのピンの頭に重なっていても、頭を優先してつかめるようにするため、
+  // 線の判定（パス2）より先に頭の判定を済ませる。
   for(var i=S.pins.length-1;i>=0;i--){
     var p=S.pins[i];
     if(pinHasLeader(p)){
       var labelS=w2s(p.lx,p.ly);
       if(Math.hypot(sx-labelS.x, sy-labelS.y) < Rb) return {pin:p, part:'label'};
       var anchorS=w2s(p.wx,p.wy);
-      var pts=[anchorS].concat((p.bends||[]).map(function(b){ return w2s(b.x,b.y); })).concat([labelS]);
-      var onLine=false;
-      for(var si=0; si<pts.length-1; si++){
-        if(distToSegment(sx,sy,pts[si].x,pts[si].y,pts[si+1].x,pts[si+1].y) < lineTol){ onLine=true; break; }
-      }
-      if(onLine || Math.hypot(sx-anchorS.x, sy-anchorS.y) < 14) return {pin:p, part:'whole'};
+      if(Math.hypot(sx-anchorS.x, sy-anchorS.y) < 14) return {pin:p, part:'whole'};
     } else {
       var cyOff2=-13*1.5*(S.pinScale||1);
       var a=w2s(p.wx,p.wy);
       var pos={x:a.x, y:a.y+cyOff2};
       if(Math.hypot(sx-pos.x, sy-pos.y) < Rb) return {pin:p, part:'whole'};
+    }
+  }
+  // パス2：どのピンの頭にも当たらなかった場合のみ、引き出し線（線分）をチェックする。
+  for(var i2=S.pins.length-1;i2>=0;i2--){
+    var p2=S.pins[i2];
+    if(!pinHasLeader(p2)) continue;
+    var anchorS2=w2s(p2.wx,p2.wy);
+    var labelS2=w2s(p2.lx,p2.ly);
+    var pts=[anchorS2].concat((p2.bends||[]).map(function(b){ return w2s(b.x,b.y); })).concat([labelS2]);
+    for(var si2=0; si2<pts.length-1; si2++){
+      if(distToSegment(sx,sy,pts[si2].x,pts[si2].y,pts[si2+1].x,pts[si2+1].y) < lineTol){ return {pin:p2, part:'whole'}; }
     }
   }
   return null;
@@ -4995,6 +5007,20 @@ function cancelLongPress(){
   if(S.longPressTimer){ clearTimeout(S.longPressTimer); S.longPressTimer=null; }
 }
 
+// グループ移動の開始時、各要素の「移動前の座標」を種類ごとに記録するための共通処理。
+// ピン（S.pinsの要素）はkindプロパティを持たないことで他の要素と区別し、
+// アンカー(wx,wy)・番号バルーン位置(lx,ly)・折れ点(bends)もまとめて記録する。
+function captureGroupOrigItem(el){
+  if(el.kind==='pipe' || el.kind==='leader'){ return {el:el, wx1:el.wx1, wy1:el.wy1, wx2:el.wx2, wy2:el.wy2}; }
+  if(el.kind==='hose'){ return {el:el, pts:el.pts.map(function(p){return {x:p.x,y:p.y};})}; }
+  if(el.kind==='freehand'){ return {el:el, strokes:el.strokes.map(function(pts){ return pts.map(function(p){return {x:p.x,y:p.y};}); })}; }
+  if(el.kind==='anglegrp'){ return {el:el, ax:el.ax, ay:el.ay, bx:el.bx, by:el.by, vx:el.vx, vy:el.vy}; }
+  if(!el.kind){
+    // ピン
+    return {el:el, wx:el.wx, wy:el.wy, lx:el.lx, ly:el.ly, bends:(el.bends||[]).map(function(b){return {x:b.x,y:b.y};})};
+  }
+  return {el:el, wx:el.wx, wy:el.wy};
+}
 function startPress(pos){
   S.downPos = pos;
   S.longPressFired = false;
@@ -5036,6 +5062,7 @@ function startPress(pos){
   if(S.tool==='addpin'){
     var hpDown = hitTestPinPart(pos.x,pos.y);
     if(hpDown){
+      saveH(); // 移動前の状態を記録しておき、元に戻す／やり直しの対象にする
       S.pinDragging = true;
       S.pinDragTarget = hpDown.pin;
       S.pinDragPart = hpDown.part;
@@ -5168,13 +5195,7 @@ function startPress(pos){
   if(S.dragMode==='groupmove'){
     S.dragging=true;
     S.dragGroupStartWorld = s2w(pos.x,pos.y);
-    S.dragGroupOrig = S.multiSel.map(function(el){
-      if(el.kind==='pipe' || el.kind==='leader'){ return {el:el, wx1:el.wx1, wy1:el.wy1, wx2:el.wx2, wy2:el.wy2}; }
-      if(el.kind==='hose'){ return {el:el, pts:el.pts.map(function(p){return {x:p.x,y:p.y};})}; }
-      if(el.kind==='freehand'){ return {el:el, strokes:el.strokes.map(function(pts){ return pts.map(function(p){return {x:p.x,y:p.y};}); })}; }
-      if(el.kind==='anglegrp'){ return {el:el, ax:el.ax, ay:el.ay, bx:el.bx, by:el.by, vx:el.vx, vy:el.vy}; }
-      return {el:el, wx:el.wx, wy:el.wy};
-    });
+    S.dragGroupOrig = S.multiSel.map(captureGroupOrigItem);
     return;
   }
 
@@ -5276,6 +5297,11 @@ function movePress(pos){
         if(syncedAngleGrps.indexOf(o.el) === -1){
           o.el.ax+=sdx; o.el.ay+=sdy; o.el.bx+=sdx; o.el.by+=sdy; o.el.vx+=sdx; o.el.vy+=sdy;
         }
+      } else if(!o.el.kind){
+        // ピン（S.pinsの要素）：アンカー・番号バルーン・折れ点をまとめて平行移動
+        o.el.wx = o.wx+sdx; o.el.wy = o.wy+sdy;
+        if(o.lx!=null){ o.el.lx = o.lx+sdx; o.el.ly = o.ly+sdy; }
+        if(o.bends && o.bends.length){ o.el.bends = o.bends.map(function(b){ return {x:b.x+sdx, y:b.y+sdy}; }); }
       } else {
         o.el.wx=o.wx+sdx; o.el.wy=o.wy+sdy;
       }
@@ -5698,6 +5724,7 @@ function endPress(pos){
         color: info.color, num:scNum,
         customLabel: info.customLabel || '',
         projectName: info.projectName, companyName: info.companyName,
+        photos:[],
         __uid:genScaffUid()};
       S.els.push(newEl);
       S.lastScaffColor = info.color;
@@ -5930,13 +5957,7 @@ function startGroupMove(pos){
   S.justGrabbed = true;
   S.dragEntryTime = Date.now();
   S.dragGroupStartWorld = s2w(pos.x,pos.y);
-  S.dragGroupOrig = S.multiSel.map(function(el){
-    if(el.kind==='pipe' || el.kind==='leader'){ return {el:el, wx1:el.wx1, wy1:el.wy1, wx2:el.wx2, wy2:el.wy2}; }
-    if(el.kind==='hose'){ return {el:el, pts:el.pts.map(function(p){return {x:p.x,y:p.y};})}; }
-    if(el.kind==='freehand'){ return {el:el, strokes:el.strokes.map(function(pts){ return pts.map(function(p){return {x:p.x,y:p.y};}); })}; }
-    if(el.kind==='anglegrp'){ return {el:el, ax:el.ax, ay:el.ay, bx:el.bx, by:el.by, vx:el.vx, vy:el.vy}; }
-    return {el:el, wx:el.wx, wy:el.wy};
-  });
+  S.dragGroupOrig = S.multiSel.map(captureGroupOrigItem);
   showToast('↔ ドラッグで選択範囲ごと移動 — タップで確定');
   render();
 }
@@ -5964,6 +5985,7 @@ function eraseAction(){
     if(!confirm('このピン（'+(pinTarget.name||'名称未設定')+'）を削除しますか？')){
       return;
     }
+    saveH();
     S.pins = (S.pins||[]).filter(function(x){ return x!==pinTarget; });
     S.dragMode=null; S.dragEl=null; S.dragging=false; S.snapPt=null; S.justGrabbed=false; S.dragSubMode=null; S.dragEnd=null; S.dragIsPin=false;
     updatePinListPanel();
@@ -6537,6 +6559,31 @@ function finalizeRangeSelect(pos){
     return;
   }
   function ptIn(sp){ return sp.x>=x0&&sp.x<=x1&&sp.y>=y0&&sp.y<=y1; }
+  // 足場・敷地（回転した矩形）の4頂点をスクリーン座標で求める
+  function scaffCornersScreen(el){
+    var rad=(el.angle||0)*Math.PI/180;
+    var hw=el.w/2, hh=el.d/2;
+    return [[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]].map(function(c){
+      var rx = c[0]*Math.cos(rad) - c[1]*Math.sin(rad);
+      var ry = c[0]*Math.sin(rad) + c[1]*Math.cos(rad);
+      return w2s(el.wx+rx, el.wy+ry);
+    });
+  }
+  // 4頂点を持つ多角形（配列）が、交差選択なら「枠に少しでも触れているか」、
+  // ウィンドウ選択なら「全頂点が枠に完全に収まっているか」を判定する共通処理
+  function polyMatches(pts){
+    if(isCrossing){
+      var touched = pts.some(function(sp){ return ptIn(sp); });
+      if(!touched){
+        for(var pi=0; pi<pts.length && !touched; pi++){
+          var a=pts[pi], b=pts[(pi+1)%pts.length];
+          if(segTouchesRect(a.x,a.y,b.x,b.y,x0,y0,x1,y1)) touched=true;
+        }
+      }
+      return touched;
+    }
+    return pts.every(function(sp){ return ptIn(sp); });
+  }
   var picked=[];
   S.els.forEach(function(e){
     if(e.kind==='pipe' || e.kind==='leader'){
@@ -6561,9 +6608,12 @@ function finalizeRangeSelect(pos){
         var allIn = e.pts.every(function(wp){ return ptIn(w2s(wp.x,wp.y)); });
         if(allIn) picked.push(e);
       }
-    } else if(e.kind==='fitting' || e.kind==='weld' || e.kind==='text' || e.kind==='northarrow' || e.kind==='scaffold'){
+    } else if(e.kind==='fitting' || e.kind==='weld' || e.kind==='text' || e.kind==='northarrow'){
       var sp=w2s(e.wx,e.wy);
       if(ptIn(sp)) picked.push(e);
+    } else if(e.kind==='scaffold'){
+      // 足場・敷地：配管と同じ規則で、回転した矩形の4辺を使って交差／ウィンドウを判定する
+      if(polyMatches(scaffCornersScreen(e))) picked.push(e);
     } else if(e.kind==='freehand'){
       var fhAll = freehandAllPts(e);
       if(!fhAll.length) return;
@@ -6585,6 +6635,30 @@ function finalizeRangeSelect(pos){
       }
     }
   });
+  // ピン：配管と同じ規則で、アンカー・番号バルーン・折れ点をつないだ線を使って交差／ウィンドウを判定する
+  // （風船式でアンカーと番号が離れていない普通のピンは、アンカー1点だけの判定になる）
+  (S.pins||[]).forEach(function(p){
+    var anchor = w2s(p.wx, p.wy);
+    var hasLabel = (p.lx!=null && p.ly!=null) && (Math.abs(p.lx-p.wx)>1e-9 || Math.abs(p.ly-p.wy)>1e-9);
+    if(!hasLabel){
+      if(ptIn(anchor)) picked.push(p);
+      return;
+    }
+    var chainPts = [anchor];
+    (p.bends||[]).forEach(function(b){ chainPts.push(w2s(b.x,b.y)); });
+    chainPts.push(w2s(p.lx,p.ly));
+    if(isCrossing){
+      var touched = chainPts.some(function(sp){ return ptIn(sp); });
+      if(!touched){
+        for(var ci=1; ci<chainPts.length && !touched; ci++){
+          if(segTouchesRect(chainPts[ci-1].x,chainPts[ci-1].y,chainPts[ci].x,chainPts[ci].y,x0,y0,x1,y1)) touched=true;
+        }
+      }
+      if(touched) picked.push(p);
+    } else {
+      if(chainPts.every(function(sp){ return ptIn(sp); })) picked.push(p);
+    }
+  });
   S.multiSel = picked;
   var modeLabel = isCrossing ? '交差選択' : 'ウィンドウ選択';
   showToast(picked.length ? (modeLabel+'：'+picked.length+'個を選択しました（範囲内を長押しでまとめて移動できます）') : (modeLabel+'：範囲内に要素がありません'));
@@ -6602,8 +6676,16 @@ function deleteMultiSel(){
   var toDelete = S.multiSel.slice();
   var fittingPoints = toDelete.filter(function(e){ return e.kind==='fitting'; }).map(function(e){ return {x:e.wx, y:e.wy}; });
   S.els = S.els.filter(function(e){ return toDelete.indexOf(e) === -1; });
+  // ピン（S.pinsの要素）はkindプロパティを持たないため、els側とは別に取り除く
+  var pinsDeleted = false;
+  if(S.pins && S.pins.length){
+    var beforeLen = S.pins.length;
+    S.pins = S.pins.filter(function(p){ return toDelete.indexOf(p) === -1; });
+    pinsDeleted = S.pins.length !== beforeLen;
+  }
   S.multiSel = [];
   fittingPoints.forEach(function(p){ tryMergePipesAtPoint(p.x, p.y); });
+  if(pinsDeleted) updatePinListPanel();
   showToast(toDelete.length+'個を削除しました');
   render();
 }
@@ -6612,7 +6694,9 @@ function deleteMultiSel(){
 function deleteSingleElement(el){
   // ピン（S.pinsに属するオブジェクト）は配管・継手などとは別配列のため、専用の削除処理を行う
   if(S.pins && S.pins.indexOf(el)>=0){
+    saveH();
     S.pins = S.pins.filter(function(p){ return p!==el; });
+    S.multiSel = S.multiSel.filter(function(e){ return e!==el; });
     updatePinListPanel();
     showToast('ピンを削除しました');
     render();
@@ -7019,6 +7103,11 @@ function updateScaffEditPanel(){
   var el = S.dragEl;
   var isScaff = !!(S.dragMode==='move' && el && el.kind==='scaffold');
   panel.classList.toggle('vis', isScaff);
+  // 写真の閲覧・書き込み中はパネル自体が隠れてもピン編集と同じように編集対象を保持し続ける。
+  // （足場をつかんでいる最中でなくなっても、開いている拡大表示・トリミング・書き込みが編集中の
+  // 足場を見失わないようにするための参照。パネルが再び表示される際は下のbuildScaffEditPanelで更新される）
+  if(isScaff) S.currentEditScaff = el;
+  else if(!S.photoViewer && !S.cropTool) S.currentEditScaff = null;
   if(isScaff) buildScaffEditPanel(el);
 }
 function buildScaffEditPanel(el){
@@ -7055,6 +7144,7 @@ function buildScaffEditPanel(el){
   var nEl2=document.getElementById('scaffEditNum'), nPre=document.getElementById('scaffEditNumPrefix');
   if(nEl2) nEl2.value = el.num;
   if(nPre) nPre.textContent = (SCAFF_KIND_ABBR[el.sub]||'?')+'-';
+  renderScaffPhotoRow();
 }
 // 桁行き(w)／布方向(d)を0.5m単位で増減する（最小0.5m）
 function adjustScaffDim(which, delta){
@@ -7361,6 +7451,7 @@ function deletePinByIdFromList(id){
   var p = (S.pins||[]).filter(function(x){ return x.id===id; })[0];
   if(!p) return;
   if(!confirm('このピン（'+(p.name||'名称未設定')+'）を削除しますか？')) return;
+  saveH();
   S.pins = S.pins.filter(function(x){ return x!==p; });
   updatePinListPanel();
   render();
@@ -7394,37 +7485,56 @@ function formatBytesJP(bytes){
   if(bytes >= 1024*1024) return (bytes/1024/1024).toFixed(2)+'MB';
   return Math.max(1, Math.round(bytes/1024))+'KB';
 }
-function renderPinPhotoRow(){
-  var host = document.getElementById('pinPhotoRow');
-  if(!host || !S.currentEditPin) return;
-  var photos = S.currentEditPin.photos || [];
+// ピン・足場のどちらの写真欄を今操作しているかを返す共通ヘルパー。
+// ピン編集シートが開いていればピンを優先し、そうでなければ足場を長押しで掴んで
+// 編集パネルを開いている場合にその足場を返す（両者が同時に開くことはない前提）。
+function photoHost(){
+  if(S.currentEditPin) return S.currentEditPin;
+  if(S.currentEditScaff) return S.currentEditScaff;
+  return null;
+}
+function renderPhotoRowInto(hostId, obj, inputId){
+  var host = document.getElementById(hostId);
+  if(!host || !obj) return;
+  inputId = inputId || 'pinPhotoInput';
+  var photos = obj.photos || [];
   var html='';
   photos.forEach(function(url, idx){
     var sizeLabel = formatBytesJP(estimateDataUrlBytes(url));
-    var isExportPhoto = idx===0; // 写真帳（Excel出力）では1枚目だけが使われる
+    var isExportPhoto = idx===0; // 写真帳（Excel出力）では1枚目だけが使われる（ピン・足場のどちらも対象）
     html += '<div class="pin-photo-thumb'+(isExportPhoto?' pin-photo-export-mark':'')+'" onclick="openPhotoViewer('+idx+')" title="タップして拡大表示'+(isExportPhoto?'（赤枠＝写真帳Excel出力対象）':'')+'"><img src="'+url+'">'
       +(isExportPhoto?'<div class="pin-photo-export-label">帳票</div>':'')
       +'<div class="pin-photo-size">'+sizeLabel+'</div>'
       +'<div class="pin-photo-recompress" onclick="event.stopPropagation();recompressSinglePhoto('+idx+')" title="この写真だけ再圧縮">🗜</div>'
       +'<div class="pin-photo-del" onclick="event.stopPropagation();removePinPhoto('+idx+')">✕</div></div>';
   });
-  html += '<div class="pin-photo-add" onclick="document.getElementById(\'pinPhotoInput\').click();" title="写真を追加">＋</div>';
+  html += '<div class="pin-photo-add" onclick="document.getElementById(\''+inputId+'\').click();" title="写真を追加">＋</div>';
   host.innerHTML = html;
+}
+function renderPinPhotoRow(){
+  renderPhotoRowInto('pinPhotoRow', S.currentEditPin, 'pinPhotoInput');
+}
+// 足場・敷地編集パネル用の写真欄（ピンと同じ部品を流用）
+function renderScaffPhotoRow(){
+  var el = S.currentEditScaff;
+  if(el && !el.photos) el.photos = [];
+  renderPhotoRowInto('scaffPhotoRow', el, 'scaffPhotoInput');
 }
 // 写真サムネイルは小さいため、タップすると拡大表示（スワイプ／クリックで前後の写真に移動）。
 // トリミングはここでは行わず、確認したうえで「トリミング」ボタンを押した時だけ編集画面に入る。
 function openPhotoViewer(idx){
-  var pin = S.currentEditPin;
-  if(!pin || !pin.photos || !pin.photos[idx]) return;
+  var host = photoHost();
+  if(!host || !host.photos || !host.photos[idx]) return;
   if(S.photoMark){ closePhotoMarkUI(); S.photoMark = null; } // 前回の書き込み状態が残っていた場合の保険
-  S.photoViewer = { idx: idx };
+  S.photoViewer = { idx: idx, host: host };
   updatePhotoViewer();
   document.getElementById('photoViewOverlay').classList.add('vis');
 }
 function updatePhotoViewer(){
-  var pin = S.currentEditPin;
-  if(!pin || !S.photoViewer) return;
-  var photos = pin.photos || [];
+  if(!S.photoViewer) return;
+  var host = S.photoViewer.host;
+  if(!host) return;
+  var photos = host.photos || [];
   if(!photos.length){ closePhotoViewer(); return; }
   var idx = S.photoViewer.idx;
   if(idx < 0) idx = photos.length - 1;
@@ -7458,8 +7568,9 @@ function closePhotoViewer(){
 function photoViewerTrim(){
   if(!S.photoViewer) return;
   var idx = S.photoViewer.idx;
+  var host = S.photoViewer.host;
   closePhotoViewer();
-  openPhotoCropper(idx);
+  openPhotoCropper(idx, host);
 }
 // ── 写真マーキング（拡大表示から、丸／フリーハンドで写真に印を付ける） ──
 // トリミングと同じ「破壊的処理」方式：確定すると元の写真データに焼き込んで上書きする。
@@ -7528,7 +7639,8 @@ function closePhotoMarkUI(){
   mc.style.display = 'none';
   document.getElementById('photoMarkToolbar').style.display = 'none';
   document.getElementById('photoViewBtns').style.display = 'flex';
-  var photos = (S.currentEditPin && S.currentEditPin.photos) || [];
+  var vHost = S.photoViewer && S.photoViewer.host;
+  var photos = (vHost && vHost.photos) || [];
   var multi = photos.length > 1;
   document.getElementById('photoViewPrev').style.display = multi ? 'flex' : 'none';
   document.getElementById('photoViewNext').style.display = multi ? 'flex' : 'none';
@@ -7722,7 +7834,7 @@ function confirmPhotoMark(){
   var pm = S.photoMark;
   if(!pm){ return; }
   if(!pm.strokes.length){ cancelPhotoMark(); return; }
-  var pin = S.currentEditPin;
+  var pin = S.photoViewer && S.photoViewer.host;
   if(!pin || !pin.photos || !pin.photos[pm.idx]){ cancelPhotoMark(); return; }
   try{
     var srcImg = document.getElementById('photoViewImg');
@@ -7745,6 +7857,7 @@ function confirmPhotoMark(){
     compressImageDataUrl(rawUrl, 1000, 0.65).then(function(finalUrl){
       pin.photos[pm.idx] = finalUrl;
       renderPinPhotoRow();
+      renderScaffPhotoRow();
       closePhotoMarkUI();
       S.photoMark = null;
       updatePhotoViewer();
@@ -8101,6 +8214,10 @@ function handlePinPhotoAdd(evt){
   addPinPhotoFiles(evt.target.files);
   evt.target.value = '';
 }
+function handleScaffPhotoAdd(evt){
+  addPinPhotoFiles(evt.target.files);
+  evt.target.value = '';
+}
 // ── GPS基準点によるピン自動配置 ──────────────────────────────
 // 屋内ではGPS単体の精度が低く使い物にならないことが多いため、「あらかじめ位置が分かっている
 // GPS付き写真のピン」を2点以上、図面上の実際の位置に人力で合わせて登録しておき、その対応関係から
@@ -8264,12 +8381,13 @@ function compressImageDataUrl(srcDataUrl, maxSide, quality){
 }
 // input選択・ドラッグ&ドロップの両方から呼べる共通処理
 function addPinPhotoFiles(files){
-  if(!files || !files.length || !S.currentEditPin) return;
-  var pin = S.currentEditPin;
+  var pin = photoHost();
+  if(!files || !files.length || !pin) return;
   // GPSがまだ見つかっていないピンに写真を追加した場合、1枚目にGPSが無くても
   // 2枚目・3枚目…と順番に探していき、最初に見つかった写真のGPSを採用する。
   // （写真は取り込み後に圧縮・再エンコードされてExifが失われるため、追加のこの瞬間にしか探せない）
-  if(!pin.gpsExif){
+  // ※GPS基準点はピンの機能のため、足場（kind==='scaffold'）には適用しない。
+  if(pin.kind!=='scaffold' && !pin.gpsExif){
     var imageFiles = Array.prototype.filter.call(files, function(f){ return f.type && f.type.indexOf('image/')===0; });
     findGpsInFilesSequentially(imageFiles, 0, pin);
   }
@@ -8280,7 +8398,7 @@ function addPinPhotoFiles(files){
       compressImageDataUrl(e.target.result, 1000, 0.65).then(function(finalUrl){
         if(!pin.photos) pin.photos=[];
         pin.photos.push(finalUrl);
-        if(S.currentEditPin === pin) renderPinPhotoRow();
+        if(photoHost() === pin){ renderPinPhotoRow(); renderScaffPhotoRow(); }
       });
     };
     reader.readAsDataURL(file);
@@ -8311,20 +8429,23 @@ function findGpsInFilesSequentially(imageFiles, idx, pin){
   });
 }
 function removePinPhoto(idx){
-  if(!S.currentEditPin || !S.currentEditPin.photos) return;
-  S.currentEditPin.photos.splice(idx,1);
+  var host = photoHost();
+  if(!host || !host.photos) return;
+  host.photos.splice(idx,1);
   renderPinPhotoRow();
+  renderScaffPhotoRow();
 }
-// サムネイル1枚だけを再圧縮する（編集中ピンが対象）
+// サムネイル1枚だけを再圧縮する（編集中のピン・足場のどちらかが対象）
 function recompressSinglePhoto(idx){
-  var pin = S.currentEditPin;
+  var pin = photoHost();
   if(!pin || !pin.photos || !pin.photos[idx]) return;
   var before = estimateDataUrlBytes(pin.photos[idx]);
   compressImageDataUrl(pin.photos[idx], 1000, 0.65).then(function(newUrl){
-    if(S.currentEditPin !== pin || !pin.photos[idx]) return; // 途中でピン編集が閉じられた場合は反映しない
+    if(photoHost() !== pin || !pin.photos[idx]) return; // 途中で編集が閉じられた場合は反映しない
     pin.photos[idx] = newUrl;
     var after = estimateDataUrlBytes(newUrl);
     renderPinPhotoRow();
+    renderScaffPhotoRow();
     showToast('再圧縮しました（'+formatBytesJP(before)+' → '+formatBytesJP(after)+'）');
   });
 }
@@ -8334,8 +8455,8 @@ function recompressSinglePhoto(idx){
 // 同じオーバーレイUI（cropOverlay/cropBox）を使い回す。校正済みの実寸スケールを保つ必要がある
 // bg側だけ、確定処理（confirmPhotoCrop）でwx/wy/baseW/baseHを計算し直す点が異なる。
 var cropDragState = null;
-function openPhotoCropper(idx){
-  var pin = S.currentEditPin;
+function openPhotoCropper(idx, hostArg){
+  var pin = hostArg || photoHost();
   if(!pin || !pin.photos || !pin.photos[idx]) return;
   var img = document.getElementById('cropImg');
   var overlay = document.getElementById('cropOverlay');
@@ -8470,6 +8591,7 @@ function confirmPhotoCrop(){
     compressImageDataUrl(rawUrl, 1000, 0.65).then(function(finalUrl){
       ct.pin.photos[ct.idx] = finalUrl;
       renderPinPhotoRow();
+      renderScaffPhotoRow();
       closePhotoCropper();
       showToast('トリミングしました');
     });
@@ -8810,6 +8932,11 @@ function clearPinDateField(id){
 function openPinEditor(pin, isNew){
   S.currentEditPin = pin;
   S.isNewPin = !!isNew;
+  // 既存ピンの編集を開始する時点で状態を記録しておく。編集中は色・GPS配置・写真などが
+  // 確定前でも直接ピン本体に書き込まれる作りのため、保存(savePinEditor)時点では
+  // 既に変更後の状態になってしまっている。そのため編集を始めるこのタイミングで記録する。
+  // （新規ピンはまだS.pinsに入っていないため、この時点では記録不要。追加時にsavePinEditor側で記録する）
+  if(!isNew) saveH();
   document.getElementById('pinEditorTitle').textContent = isNew ? 'ピンを追加' : 'ピン情報';
   var curIdx = (S.pins||[]).indexOf(pin);
   document.getElementById('pinOrderField').value = isNew ? ((S.pins?S.pins.length:0)+1) : (curIdx+1);
@@ -8851,6 +8978,7 @@ function cancelPinEditor(){
 function savePinEditor(){
   var p = S.currentEditPin;
   if(!p) return;
+  if(S.isNewPin) saveH(); // 新規ピンはここで初めて配列に加わるため、追加前の状態をここで記録する（既存ピンはopenPinEditor側で記録済み）
   p.name = document.getElementById('pinNameField').value.trim();
   p.item = document.getElementById('pinItemField').value.trim();
   p.seibi = document.getElementById('pinSeibiField').value.trim();
@@ -8887,6 +9015,7 @@ function deletePinFromEditor(){
   var p = S.currentEditPin;
   if(!p) return;
   if(!confirm('このピン（'+(p.name||'名称未設定')+'）を削除しますか？')) return;
+  saveH();
   S.pins = (S.pins||[]).filter(function(x){ return x!==p; });
   closePinEditorUI();
   updatePinListPanel();
@@ -8962,6 +9091,7 @@ function pinFieldFromRow(row, keys){
 }
 function applyImportedPinRows(rows){
   if(!S.pins) S.pins=[];
+  saveH(); // 取込1回分（複数行の更新・新規追加）をまとめて1つの元に戻す単位にする
   var updated=0, added=0;
   var addIdx=0;
   rows.forEach(function(r){
@@ -9596,7 +9726,7 @@ function renderSheetTabs(){
   wrap.appendChild(add);
 }
 function saveH(){
-  S.hist.push(JSON.stringify(S.els));
+  S.hist.push(JSON.stringify({els:S.els, pins:S.pins}));
   if(S.hist.length>80)S.hist.shift();
   S.histRedo=[]; // 新しい操作をしたら、やり直し履歴は無効になる（一般的なUndo/Redoと同じ挙動）
 }
@@ -9604,17 +9734,21 @@ function undoAct(){
   if(S.dragMode==='groupmove'){ endGroupMove(); return; }
   if(S.dragMode){endDragMode();return;}
   if(!S.hist.length){showToast('これ以上戻せません');return;}
-  S.histRedo.push(JSON.stringify(S.els));
+  S.histRedo.push(JSON.stringify({els:S.els, pins:S.pins}));
   if(S.histRedo.length>80)S.histRedo.shift();
-  S.els=JSON.parse(S.hist.pop());S.sel=null;hidePop();render();showToast('元に戻しました');
+  var snap = JSON.parse(S.hist.pop());
+  S.els = snap.els; S.pins = snap.pins || [];
+  S.sel=null; S.multiSel=[]; hidePop(); render(); updatePinListPanel(); showToast('元に戻しました');
 }
 function redoAct(){
   if(S.dragMode==='groupmove'){ endGroupMove(); return; }
   if(S.dragMode){endDragMode();return;}
   if(!S.histRedo.length){showToast('これ以上やり直せません');return;}
-  S.hist.push(JSON.stringify(S.els));
+  S.hist.push(JSON.stringify({els:S.els, pins:S.pins}));
   if(S.hist.length>80)S.hist.shift();
-  S.els=JSON.parse(S.histRedo.pop());S.sel=null;hidePop();render();showToast('やり直しました');
+  var snap = JSON.parse(S.histRedo.pop());
+  S.els = snap.els; S.pins = snap.pins || [];
+  S.sel=null; S.multiSel=[]; hidePop(); render(); updatePinListPanel(); showToast('やり直しました');
 }
 function clearAll(){
   if(!S.els.length) return;
@@ -10470,12 +10604,40 @@ var XLSX_STYLES = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
 '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
 '<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>'+
 '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'+
-'<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>'+
+'<borders count="14"><border><left/><right/><top/><bottom/><diagonal/></border>'+
 '<border><left style="thin"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right>'+
-'<top style="thin"><color indexed="64"/></top><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border></borders>'+
+'<top style="thin"><color indexed="64"/></top><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border>'+
+// ── 写真帳シート専用の罫線（外周＝thin、内側の区切り線＝hair「極細」）。
+//    アップロードされたテンプレート「だめ_.xlsx」の罫線構成をそのまま再現したもの。
+//    borderId 2〜13＝ブロック内での行の役割(先頭/中間/末尾)×列(A/B写真欄・C/E見出し・D/F値)の組み合わせ。
+'<border><left style="thin"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right><top style="thin"><color indexed="64"/></top><bottom style="hair"><color indexed="64"/></bottom><diagonal/></border>'+ // 2: A(先頭行)
+'<border><left/><right style="thin"><color indexed="64"/></right><top style="thin"><color indexed="64"/></top><bottom/><diagonal/></border>'+ // 3: B(先頭行)
+'<border><left style="thin"><color indexed="64"/></left><right style="hair"><color indexed="64"/></right><top style="thin"><color indexed="64"/></top><bottom style="hair"><color indexed="64"/></bottom><diagonal/></border>'+ // 4: C/E(先頭行)
+'<border><left style="hair"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right><top style="thin"><color indexed="64"/></top><bottom style="hair"><color indexed="64"/></bottom><diagonal/></border>'+ // 5: D/F(先頭行)
+'<border><left style="thin"><color indexed="64"/></left><right/><top/><bottom/><diagonal/></border>'+ // 6: A(中間行)
+'<border><left/><right style="thin"><color indexed="64"/></right><top/><bottom/><diagonal/></border>'+ // 7: B(中間行)
+'<border><left style="thin"><color indexed="64"/></left><right style="hair"><color indexed="64"/></right><top style="hair"><color indexed="64"/></top><bottom style="hair"><color indexed="64"/></bottom><diagonal/></border>'+ // 8: C/E(中間行)
+'<border><left style="hair"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right><top style="hair"><color indexed="64"/></top><bottom style="hair"><color indexed="64"/></bottom><diagonal/></border>'+ // 9: D/F(中間行)
+'<border><left style="thin"><color indexed="64"/></left><right/><top/><bottom style="hair"><color indexed="64"/></bottom><diagonal/></border>'+ // 10: A(末尾行)
+'<border><left/><right style="thin"><color indexed="64"/></right><top/><bottom style="hair"><color indexed="64"/></bottom><diagonal/></border>'+ // 11: B(末尾行)
+'<border><left style="thin"><color indexed="64"/></left><right style="hair"><color indexed="64"/></right><top style="hair"><color indexed="64"/></top><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border>'+ // 12: C/E(末尾行)
+'<border><left style="hair"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right><top style="hair"><color indexed="64"/></top><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border>'+ // 13: D/F(末尾行)
+'</borders>'+
 '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
-'<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'+
-'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/></cellXfs>'+
+'<cellXfs count="14"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'+
+'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/>'+
+'<xf numFmtId="0" fontId="0" fillId="0" borderId="2" xfId="0" applyBorder="1"/>'+
+'<xf numFmtId="0" fontId="0" fillId="0" borderId="3" xfId="0" applyBorder="1"/>'+
+'<xf numFmtId="0" fontId="0" fillId="0" borderId="4" xfId="0" applyBorder="1"/>'+
+'<xf numFmtId="0" fontId="0" fillId="0" borderId="5" xfId="0" applyBorder="1"/>'+
+'<xf numFmtId="0" fontId="0" fillId="0" borderId="6" xfId="0" applyBorder="1"/>'+
+'<xf numFmtId="0" fontId="0" fillId="0" borderId="7" xfId="0" applyBorder="1"/>'+
+'<xf numFmtId="0" fontId="0" fillId="0" borderId="8" xfId="0" applyBorder="1"/>'+
+'<xf numFmtId="0" fontId="0" fillId="0" borderId="9" xfId="0" applyBorder="1"/>'+
+'<xf numFmtId="0" fontId="0" fillId="0" borderId="10" xfId="0" applyBorder="1"/>'+
+'<xf numFmtId="0" fontId="0" fillId="0" borderId="11" xfId="0" applyBorder="1"/>'+
+'<xf numFmtId="0" fontId="0" fillId="0" borderId="12" xfId="0" applyBorder="1"/>'+
+'<xf numFmtId="0" fontId="0" fillId="0" borderId="13" xfId="0" applyBorder="1"/></cellXfs>'+
 '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'+
 '</styleSheet>';
 var XLSX_THEME = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
@@ -10701,7 +10863,10 @@ function pinIconStandaloneSvg(p, idx, boost){
   var color = p.color || PIN_COLORS[0];
   var fs = 11*M*S.zoom;
   var hasName = !!p.name;
-  var disp = hasName ? (p.name.length>18 ? p.name.slice(0,18)+'…' : p.name) : '';
+  // 名称が無い場合は空欄にせず、画面表示（drawPinIcon/drawPinBalloon）と同じく
+  // 「そのピンの並び順の番号」を代わりに表示する。呼び出し側は既に1始まりの番号(pi2+1)を
+  // idxとして渡しているため、ここでは+1せずそのまま使う。
+  var disp = hasName ? (p.name.length>18 ? p.name.slice(0,18)+'…' : p.name) : String(idx!=null?idx:1);
   // 名称がある場合は画面表示と同じく横長の角丸カプセルにタイトルを白文字で収め、
   // 名称が無い場合のみ従来通りの色付き丸（無地）にする。
   var capPad = 14*M*S.zoom;
@@ -10735,7 +10900,8 @@ function pinIconStandaloneSvg(p, idx, boost){
       body2 += '<rect x="'+(bcx-capW2/2).toFixed(2)+'" y="'+(bcy-R).toFixed(2)+'" width="'+capW2.toFixed(2)+'" height="'+(R*2).toFixed(2)+'" rx="'+R.toFixed(2)+'" fill="'+color+'" stroke="#ffffff" stroke-width="'+(2*M*S.zoom).toFixed(2)+'"/>'+
         '<text x="'+bcx.toFixed(2)+'" y="'+bcy.toFixed(2)+'" text-anchor="middle" dominant-baseline="central" font-family="system-ui,sans-serif" font-weight="bold" font-size="'+fs.toFixed(2)+'" fill="#ffffff">'+escSvgText(disp)+'</text>';
     } else {
-      body2 += '<circle cx="'+bcx.toFixed(2)+'" cy="'+bcy.toFixed(2)+'" r="'+R.toFixed(2)+'" fill="'+color+'" stroke="#ffffff" stroke-width="'+(2*M*S.zoom).toFixed(2)+'"/>';
+      body2 += '<circle cx="'+bcx.toFixed(2)+'" cy="'+bcy.toFixed(2)+'" r="'+R.toFixed(2)+'" fill="'+color+'" stroke="#ffffff" stroke-width="'+(2*M*S.zoom).toFixed(2)+'"/>'+
+        '<text x="'+bcx.toFixed(2)+'" y="'+bcy.toFixed(2)+'" text-anchor="middle" dominant-baseline="central" font-family="system-ui,sans-serif" font-weight="bold" font-size="'+fs.toFixed(2)+'" fill="#ffffff">'+escSvgText(disp)+'</text>';
     }
     var xs2 = [-anchorR, anchorR, bcx-R, bcx+R], ys2 = [-anchorR, anchorR, bcy-R, bcy+R];
     bendsLocal.forEach(function(pt){ xs2.push(pt.x); ys2.push(pt.y); });
@@ -10759,7 +10925,8 @@ function pinIconStandaloneSvg(p, idx, boost){
     body += '<rect x="'+(-capW/2).toFixed(2)+'" y="'+(cy-R).toFixed(2)+'" width="'+capW.toFixed(2)+'" height="'+(R*2).toFixed(2)+'" rx="'+R.toFixed(2)+'" fill="'+color+'" stroke="#ffffff" stroke-width="'+(2*M*S.zoom).toFixed(2)+'"/>'+
       '<text x="0" y="'+cy.toFixed(2)+'" text-anchor="middle" dominant-baseline="central" font-family="system-ui,sans-serif" font-weight="bold" font-size="'+fs.toFixed(2)+'" fill="#ffffff">'+escSvgText(disp)+'</text>';
   } else {
-    body += '<circle cx="0" cy="'+cy.toFixed(2)+'" r="'+R.toFixed(2)+'" fill="'+color+'" stroke="#ffffff" stroke-width="'+(2*M*S.zoom).toFixed(2)+'"/>';
+    body += '<circle cx="0" cy="'+cy.toFixed(2)+'" r="'+R.toFixed(2)+'" fill="'+color+'" stroke="#ffffff" stroke-width="'+(2*M*S.zoom).toFixed(2)+'"/>'+
+      '<text x="0" y="'+cy.toFixed(2)+'" text-anchor="middle" dominant-baseline="central" font-family="system-ui,sans-serif" font-weight="bold" font-size="'+fs.toFixed(2)+'" fill="#ffffff">'+escSvgText(disp)+'</text>';
   }
   var minX = Math.min(-R*0.6, hasName ? -capW/2 : -R*1.2) - 2;
   var maxX = Math.max(R*0.6, hasName ? capW/2 : R*1.2) + 2;
@@ -11118,6 +11285,8 @@ async function xlsxAppendSheetPair(zip, sheetName, rect, ctx){
 
   // ── 写真帳シート（写真を持つピンだけを対象に、1枚目の写真＋全項目キャプションを6枚/ページで出力）──
   await xlsxAppendPhotoAlbumSheets(zip, sheetName, S.pins, ctx);
+  // ── 足場・敷地の写真帳シート（ピンと全く同じ仕組みで、写真を持つ足場・敷地だけを対象に出力）──
+  await xlsxAppendScaffPhotoAlbumSheets(zip, sheetName, scaffItems, ctx);
 }
 
 // ── Excel出力：写真帳シート ─────────────────────────────
@@ -11136,6 +11305,30 @@ var PHOTO_ALBUM_FIELDS = [
   {key:'fluid', label:'流体'}, {key:'insul', label:'断熱'}, {key:'memo', label:'メモ'},
   {key:'removeDate', label:'取外日'}, {key:'installDate', label:'取付日'}
 ];
+// 写真帳の1ブロック分（14項目＝7行×2列）のキャプション欄（ラベル・値）を組み立てる（ピン用）
+function buildPinPhotoAlbumFields(pin, pinNum){
+  return PHOTO_ALBUM_FIELDS.map(function(f){
+    var v = f.key==='name' ? (pin[f.key]||String(pinNum)) : (pin[f.key]||'');
+    return {label:f.label, value:v};
+  });
+}
+// 写真帳の1ブロック分（14項目＝7行×2列）のキャプション欄（ラベル・値）を組み立てる（足場・敷地用）。
+// ピンほど項目数が無いため、残りの枠はラベル・値とも空欄にして同じ7行×2列のレイアウトに揃える。
+function buildScaffPhotoAlbumFields(el, scaffNum){
+  var noHeight = !!SCAFF_NO_HEIGHT[el.sub];
+  var raw = [
+    {label:'種類', value: SCAFF_KIND_LABELS[el.sub]||el.sub||''},
+    {label:'番号', value: scaffLabel(el)||String(scaffNum)},
+    {label:'桁行き(m)', value: el.w!=null ? el.w.toFixed(1) : ''},
+    {label:'布方向(m)', value: el.d!=null ? el.d.toFixed(1) : ''},
+    {label:'高さ(m)', value: noHeight ? '' : (el.height!=null ? parseFloat(el.height).toFixed(1) : '')},
+    {label:'ラベル', value: el.customLabel || ''},
+    {label:'工事名', value: el.projectName || ''},
+    {label:'業者名', value: el.companyName || ''}
+  ];
+  while(raw.length < 14) raw.push({label:'', value:''});
+  return raw;
+}
 // data URLから<img>を読み込む（失敗してもnullを返して台帳全体を止めない＝縦横比不明の場合は仮の比率を使う）
 function loadImageFromUrl(url){
   return new Promise(function(resolve){
@@ -11150,6 +11343,18 @@ function loadImageFromUrl(url){
 // 縦に積んだシートを作る（アップロードされたテンプレート「だめ_.xlsx」の構成に合わせたもの）。
 // 焼き付け（画像化）はせず、写真は独立した画像オブジェクト・キャプションは実セルの文字の
 // ままにしているので、Excel上で写真の移動や文字の修正がそのまま行える。
+// 写真帳ブロック内での行の役割（0=先頭行/中間行/CAP_ROWS-1=末尾行）と列(A〜F)から、
+// styles.xml側に用意した罫線スタイル(cellXfsのインデックス)を選ぶ。
+// C列とE列（見出し側）、D列とF列（値側）はテンプレート上まったく同じ罫線構成のため共用する。
+var PHOTO_ALBUM_BORDER_MAP = {
+  top:{A:2, B:3, C:4, D:5, E:4, F:5},
+  mid:{A:6, B:7, C:8, D:9, E:8, F:9},
+  bot:{A:10,B:11,C:12,D:13,E:12,F:13}
+};
+function photoAlbumCellStyle(colLetter, cr, capRows){
+  var role = (cr===0) ? 'top' : (cr===capRows-1 ? 'bot' : 'mid');
+  return PHOTO_ALBUM_BORDER_MAP[role][colLetter];
+}
 function excelColWidthToPx(chars){
   // Excel列幅(文字数単位)→px の近似変換（MDW=7、Calibri 11基準の一般的な近似式）。
   // 厳密なピクセル一致は狙わず、写真を枠内に収める計算のための目安値として使う。
@@ -11161,14 +11366,30 @@ async function xlsxAppendPhotoAlbumSheets(zip, sheetName, pins, ctx){
   // 絞り込む前の元の並び順(idx)を保持しておく
   var target = (pins||[]).map(function(p, idx){ return {p:p, idx:idx}; })
     .filter(function(o){ return o.p.photos && o.p.photos.length; });
-  if(!target.length) return; // 写真を持つピンが1つも無ければ写真帳シート自体を作らない
+  var entries = target.map(function(o){
+    return { photos: o.p.photos, fields: buildPinPhotoAlbumFields(o.p, o.idx+1) };
+  });
+  await xlsxAppendPhotoAlbumSheetsGeneric(zip, sheetName+'_写真帳', entries, ctx);
+}
+// ── Excel出力：足場・敷地の写真帳シート（ピンの写真帳と全く同じ仕組みを流用） ──
+async function xlsxAppendScaffPhotoAlbumSheets(zip, sheetName, scaffs, ctx){
+  var target = (scaffs||[]).map(function(el, idx){ return {el:el, idx:idx}; })
+    .filter(function(o){ return o.el.photos && o.el.photos.length; });
+  var entries = target.map(function(o){
+    return { photos: o.el.photos, fields: buildScaffPhotoAlbumFields(o.el, o.idx+1) };
+  });
+  await xlsxAppendPhotoAlbumSheetsGeneric(zip, sheetName+'_足場写真帳', entries, ctx);
+}
+async function xlsxAppendPhotoAlbumSheetsGeneric(zip, fullSheetName, entries, ctx){
+  if(!entries.length) return; // 写真を持つ対象が1つも無ければ写真帳シート自体を作らない
 
   var PHOTO_TARGET_PX = 260; // 写真の長辺の目安サイズ（Excelに貼る前の縮小先）
   var PHOTO_JPEG_QUALITY = 0.72; // Excelに貼る写真はここで縮小・再圧縮してファイルを軽くする
   var PT_TO_PX = 96/72; // pt→px換算（Excel既定の96dpiを基準にした簡易換算）
   var CAP_ROWS = 7; // 1ブロックの行数＝14項目を2列×7行で配置（テンプレートと同じ）
   var ROW_HT_PT = 38.25; // 行の高さ(pt)＝テンプレート「だめ_.xlsx」の値に合わせる
-  var BORDER_S = 1; // styles.xml cellXfs[1]＝細線（全辺）。テンプレートは全セルに罫線があるため付与
+  // 罫線は「外周＝thin、内側の区切り線＝hair(極細)」。行の役割(先頭/中間/末尾)と列ごとに
+  // 異なるスタイルを使うため、固定の1種類ではなく photoAlbumCellStyle() で都度選ぶ（styles.xml参照）。
   var BLOCKS_PER_PAGE = 3; // テンプレートはページ余白0でA4縦に3ブロックぴったり入る構成
   // 列幅(文字数単位)。A+B＝写真欄、C〜F＝キャプション欄
   // C〜Fは、たろさんがExcel上で4列とも同じ幅(15.85546875)に揃えたものをそのまま反映
@@ -11179,10 +11400,9 @@ async function xlsxAppendPhotoAlbumSheets(zip, sheetName, pins, ctx){
 
   var rows = [], anchorsXml = [], mediaRels = [], shapeId = 1, mergeCells = [], manualBreakRows = [];
   var r = 1; // 現在の行（1始まり）＝各ブロックの先頭行
-  for(var i=0; i<target.length; i++){
-    var pin = target[i].p;
-    var pinNum = target[i].idx+1; // 名称未入力時に表示する、画面表示と同じピン番号
-    var url = pin.photos[0];
+  for(var i=0; i<entries.length; i++){
+    var entry = entries[i];
+    var url = entry.photos[0];
     var compressedUrl = await compressImageDataUrl(url, PHOTO_TARGET_PX, PHOTO_JPEG_QUALITY);
     var info = parseDataUrlImage(compressedUrl);
     var img = await loadImageFromUrl(compressedUrl);
@@ -11199,14 +11419,11 @@ async function xlsxAppendPhotoAlbumSheets(zip, sheetName, pins, ctx){
     // キャプション7行を先に組み立てる（A/B列は写真欄＝罫線だけの空セル、C〜Fが項目）
     for(var cr=0; cr<CAP_ROWS; cr++){
       var rr = blockStartRow+cr;
-      var f1 = PHOTO_ALBUM_FIELDS[cr*2], f2 = PHOTO_ALBUM_FIELDS[cr*2+1];
-      // 名称が未入力のときは空欄にせず、ピン番号を代わりに表示する
-      var v1 = f1.key==='name' ? (pin[f1.key]||String(pinNum)) : (pin[f1.key]||'');
-      var cells = xlsxEmptyStyledCell('A'+rr, BORDER_S)+xlsxEmptyStyledCell('B'+rr, BORDER_S)+
-        xlsxTextCell('C'+rr, f1.label, BORDER_S)+xlsxTextCell('D'+rr, v1, BORDER_S);
+      var f1 = entry.fields[cr*2], f2 = entry.fields[cr*2+1];
+      var cells = xlsxEmptyStyledCell('A'+rr, photoAlbumCellStyle('A',cr,CAP_ROWS))+xlsxEmptyStyledCell('B'+rr, photoAlbumCellStyle('B',cr,CAP_ROWS))+
+        xlsxTextCell('C'+rr, f1.label, photoAlbumCellStyle('C',cr,CAP_ROWS))+xlsxTextCell('D'+rr, f1.value, photoAlbumCellStyle('D',cr,CAP_ROWS));
       if(f2){
-        var v2 = f2.key==='name' ? (pin[f2.key]||String(pinNum)) : (pin[f2.key]||'');
-        cells += xlsxTextCell('E'+rr, f2.label, BORDER_S)+xlsxTextCell('F'+rr, v2, BORDER_S);
+        cells += xlsxTextCell('E'+rr, f2.label, photoAlbumCellStyle('E',cr,CAP_ROWS))+xlsxTextCell('F'+rr, f2.value, photoAlbumCellStyle('F',cr,CAP_ROWS));
       }
       rows.push('<row r="'+rr+'" ht="'+ROW_HT_PT+'" customHeight="1">'+cells+'</row>');
     }
@@ -11232,7 +11449,7 @@ async function xlsxAppendPhotoAlbumSheets(zip, sheetName, pins, ctx){
     }
 
     r += CAP_ROWS; // 空白行を挟まず次ブロックへ（テンプレートと同じ詰め配置）
-    if((i+1)%BLOCKS_PER_PAGE===0 && i+1<target.length){
+    if((i+1)%BLOCKS_PER_PAGE===0 && i+1<entries.length){
       manualBreakRows.push(r-1); // 3ブロックごとに改ページ
     }
   }
@@ -11274,7 +11491,7 @@ async function xlsxAppendPhotoAlbumSheets(zip, sheetName, pins, ctx){
   }
 
   ctx.sheetDefs.push({
-    name: sanitizeXlsxSheetName(sheetName+'_写真帳', ctx.usedNames),
+    name: sanitizeXlsxSheetName(fullSheetName, ctx.usedNames),
     sheetId: ctx.sheetId++, rId: 'rId'+wsIdx, fileIndex: wsIdx
   });
 }
@@ -11337,7 +11554,7 @@ async function exportAllSheetsXlsx(){
   var fname = 'pipe-iso-'+ts.getFullYear()+pad(ts.getMonth()+1)+pad(ts.getDate())+'-'+pad(ts.getHours())+pad(ts.getMinutes())+'.xlsx';
   var a = document.createElement('a');
   a.download = fname; a.href = URL.createObjectURL(blob); a.click();
-  showToast('Excelを保存しました（各シート「配管図」「物量ピン一覧」に加え、写真を持つピンがあれば「写真帳」も出力・配管図の中身は全部まとめて1つのグループにしています。個別に動かす時はグループ解除してください）');
+  showToast('Excelを保存しました（各シート「配管図」「物量ピン一覧」に加え、写真を持つピン・足場があればそれぞれ「写真帳」「足場写真帳」も出力・配管図の中身は全部まとめて1つのグループにしています。個別に動かす時はグループ解除してください）');
 }
 
 function exportSVG(){
