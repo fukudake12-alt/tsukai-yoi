@@ -262,11 +262,12 @@ header{
 .scaff-list-row .info{flex:1;line-height:1.25;font-size:var(--fs-2);color:#1a1d27;}
 .scaff-list-row .del{color:#d32f2f;font-size:var(--fs-4);padding:0 2px;}
 /* 背景PDF（下敷き）の透明度・サイズ調整パネル：右メニュー（ドロワー）と同時には使わないため、
-   その上に重ねて表示する（画面を圧迫しないように） */
+   その上に重ねて表示する（画面を圧迫しないように）。左上のESC/決定ボタンには被らないよう、
+   その下（top:46px、.statusと同じ高さ）から表示する */
 .bg-panel{
-  position:absolute;top:0;right:0;width:112px;
-  background:#ffffff;border-left:1px solid #d8dce3;
-  padding:8px;z-index:200;display:none;box-shadow:-2px 0 10px rgba(0,0,0,0.12);
+  position:absolute;top:46px;left:0;width:112px;
+  background:#ffffff;border-right:1px solid #d8dce3;
+  padding:8px;z-index:200;display:none;box-shadow:2px 0 10px rgba(0,0,0,0.12);
 }
 .bg-panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
 .bg-panel-close{
@@ -1011,9 +1012,6 @@ header{
           <button class="di" onclick="setTool('trim')">✂️<br>トリム</button>
           <button class="di" onclick="setTool('extend')">📏<br>延長</button>
         </div>
-        <div class="dg c1" style="margin-top:6px;">
-          <button class="di" onclick="setTool('angle')" title="2辺の交点（補助三角形）から角度を求めます">📐<br>角度</button>
-        </div>
       </div>
       <div class="div"></div>
       <div class="dsec dsec-toggle" onclick="toggleSection('stamp')">
@@ -1139,13 +1137,14 @@ header{
 
 <div class="btbar">
   <div class="bt-group">
-    <button class="bt"    id="bSel"  onclick="setTool('rangesel')"><span class="ic">⬚</span>選択/寸法</button>
+    <button class="bt"    id="bSel"  onclick="setTool('rangesel')" title="左→右にドラッグ＝ウィンドウ選択（枠に完全に収まったものだけ選択）／右→左にドラッグ＝交差選択（枠に触れたものも選択）"><span class="ic">⬚</span>選択/寸法</button>
     <button class="bt"    id="bTxt"  onclick="setTool('text')"><span class="ic">Ａ</span>文字</button>
     <button class="bt"    id="bFree" onclick="setTool('freehand')"><span class="ic">✏️</span>手書き</button>
   </div>
   <div class="bt-divider"></div>
   <div class="bt-group">
     <button class="bt on" id="bPipe" onclick="onPipeButtonTap()" title="タップで配管ツールを選択／選択中に再タップで角度固定(15°/30°/45°/90°)を切替"><span class="ic">╱</span><span id="bPipeLabel">配管</span></button>
+    <button class="bt"    id="bAngleGrp" onclick="onAngleButtonTap()" title="2辺の交点（補助三角形）から角度を求めます（頂点の角度・ハッチングの回転は固定15°）"><span class="ic">📐</span><span id="bAngleGrpLabel">角度</span></button>
     <button class="bt"    id="bRot"  onclick="rotateStep()"><span class="ic">🔄</span>回転</button>
     <button class="bt"    id="bMir"  onclick="toggleMirror()"><span class="ic">⇌</span>鏡像</button>
     <button class="bt"    id="bTiltDn" onclick="tiltAdjustStep(-5)" title="継手の見た目の傾きを微調整"><span class="ic">↙</span>傾き-</button>
@@ -1520,7 +1519,7 @@ var PLAN_ANGLE_STEP_DEG = 15; // 既定値（互換のため残置。実際の�
 
 // ── 足場・敷地 ──────────────────────────────────
 var SCAFF_KIND_LABELS = {asm:'組足場', susp:'吊り足場', internal:'内部足場', overhang:'張出足場', yagura:'櫓', board:'敷板', site:'敷地'};
-var SCAFF_KIND_ABBR   = {asm:'組', susp:'吊', internal:'内', overhang:'張', yagura:'櫓', board:'敷', site:'敷'};
+var SCAFF_KIND_ABBR   = {asm:'組', susp:'吊', internal:'内', overhang:'張', yagura:'櫓', board:'板', site:'敷'};
 var SCAFF_KIND_ORDER  = ['asm','susp','internal','overhang','yagura','board','site'];
 // 高さ（座の高さ）の概念が無い種類：敷地＝区画のみ、敷板＝桁×布だけで数量計算するため高さ入力自体が不要
 var SCAFF_NO_HEIGHT = {site:true, board:true};
@@ -1736,7 +1735,7 @@ var S = {
   // 配管モード：'iso'=アイソメ図として描く／'plan'=平面図として描く（見た目の表現の切替。
   // 角度の刻みはどちらのモードでも共通の角度固定ボタン（S.angleStepDeg）で設定する）
   pipeDrawMode:'iso',
-  angleStepDeg:30,
+  angleStepDeg:15, // 配管ツールを選ぶと角度固定は必ず15°からスタートする（前回値は引き継がない）
   scaffRotateGuideShow:false, scaffRotateGuideDeg:0, scaffResize:null, // 足場・敷地：回転ハンドル用ガイド表示／辺ドラッグでのサイズ変更用
   els:[], sel:null, hist:[], histRedo:[],
   drawing:false, drawStart:null, prev:null, snapPt:null,
@@ -1825,6 +1824,7 @@ if(window.screen && window.screen.orientation){
 // 鏡像ボタンと同じ対象選択ロジック（長押し中 → タップ選択中 → 直前に設置した継手）
 function currentRotateTarget(){
   if(S.dragEl && (S.dragEl.kind==='fitting' || S.dragEl.kind==='pipe' || S.dragEl.kind==='northarrow')) return S.dragEl;
+  if(S.selAngleGrp) return S.selAngleGrp;
   if(S.sel && (S.sel.kind==='fitting' || S.sel.kind==='pipe' || S.sel.kind==='northarrow')) return S.sel;
   if(S.lastFit && S.els.indexOf(S.lastFit)>=0) return S.lastFit;
   return null;
@@ -1859,6 +1859,9 @@ function rotateStep(){
     var p1 = rotPt(target.wx1, target.wy1);
     var p2 = rotPt(target.wx2, target.wy2);
     target.wx1=p1.x; target.wy1=p1.y; target.wx2=p2.x; target.wy2=p2.y;
+  } else if(target.kind==='anglegrp'){
+    // 補助三角形はハッチングの角度だけを回転させる（固定15°刻み。辺・始点終点は変えない）
+    target.hatchAngle = ((target.hatchAngle!=null?target.hatchAngle:0) + 15) % 360;
   }
   S.sel = target;
   if(!S.dragMode) S.lastFit = (target.kind==='fitting' || target.kind==='northarrow') ? target : null;
@@ -1955,7 +1958,7 @@ function snapIso(ssx,ssy,sex,sey){
   var ws=s2w(ssx,ssy), we=s2w(sex,sey);
   var dx=we.x-ws.x, dy=we.y-ws.y;
   if(Math.abs(dx)<0.001&&Math.abs(dy)<0.001) return snapGrid(we.x,we.y);
-  var angStep = S.angleStepDeg || 30;
+  var angStep = S.angleStepDeg || 15;
   var ang=Math.atan2(dy,dx)*180/Math.PI;
   var sAng=Math.round(ang/angStep)*angStep, rad=sAng*Math.PI/180;
   var len=Math.sqrt(dx*dx+dy*dy);
@@ -2111,7 +2114,7 @@ function render(){
   // 継手が配管線に隠れて「貫通」して見えないようにするため2パスで描く）
   var pipeCuts = computePipeCuts();
   S.els.forEach(function(e){ if(e.kind==='pipe'||e.kind==='hose') drawEl(e, e===S.sel||e===S.dragEl||S.multiSel.indexOf(e)>=0, false, pipeCuts.get(e)); });
-  S.els.forEach(function(e){ if(e.kind!=='pipe'&&e.kind!=='hose'&&e.kind!=='scaffold') drawEl(e, e===S.sel||e===S.dragEl||S.multiSel.indexOf(e)>=0, false); });
+  S.els.forEach(function(e){ if(e.kind!=='pipe'&&e.kind!=='hose'&&e.kind!=='scaffold' && e!==S.angleEditTarget) drawEl(e, e===S.sel||e===S.dragEl||S.multiSel.indexOf(e)>=0, false); });
   if(S.prev) drawEl(S.prev, false, true);
   if(S.drawing && S.typedLen && S.lastMousePos){
     // 配管の長さ(mm)を数値入力中の見た目フィードバック（マウスカーソルの近くに表示）
@@ -2179,9 +2182,17 @@ function render(){
   if(S.rangeSelecting && S.rangeStart && S.rangeEnd){
     var rx=Math.min(S.rangeStart.x,S.rangeEnd.x), ry=Math.min(S.rangeStart.y,S.rangeEnd.y);
     var rw=Math.abs(S.rangeEnd.x-S.rangeStart.x), rh=Math.abs(S.rangeEnd.y-S.rangeStart.y);
+    // AutoCADと同じ配色：左→右（ウィンドウ選択＝完全に囲んだものだけ選択）は青の実線、
+    // 右→左（交差選択＝枠に触れたものも選択）は緑の破線で見分けられるようにする
+    var isCrossingPreview = S.rangeEnd.x < S.rangeStart.x;
     ctx.save();
-    ctx.fillStyle='rgba(2,119,189,0.1)'; ctx.strokeStyle='rgba(2,119,189,0.9)';
-    ctx.lineWidth=1.2; ctx.setLineDash([5,4]);
+    if(isCrossingPreview){
+      ctx.fillStyle='rgba(46,125,50,0.1)'; ctx.strokeStyle='rgba(46,125,50,0.9)';
+      ctx.lineWidth=1.2; ctx.setLineDash([5,4]);
+    } else {
+      ctx.fillStyle='rgba(2,119,189,0.1)'; ctx.strokeStyle='rgba(2,119,189,0.9)';
+      ctx.lineWidth=1.2; ctx.setLineDash([]);
+    }
     ctx.fillRect(rx,ry,rw,rh); ctx.strokeRect(rx,ry,rw,rh);
     ctx.setLineDash([]); ctx.restore();
   }
@@ -2837,10 +2848,49 @@ function drawAngleGrp(el, sel, ghost){
 }
 
 // ── 角度モード：ジオメトリ計算用ヘルパー ──
-// 2点(px,py)→(tx,ty)方向の角度を最寄りの30°刻みにスナップして返す（度単位）
+// 📐角度（補助三角形）ツールのボタン：頂点の角度・ハッチングの回転はどちらも固定15°のため、
+// 配管ツールのような刻み切替はせず、タップで単にツールを選択するだけにする
+function onAngleButtonTap(){
+  setTool('angle');
+}
 function angleSnapDeg(px,py,tx,ty){
+  var step = 15; // 角度ツールの頂点は常に15°刻みで固定（配管ツールの角度固定設定とは独立）
   var ang = Math.atan2(ty-py, tx-px)*180/Math.PI;
-  return Math.round(ang/30)*30;
+  return Math.round(ang/step)*step;
+}
+// 配管が移動・伸縮した時、その配管の端点(A/B)を基準に作られている補助三角形があれば
+// 一緒に追従させる（元の配管の位置とA/B座標が一致しているかで判定する）。
+// 配管と角度補助線は「一体もの」として扱うため、単独ドラッグだけでなく複数選択（範囲選択）での
+// 一括移動時にも必ずこの関数を経由させること。戻り値は実際に追従させた補助三角形の配列
+// （呼び出し側で「既に処理済み」の判定に使う。従来通り戻り値を使わない呼び出し元もそのまま動作する）。
+function syncAngleGrpsToPipe(pipeEl, oldWx1,oldWy1,oldWx2,oldWy2){
+  var EPS = 0.001;
+  var touched = [];
+  S.els.forEach(function(e){
+    if(e.kind!=='anglegrp') return;
+    var linkedA1 = Math.abs(e.ax-oldWx1)<EPS && Math.abs(e.ay-oldWy1)<EPS;
+    var linkedA2 = !linkedA1 && Math.abs(e.ax-oldWx2)<EPS && Math.abs(e.ay-oldWy2)<EPS;
+    var linkedB1 = Math.abs(e.bx-oldWx2)<EPS && Math.abs(e.by-oldWy2)<EPS;
+    var linkedB2 = !linkedB1 && Math.abs(e.bx-oldWx1)<EPS && Math.abs(e.by-oldWy1)<EPS;
+    if(!(linkedA1||linkedA2||linkedB1||linkedB2)) return;
+    var newAx=e.ax, newAy=e.ay, newBx=e.bx, newBy=e.by;
+    if(linkedA1){ newAx=pipeEl.wx1; newAy=pipeEl.wy1; }
+    else if(linkedA2){ newAx=pipeEl.wx2; newAy=pipeEl.wy2; }
+    if(linkedB1){ newBx=pipeEl.wx2; newBy=pipeEl.wy2; }
+    else if(linkedB2){ newBx=pipeEl.wx1; newBy=pipeEl.wy1; }
+    var dax=newAx-e.ax, day=newAy-e.ay, dbx=newBx-e.bx, dby=newBy-e.by;
+    e.ax=newAx; e.ay=newAy; e.bx=newBx; e.by=newBy;
+    if(Math.abs(dax-dbx)<EPS && Math.abs(day-dby)<EPS){
+      // 配管ごと平行移動：頂点も同じ分だけ動かす（角度・形はそのまま）
+      e.vx+=dax; e.vy+=day;
+    } else {
+      // 配管の端点だけが動いた（伸縮）：同じ角度を保ったまま頂点を再計算する
+      var V=angleVertexFromDeg(e.ax,e.ay,e.bx,e.by,e.angA||0,e.angB||0);
+      if(V){ e.vx=V.x; e.vy=V.y; }
+    }
+    touched.push(e);
+  });
+  return touched;
 }
 // 2直線（A発・角度angADeg／B発・角度angBDeg）の交点を頂点として返す。平行で交点が無ければnull
 function angleVertexFromDeg(Ax,Ay,Bx,By,angADeg,angBDeg){
@@ -2910,38 +2960,25 @@ function computeAnglePreview(pos){
   return {kind:'anglegrp', ax:Ax,ay:Ay,bx:Bx,by:By,vx:V.x,vy:V.y,angA:angA,angB:angB,
           hatchAngle: Math.atan2(By-Ay,Bx-Ax)*180/Math.PI};
 }
-// 作成済みの補助三角形をタップした時の処理：
-// ・辺(A側/B側)付近 → その辺の角度を30°ずつ回転（三角形の形自体が変わる）
-// ・上記以外（三角形の内側） → ハッチングの角度だけを30°ずつ回転（三角形の形はそのまま）
-// ※ハッチング本数は三角形の大きさから自動計算されるため、手動編集の操作は廃止した
-function handleAngleGrpTap(el, pos){
-  var pA=w2s(el.ax,el.ay), pB=w2s(el.bx,el.by), pV=w2s(el.vx,el.vy);
-  var LEG_HIT = 12;
-  var dA = segD({x:pos.x,y:pos.y}, pA, pV);
-  var dB = segD({x:pos.x,y:pos.y}, pB, pV);
-  if(dA < LEG_HIT || dB < LEG_HIT){
-    saveH();
-    var newV;
-    if(dA <= dB){
-      el.angA = ((el.angA||0) + 30) % 360;
-      newV = angleVertexFromDeg(el.ax,el.ay,el.bx,el.by, el.angA, el.angB||0);
-      if(newV){ el.vx=newV.x; el.vy=newV.y; showToast('A側の辺の角度を30°回転しました（同じ場所を再タップでさらに回転）'); }
-      else { el.angA = ((el.angA||0) - 30 + 360) % 360; showToast('その角度では三角形が作れません（2辺が平行）'); }
-    } else {
-      el.angB = ((el.angB||0) + 30) % 360;
-      newV = angleVertexFromDeg(el.ax,el.ay,el.bx,el.by, el.angA||0, el.angB);
-      if(newV){ el.vx=newV.x; el.vy=newV.y; showToast('B側の辺の角度を30°回転しました（同じ場所を再タップでさらに回転）'); }
-      else { el.angB = ((el.angB||0) - 30 + 360) % 360; showToast('その角度では三角形が作れません（2辺が平行）'); }
-    }
-    render();
-    return;
-  }
-  if(pointInTriangle(pos.x,pos.y, pA.x,pA.y,pB.x,pB.y,pV.x,pV.y)){
-    saveH();
-    el.hatchAngle = ((el.hatchAngle!=null?el.hatchAngle:0) + 30) % 360;
-    showToast('ハッチングの角度だけを30°回転しました（同じ場所を再タップでさらに回転）');
-    render();
-  }
+// 補助三角形を選択・編集中の状態。頂点はタップ＆ドラッグで移動、ハッチングの回転は
+// 下の🔄回転ボタン（他の要素と共通のrotateStep）から行う。
+function deleteAngleGrpSel(){
+  var el = S.selAngleGrp;
+  if(!el) return;
+  if(!confirm('この補助三角形を削除しますか？')) return;
+  saveH();
+  S.els = S.els.filter(function(e){ return e!==el; });
+  closeAngleGrpEdit();
+}
+function closeAngleGrpEdit(){
+  S.selAngleGrp = null; S.sel = null;
+  updateAngleGrpEditPanel();
+  render();
+}
+function updateAngleGrpEditPanel(){
+  // 専用パネル（angleGrpEditPanel）は用意されていないため、配管などと共通の
+  // 編集パネル（pipeEditPanel）側で角度補助線用の表示に出し分ける。
+  updatePipeEditPanel();
 }
 
 function drawDimOnLine(el,col,ghost,sel){
@@ -4552,9 +4589,10 @@ function drawSimpleMark(ft, r, col, lwd, tiltDeg){
 }
 
 // ── HIT TEST ───────────────────────────────────
-function hitTest(sx,sy){
+function hitTest(sx,sy,ignoreKind){
   for(var i=S.els.length-1;i>=0;i--){
     var e=S.els[i];
+    if(ignoreKind && e.kind===ignoreKind) continue;
     if(e.kind==='pipe'){
       var p1=w2s(e.wx1,e.wy1),p2=w2s(e.wx2,e.wy2);
       if(segD({x:sx,y:sy},p1,p2)<Math.max(8,lw()/2+6)) return {el:e,part:'body'};
@@ -5134,6 +5172,7 @@ function startPress(pos){
       if(el.kind==='pipe' || el.kind==='leader'){ return {el:el, wx1:el.wx1, wy1:el.wy1, wx2:el.wx2, wy2:el.wy2}; }
       if(el.kind==='hose'){ return {el:el, pts:el.pts.map(function(p){return {x:p.x,y:p.y};})}; }
       if(el.kind==='freehand'){ return {el:el, strokes:el.strokes.map(function(pts){ return pts.map(function(p){return {x:p.x,y:p.y};}); })}; }
+      if(el.kind==='anglegrp'){ return {el:el, ax:el.ax, ay:el.ay, bx:el.bx, by:el.by, vx:el.vx, vy:el.vy}; }
       return {el:el, wx:el.wx, wy:el.wy};
     });
     return;
@@ -5202,11 +5241,7 @@ function movePress(pos){
   // ここで早期キャンセル→即タップ扱い（handleDown）にしてしまうと、長押し中の少しの指ぶれ・
   // マウスの微振動だけで「タップでその場に即設置」の分岐に化けてしまい、長押しが実質発火しなくなる。
   // そのためピン追加ツールに限り、指を離すまで（endPress側のcancelLongPress）は長押し判定を継続する。
-  // 配管ツールは「長押しで引っ張って離す」ことで始点・終点が一発でできてしまう挙動を廃止したため、
-  // このドラッグ検知による即時開始（handleDownの早期呼び出し）からは除外する。
-  // 配管の始点・終点は、必ず1回目のクリック（タップ）で始点、2回目のクリック（タップ）で終点、
-  // という2回の操作で指定する（それぞれendPress側の処理で確定する。下のS.drawing判定を参照）。
-  if(S.tool!=='addpin' && S.tool!=='pipe' && S.longPressTimer && S.downPos && dist2(pos.x,pos.y,S.downPos.x,S.downPos.y) > MOVE_CANCEL_PX){
+  if(S.tool!=='addpin' && S.longPressTimer && S.downPos && dist2(pos.x,pos.y,S.downPos.x,S.downPos.y) > MOVE_CANCEL_PX){
     cancelLongPress();
     if(!S.dragMode){ handleDown(S.downPos); }
   }
@@ -5216,14 +5251,31 @@ function movePress(pos){
     var dxg = wg.x - S.dragGroupStartWorld.x, dyg = wg.y - S.dragGroupStartWorld.y;
     // 移動量自体をグリッドにスナップし、選択範囲全体がまとまって動くようにする
     var sdx = Math.round(dxg/GRID_M)*GRID_M, sdy = Math.round(dyg/GRID_M)*GRID_M;
+    // 配管と、その配管に付いている角度補助線（anglegrp）は一体ものとして扱うため、
+    // まず配管・引出線を移動し、追従した補助線をsyncedAngleGrpsに記録しておく。
+    var syncedAngleGrps = [];
     S.dragGroupOrig.forEach(function(o){
       if(o.el.kind==='pipe' || o.el.kind==='leader'){
+        var oldWx1=o.wx1, oldWy1=o.wy1, oldWx2=o.wx2, oldWy2=o.wy2;
         o.el.wx1=o.wx1+sdx; o.el.wy1=o.wy1+sdy; o.el.wx2=o.wx2+sdx; o.el.wy2=o.wy2+sdy;
-        if(o.el.kind==='pipe') delete o.el.dimText;
-      } else if(o.el.kind==='hose'){
+        if(o.el.kind==='pipe'){
+          delete o.el.dimText;
+          var synced = syncAngleGrpsToPipe(o.el, oldWx1,oldWy1,oldWx2,oldWy2);
+          if(synced && synced.length) syncedAngleGrps = syncedAngleGrps.concat(synced);
+        }
+      }
+    });
+    S.dragGroupOrig.forEach(function(o){
+      if(o.el.kind==='pipe' || o.el.kind==='leader') return; // 上のループで処理済み
+      if(o.el.kind==='hose'){
         o.el.pts = o.pts.map(function(p){ return {x:p.x+sdx, y:p.y+sdy}; });
       } else if(o.el.kind==='freehand'){
         o.el.strokes = o.strokes.map(function(pts){ return pts.map(function(p){ return {x:p.x+sdx, y:p.y+sdy}; }); });
+      } else if(o.el.kind==='anglegrp'){
+        // 付随する配管によって既に追従済みなら二重に動かさない。単独選択の場合はここで平行移動する
+        if(syncedAngleGrps.indexOf(o.el) === -1){
+          o.el.ax+=sdx; o.el.ay+=sdy; o.el.bx+=sdx; o.el.by+=sdy; o.el.vx+=sdx; o.el.vy+=sdy;
+        }
       } else {
         o.el.wx=o.wx+sdx; o.el.wy=o.wy+sdy;
       }
@@ -5252,6 +5304,7 @@ function movePress(pos){
         }
       }
     } else if(S.dragEl.kind==='pipe'){
+      var pipeOldWx1=S.dragEl.wx1, pipeOldWy1=S.dragEl.wy1, pipeOldWx2=S.dragEl.wx2, pipeOldWy2=S.dragEl.wy2;
       // 固定モードではなく、指の「今の位置」が端に近いか中央寄りかを毎回判定する
       var pEp1=w2s(S.dragEl.wx1,S.dragEl.wy1), pEp2=w2s(S.dragEl.wx2,S.dragEl.wy2);
       var dEp0=dist2(pos.x,pos.y,pEp1.x,pEp1.y), dEp1=dist2(pos.x,pos.y,pEp2.x,pEp2.y);
@@ -5271,6 +5324,8 @@ function movePress(pos){
         var dx=S.dragEl.wx2-S.dragEl.wx1,dy=S.dragEl.wy2-S.dragEl.wy1;
         S.dragEl.wx1=sg.x;S.dragEl.wy1=sg.y;S.dragEl.wx2=sg.x+dx;S.dragEl.wy2=sg.y+dy;
       }
+      // 配管の端点に付いている補助三角形（角度ツール）があれば一緒に追従させる
+      syncAngleGrpsToPipe(S.dragEl, pipeOldWx1,pipeOldWy1,pipeOldWx2,pipeOldWy2);
     } else if(S.dragEl.kind==='fitting'){
       // 継手は配管線上にしか移動できない（角度は手動で保持、位置のみ線にスナップ）
       var fp = nearestPointOnPipe(pos.x,pos.y);
@@ -5294,7 +5349,7 @@ function movePress(pos){
         var sccR=w2s(S.dragEl.wx,S.dragEl.wy);
         var rawDeg=Math.atan2(pos.x-sccR.x, -(pos.y-sccR.y))*180/Math.PI;
         rawDeg=((rawDeg%360)+360)%360;
-        var stepR=S.angleStepDeg||30;
+        var stepR=S.angleStepDeg||15;
         var nearestR=Math.round(rawDeg/stepR)*stepR % 360;
         var diffR=Math.abs(rawDeg-nearestR); diffR=Math.min(diffR,360-diffR);
         var GUIDE_TOL_DEG=6, SNAP_TOL_DEG=2.5;
@@ -5345,6 +5400,14 @@ function movePress(pos){
       var nhx = wwh2.x-S.dragOffX, nhy = wwh2.y-S.dragOffY;
       var hdx = nhx-S.dragEl.pts[0].x, hdy = nhy-S.dragEl.pts[0].y;
       S.dragEl.pts = S.dragEl.pts.map(function(p){ return {x:p.x+hdx, y:p.y+hdy}; });
+    } else if(S.dragEl.kind==='anglegrp'){
+      // A/B/頂点の3点をまとめて平行移動（形・角度はそのまま、位置だけ変わる）
+      var wwag2=s2w(pos.x,pos.y);
+      var nagx = wwag2.x-S.dragOffX, nagy = wwag2.y-S.dragOffY;
+      var agdx = nagx-S.dragEl.ax, agdy = nagy-S.dragEl.ay;
+      S.dragEl.ax+=agdx; S.dragEl.ay+=agdy;
+      S.dragEl.bx+=agdx; S.dragEl.by+=agdy;
+      S.dragEl.vx+=agdx; S.dragEl.vy+=agdy;
     } else if(S.dragEl.kind==='freehand'){
       if(S.dragSubMode==='resizeFreehand' && S.freehandResize){
         // 角をつまんでいる：対角（pivot）を固定点として、つまんだ指と固定点との距離比で拡大縮小する
@@ -5473,12 +5536,23 @@ function endPress(pos){
     S.anglePrev = null;
     if(fin){
       saveH();
-      S.els.push({kind:'anglegrp', ax:fin.ax, ay:fin.ay, bx:fin.bx, by:fin.by, vx:fin.vx, vy:fin.vy, angA:fin.angA, angB:fin.angB, hatchAngle:fin.hatchAngle});
-      showToast('補助三角形を作成しました（三角形の頂点タップで本数調整／辺タップで角度調整）');
+      if(S.angleEditTarget){
+        // 既存の三角形の頂点位置を更新（始点・終点はそのまま）
+        var editTgt = S.angleEditTarget;
+        editTgt.vx=fin.vx; editTgt.vy=fin.vy; editTgt.angA=fin.angA; editTgt.angB=fin.angB;
+        S.selAngleGrp = editTgt; S.sel = editTgt;
+        showToast('頂点の位置を調整しました');
+      } else {
+        var newAg = {kind:'anglegrp', ax:fin.ax, ay:fin.ay, bx:fin.bx, by:fin.by, vx:fin.vx, vy:fin.vy, angA:fin.angA, angB:fin.angB, hatchAngle:fin.hatchAngle};
+        S.els.push(newAg);
+        S.selAngleGrp = newAg; S.sel = newAg; // 作成後もそのまま編集モード（選択中）にしておく
+        showToast('補助三角形を作成しました（頂点タップ＆ドラッグで位置調整／下の🔄回転ボタンでハッチングを回転）');
+      }
     } else {
       showToast('頂点が求まりませんでした（2辺が平行）。もう一度お試しください');
     }
     S.angleBase = null;
+    S.angleEditTarget = null;
     render();
     return;
   }
@@ -5720,10 +5794,18 @@ function grabElementAt(pos){
     render();
     return true;
   }
-  var h=hitTest(pos.x,pos.y);
-  if(!h){ return false; }
+  // まずは補助三角形（anglegrp）を除外して判定する。これにより、三角形の下に
+  // 重なっている配管などがあれば、そちらが優先して長押しの対象になる。
+  var h=hitTest(pos.x,pos.y,'anglegrp');
+  if(!h){
+    // 三角形以外の何にも当たらなかった場合だけ、三角形自体を長押しの対象にする
+    // （配管とは違い、平行移動すると配管との位置関係が崩れるので、あくまで配管優先の次善策）
+    var hAgWhole = hitTest(pos.x,pos.y);
+    if(hAgWhole && hAgWhole.el.kind==='anglegrp'){ h = hAgWhole; }
+    else { return false; }
+  }
 
-  if(h.el.kind==='pipe' || h.el.kind==='fitting' || h.el.kind==='text' || h.el.kind==='weld' || h.el.kind==='leader' || h.el.kind==='northarrow' || h.el.kind==='hose' || h.el.kind==='scaffold' || h.el.kind==='freehand'){
+  if(h.el.kind==='pipe' || h.el.kind==='fitting' || h.el.kind==='text' || h.el.kind==='weld' || h.el.kind==='leader' || h.el.kind==='northarrow' || h.el.kind==='hose' || h.el.kind==='scaffold' || h.el.kind==='freehand' || h.el.kind==='anglegrp'){
     S.justGrabbed = true;
     saveH();
     S.dragMode='move'; S.dragEl=h.el; S.dragging=true; S.dragEntryTime=Date.now();
@@ -5746,6 +5828,9 @@ function grabElementAt(pos){
       }
     } else if(h.el.kind==='hose'){
       var wwh=s2w(pos.x,pos.y); S.dragOffX=wwh.x-h.el.pts[0].x; S.dragOffY=wwh.y-h.el.pts[0].y;
+    } else if(h.el.kind==='anglegrp'){
+      S.selAngleGrp = h.el; // 選択状態にして、下の🔄回転ボタンでハッチング回転も引き続き使えるようにする
+      var wwag=s2w(pos.x,pos.y); S.dragOffX=wwag.x-h.el.ax; S.dragOffY=wwag.y-h.el.ay;
     } else if(h.el.kind==='freehand'){
       var wwfh=s2w(pos.x,pos.y);
       var fhAnchor = h.el.strokes && h.el.strokes[0] && h.el.strokes[0][0];
@@ -5768,6 +5853,8 @@ function grabElementAt(pos){
       showToast('↔ 中央をドラッグで移動 / 端をドラッグでサイズ変更 / 🔄ハンドルで回転 — タップで確定');
     } else if(h.el.kind==='freehand'){
       showToast('↔ 本体をドラッグで移動 / 右下の緑つまみをドラッグで拡大縮小 — タップで確定');
+    } else if(h.el.kind==='anglegrp'){
+      showToast('↔ 三角形ごとドラッグで移動 — タップで確定');
     } else {
       showToast('↔ ドラッグで移動 — タップで確定');
     }
@@ -5847,6 +5934,7 @@ function startGroupMove(pos){
     if(el.kind==='pipe' || el.kind==='leader'){ return {el:el, wx1:el.wx1, wy1:el.wy1, wx2:el.wx2, wy2:el.wy2}; }
     if(el.kind==='hose'){ return {el:el, pts:el.pts.map(function(p){return {x:p.x,y:p.y};})}; }
     if(el.kind==='freehand'){ return {el:el, strokes:el.strokes.map(function(pts){ return pts.map(function(p){return {x:p.x,y:p.y};}); })}; }
+    if(el.kind==='anglegrp'){ return {el:el, ax:el.ax, ay:el.ay, bx:el.bx, by:el.by, vx:el.vx, vy:el.vy}; }
     return {el:el, wx:el.wx, wy:el.wy};
   });
   showToast('↔ ドラッグで選択範囲ごと移動 — タップで確定');
@@ -5889,11 +5977,27 @@ function eraseAction(){
     var mergePt = (target.kind==='fitting') ? {x:target.wx, y:target.wy} : null;
     S.els = S.els.filter(function(e){ return e !== target; });
     if(S.sel===target) S.sel=null;
+    if(S.selAngleGrp===target) S.selAngleGrp=null;
     if(S.lastFit===target) S.lastFit=null;
     S.dragMode=null; S.dragEl=null; S.dragging=false; S.snapPt=null; S.justGrabbed=false; S.dragSubMode=null; S.dragEnd=null;
     if(mergePt) tryMergePipesAtPoint(mergePt.x, mergePt.y);
     showToast('🗑 削除しました');
     updateMirrorButton();
+    updateAngleGrpEditPanel();
+    render();
+    return;
+  }
+  // 角度補助三角形をタップして選択している（長押しで掴んだ状態=dragModeではないが、
+  // タップ選択・頂点調整直後などdragEl未設定のまま選択だけされている）場合も、
+  // ここで確実に削除できるようにする。長押しで掴んだ場合は上のdragMode分岐で既に処理済み。
+  if(S.selAngleGrp){
+    saveH();
+    var agTarget = S.selAngleGrp;
+    S.els = S.els.filter(function(e){ return e !== agTarget; });
+    if(S.sel===agTarget) S.sel=null;
+    S.selAngleGrp = null;
+    updateAngleGrpEditPanel();
+    showToast('🗑 角度補助線を削除しました');
     render();
     return;
   }
@@ -6112,10 +6216,36 @@ function handleDown(pos){
     }
     var hAg = hitTest(pos.x,pos.y);
     if(hAg && hAg.el.kind==='anglegrp'){
-      // 既存の補助三角形をタップ：頂点付近ならハッチング本数編集、辺付近ならその辺の角度を回転
-      handleAngleGrpTap(hAg.el, pos);
+      var pVg = w2s(hAg.el.vx, hAg.el.vy);
+      var nearVertex = dist2(pos.x,pos.y,pVg.x,pVg.y) < 20;
+      if(nearVertex){
+        // 頂点付近をタップ：作成時と同じ「ドラッグで頂点位置を決めて指を離して確定」の
+        // 流れをそのまま使い、この既存の三角形を更新する（始点・終点は変えない）
+        S.angleBase = {wx1:hAg.el.ax, wy1:hAg.el.ay, wx2:hAg.el.bx, wy2:hAg.el.by};
+        S.angleEditTarget = hAg.el;
+        S.angleDrawing = true;
+        S.anglePrev = computeAnglePreview(pos);
+        S.selAngleGrp = hAg.el; S.sel = hAg.el;
+        showToast('ドラッグで頂点の位置を調整、指を離して確定してください');
+        render();
+        return;
+      }
+      // 頂点以外（辺・内側）をタップ：選択（ハイライト）はすぐに行い、
+      // そのまま長押しすれば三角形ごと移動できるようにする（配管と同じ操作感）。
+      if(S.selAngleGrp !== hAg.el){
+        S.selAngleGrp = hAg.el;
+        S.sel = hAg.el;
+        render();
+      }
+      showToast('タップで選択・長押しで三角形ごと移動 — 下の🔄回転ボタンでハッチングを回転できます');
+      cancelLongPress();
+      S.longPressTimer = setTimeout(function(){
+        S.longPressFired = true;
+        activateLongPress(pos);
+      }, LONG_PRESS_MS);
       return;
     }
+    if(S.selAngleGrp){ closeAngleGrpEdit(); } // 三角形以外の場所をタップ＝選択解除
     var anBase = nearestPointOnPipe(pos.x,pos.y);
     if(anBase){
       S.angleBase = anBase.el;
@@ -6348,10 +6478,38 @@ function toggleMirror(){
 }
 // ── 範囲選択（複数要素の選択・一括操作） ─────────────
 // 画面座標のバウンディングボックスに含まれる要素を集める
+// 2つの線分が交差しているかどうかを判定する（画面座標）
+function segSegIntersect(ax,ay,bx,by,cx,cy,dx,dy){
+  function ccw(px,py,qx,qy,rx,ry){ return (ry-py)*(qx-px) - (qy-py)*(rx-px); }
+  var d1=ccw(cx,cy,dx,dy,ax,ay);
+  var d2=ccw(cx,cy,dx,dy,bx,by);
+  var d3=ccw(ax,ay,bx,by,cx,cy);
+  var d4=ccw(ax,ay,bx,by,dx,dy);
+  return ((d1>0&&d2<0)||(d1<0&&d2>0)) && ((d3>0&&d4<0)||(d3<0&&d4>0));
+}
+// 線分(x1,y1)-(x2,y2)が矩形[x0,x1b]×[y0,y1b]に少しでも触れているか（端点が中／辺と交差）を判定する（画面座標）。
+// 交差選択（右→左ドラッグ）で使用する。
+function segTouchesRect(x1,y1,x2,y2, x0,y0,x1b,y1b){
+  if((x1>=x0&&x1<=x1b&&y1>=y0&&y1<=y1b) || (x2>=x0&&x2<=x1b&&y2>=y0&&y2<=y1b)) return true;
+  var edges = [
+    [x0,y0, x1b,y0],
+    [x1b,y0, x1b,y1b],
+    [x1b,y1b, x0,y1b],
+    [x0,y1b, x0,y0]
+  ];
+  for(var i=0;i<edges.length;i++){
+    var e=edges[i];
+    if(segSegIntersect(x1,y1,x2,y2, e[0],e[1],e[2],e[3])) return true;
+  }
+  return false;
+}
 function finalizeRangeSelect(pos){
   if(!S.rangeStart){ render(); return; }
   var x0=Math.min(S.rangeStart.x,pos.x), x1=Math.max(S.rangeStart.x,pos.x);
   var y0=Math.min(S.rangeStart.y,pos.y), y1=Math.max(S.rangeStart.y,pos.y);
+  // AUTOCADと同じ規則：左→右にドラッグ＝ウィンドウ選択（枠内に完全に収まっているものだけ選択）、
+  // 右→左にドラッグ＝交差選択（枠に少しでも触れているものを選択）
+  var isCrossing = pos.x < S.rangeStart.x;
   S.rangeStart=null; S.rangeEnd=null;
   if(S.exportPending){
     // 出力範囲選択モード中：通常の要素選択は行わず、ドラッグした矩形を出力範囲として記憶する
@@ -6378,31 +6536,58 @@ function finalizeRangeSelect(pos){
     render();
     return;
   }
+  function ptIn(sp){ return sp.x>=x0&&sp.x<=x1&&sp.y>=y0&&sp.y<=y1; }
   var picked=[];
   S.els.forEach(function(e){
     if(e.kind==='pipe' || e.kind==='leader'){
       var p1=w2s(e.wx1,e.wy1), p2=w2s(e.wx2,e.wy2);
-      if(p1.x>=x0&&p1.x<=x1&&p1.y>=y0&&p1.y<=y1&&p2.x>=x0&&p2.x<=x1&&p2.y>=y0&&p2.y<=y1) picked.push(e);
+      if(isCrossing){
+        if(segTouchesRect(p1.x,p1.y,p2.x,p2.y, x0,y0,x1,y1)) picked.push(e);
+      } else {
+        if(ptIn(p1)&&ptIn(p2)) picked.push(e);
+      }
     } else if(e.kind==='hose'){
-      var allIn = e.pts && e.pts.every(function(wp){
-        var sp2=w2s(wp.x,wp.y);
-        return sp2.x>=x0&&sp2.x<=x1&&sp2.y>=y0&&sp2.y<=y1;
-      });
-      if(allIn) picked.push(e);
+      if(!e.pts || !e.pts.length) return;
+      if(isCrossing){
+        var hHit = e.pts.some(function(wp){ return ptIn(w2s(wp.x,wp.y)); });
+        if(!hHit){
+          for(var hi=1; hi<e.pts.length; hi++){
+            var ha=w2s(e.pts[hi-1].x,e.pts[hi-1].y), hb=w2s(e.pts[hi].x,e.pts[hi].y);
+            if(segTouchesRect(ha.x,ha.y,hb.x,hb.y,x0,y0,x1,y1)){ hHit=true; break; }
+          }
+        }
+        if(hHit) picked.push(e);
+      } else {
+        var allIn = e.pts.every(function(wp){ return ptIn(w2s(wp.x,wp.y)); });
+        if(allIn) picked.push(e);
+      }
     } else if(e.kind==='fitting' || e.kind==='weld' || e.kind==='text' || e.kind==='northarrow' || e.kind==='scaffold'){
       var sp=w2s(e.wx,e.wy);
-      if(sp.x>=x0&&sp.x<=x1&&sp.y>=y0&&sp.y<=y1) picked.push(e);
+      if(ptIn(sp)) picked.push(e);
     } else if(e.kind==='freehand'){
       var fhAll = freehandAllPts(e);
-      var fhAllIn = fhAll.length>0 && fhAll.every(function(wp){
-        var sp3=w2s(wp.x,wp.y);
-        return sp3.x>=x0&&sp3.x<=x1&&sp3.y>=y0&&sp3.y<=y1;
-      });
-      if(fhAllIn) picked.push(e);
+      if(!fhAll.length) return;
+      if(isCrossing){
+        var fhHit = fhAll.some(function(wp){ return ptIn(w2s(wp.x,wp.y)); });
+        if(!fhHit && e.strokes){
+          for(var si=0; si<e.strokes.length && !fhHit; si++){
+            var stroke=e.strokes[si];
+            for(var pi=1; pi<stroke.length; pi++){
+              var sa=w2s(stroke[pi-1].x,stroke[pi-1].y), sb=w2s(stroke[pi].x,stroke[pi].y);
+              if(segTouchesRect(sa.x,sa.y,sb.x,sb.y,x0,y0,x1,y1)){ fhHit=true; break; }
+            }
+          }
+        }
+        if(fhHit) picked.push(e);
+      } else {
+        var fhAllIn = fhAll.every(function(wp){ return ptIn(w2s(wp.x,wp.y)); });
+        if(fhAllIn) picked.push(e);
+      }
     }
   });
   S.multiSel = picked;
-  showToast(picked.length ? (picked.length+'個を選択しました（範囲内を長押しでまとめて移動できます）') : '範囲内に要素がありません');
+  var modeLabel = isCrossing ? '交差選択' : 'ウィンドウ選択';
+  showToast(picked.length ? (modeLabel+'：'+picked.length+'個を選択しました（範囲内を長押しでまとめて移動できます）') : (modeLabel+'：範囲内に要素がありません'));
   render();
 }
 function clearMultiSel(){
@@ -9105,7 +9290,7 @@ function cancelInProgressDrawing(){
   S.pendingScale=false;
   S.rangeSelecting=false; S.rangeStart=null; S.rangeEnd=null;
   S.trimBoundary=null;
-  S.angleBase=null; S.angleDrawing=false; S.anglePrev=null;
+  S.angleBase=null; S.angleDrawing=false; S.anglePrev=null; S.angleEditTarget=null;
   S.scaffDrawing=false; S.scaffPrev=null; S.scaffStart=null;
   S.rulerDrawing=false; S.rulerPrev=null; S.rulerStart=null;
   S.bgDragging=false;
@@ -9121,8 +9306,9 @@ function setTool(t, silent, keepDrawer){
   cancelInProgressDrawing();
   S.multiSel=[];
   S.sel=null; // トリム/延長の基準配管選択もツール切替でリセットする
-  ['bPipe','bTxt','bErs','bSel','bFree'].forEach(function(id){var b=document.getElementById(id); if(b) b.classList.remove('on');});
-  var m={pipe:'bPipe',dim:'bSel',text:'bTxt',eraser:'bErs',rangesel:'bSel',freehand:'bFree'};
+  if(S.selAngleGrp){ S.selAngleGrp=null; updateAngleGrpEditPanel(); } // 角度ツールを離れたら選択解除
+  ['bPipe','bAngleGrp','bTxt','bErs','bSel','bFree'].forEach(function(id){var b=document.getElementById(id); if(b) b.classList.remove('on');});
+  var m={pipe:'bPipe',angle:'bAngleGrp',dim:'bSel',text:'bTxt',eraser:'bErs',rangesel:'bSel',freehand:'bFree'};
   if(m[t]) document.getElementById(m[t]).classList.add('on');
   var bCalib=document.getElementById('bCalib');
   if(bCalib) bCalib.classList.toggle('on', t==='ruler');
@@ -9135,7 +9321,7 @@ function setTool(t, silent, keepDrawer){
   }
   var keepDrawerOpen = ['fitting','stampExisting','stampNew','split','join','hose','freehand','headerPlan','headerIso','trim','extend','scaff'];
   if(!keepDrawer && keepDrawerOpen.indexOf(t)===-1) closeDrawer();
-  updateSt(); updateMirrorButton(); updateMultiSelPanel(); updatePipeEditPanel(); updateScaffEditPanel(); updatePipeModeSwitch(); updateAngleStepSwitch(); updatePlotPanel(); updateFreehandBar();
+  updateSt(); updateMirrorButton(); updateMultiSelPanel(); updatePipeEditPanel(); updateScaffEditPanel(); updateAngleGrpEditPanel(); updatePipeModeSwitch(); updateAngleStepSwitch(); updatePlotPanel(); updateFreehandBar();
 }
 // ── 配管の描画モード切替（アイソメ／平面図） ─────────────
 // 角度の合わせ単位は角度固定ボタン（15°/30°/45°/90°）でアイソメ・平面図共通に切り替える。長さはどちらも0.01m単位。
@@ -9156,7 +9342,7 @@ function choosePipeMode(mode){
   try{ localStorage.setItem(PIPE_DRAWMODE_STORAGE_KEY, S.pipeDrawMode); }catch(e){}
   updatePipeModeSwitch();
   syncFitSectionsWithPipeMode();
-  showToast((S.pipeDrawMode==='plan' ? '平面図モード' : 'アイソメモード')+'：長さ0.01m単位で配管を描きます（角度は'+(S.angleStepDeg||30)+'°刻み）');
+  showToast((S.pipeDrawMode==='plan' ? '平面図モード' : 'アイソメモード')+'：長さ0.01m単位で配管を描きます（角度は'+(S.angleStepDeg||15)+'°刻み）');
 }
 function updatePipeModeSwitch(){
   var sw=document.getElementById('pipeModeToggleInline');
@@ -9178,10 +9364,9 @@ function updatePipeModeSwitch(){
 // ボタンをタップするたびに15°→30°→45°→90°→15°…と巡回して切り替える。
 var ANGLE_STEP_STORAGE_KEY = 'pipeiso_angle_step';
 var ANGLE_STEP_SEQ = [15,30,45,90];
+// 配管ツールを選んだ時の角度固定は、前回の設定を引き継がず必ず15°からスタートする。
 function initAngleStep(){
-  var saved = null;
-  try{ saved = parseInt(localStorage.getItem(ANGLE_STEP_STORAGE_KEY), 10); }catch(e){}
-  S.angleStepDeg = (ANGLE_STEP_SEQ.indexOf(saved)>=0) ? saved : 30;
+  S.angleStepDeg = 15;
   updateAngleStepSwitch();
 }
 function cycleAngleStep(){
@@ -9228,12 +9413,14 @@ function onPipeButtonTap(){
     cycleAngleStep();
   } else {
     setTool('pipe');
+    // 配管ツールを選び直すたびに、角度固定は必ず15°からスタートする
+    S.angleStepDeg = 15;
+    updateAngleStepSwitch();
   }
 }
 function updateAngleStepSwitch(){
   var label = document.getElementById('bPipeLabel');
-  if(!label) return;
-  label.textContent = (S.tool==='pipe') ? ('配管 '+(S.angleStepDeg||30)+'°') : '配管';
+  if(label) label.textContent = (S.tool==='pipe') ? ('配管 '+(S.angleStepDeg||15)+'°') : '配管';
 }
 // ☰メニューはドロワー（基本操作／継手／ヘッダー等）の開閉だけを行い、ツールは切り替えない。
 // ※以前はここで強制的にツールを『継手』へ切り替えていたため、色・太さを選んだだけのつもりでも
@@ -10283,20 +10470,12 @@ var XLSX_STYLES = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
 '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
 '<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>'+
 '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'+
-'<borders count="4"><border><left/><right/><top/><bottom/><diagonal/></border>'+
+'<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>'+
 '<border><left style="thin"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right>'+
-'<top style="thin"><color indexed="64"/></top><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border>'+
-// 写真帳シート：写真欄(B列)の右辺を太線にし、項目欄との区切りを分かりやすくする
-'<border><left style="thin"><color indexed="64"/></left><right style="thick"><color indexed="64"/></right>'+
-'<top style="thin"><color indexed="64"/></top><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border>'+
-// 写真帳シート：項目欄(C列)の左辺を太線にし、写真欄との区切りを分かりやすくする
-'<border><left style="thick"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right>'+
 '<top style="thin"><color indexed="64"/></top><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border></borders>'+
 '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
-'<cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'+
-'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/>'+
-'<xf numFmtId="0" fontId="0" fillId="0" borderId="2" xfId="0" applyBorder="1"/>'+
-'<xf numFmtId="0" fontId="0" fillId="0" borderId="3" xfId="0" applyBorder="1"/></cellXfs>'+
+'<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'+
+'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/></cellXfs>'+
 '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'+
 '</styleSheet>';
 var XLSX_THEME = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
@@ -10340,13 +10519,8 @@ function xlsxEmptyStyledCell(ref, style){
 function xlsxNumCell(ref, v){
   return (v==null || v==='') ? '<c r="'+ref+'"/>' : '<c r="'+ref+'"><v>'+v+'</v></c>';
 }
-// cachedValueを渡すと<f>（数式）に加えて<v>（計算済みキャッシュ値）も書き込む。
-// ExcelはfullCalcOnLoadで自動再計算されるが、他の表計算アプリ（Google スプレッドシート・Numbers等）は
-// 開いた時に自動再計算しないことがあるため、キャッシュ値を入れておくことで
-// どのアプリで開いても最初から正しい数値が表示され、かつセルは編集可能な数式のまま維持される。
-function xlsxFormulaCell(ref, formula, cachedValue){
-  var vTag = (cachedValue!=null && cachedValue!=='') ? ('<v>'+cachedValue+'</v>') : '';
-  return '<c r="'+ref+'"><f>'+escSvgText(formula)+'</f>'+vTag+'</c>';
+function xlsxFormulaCell(ref, formula){
+  return '<c r="'+ref+'"><f>'+escSvgText(formula)+'</f></c>';
 }
 // 物量集計シート（足場・敷地）：一覧データ本体＋種類別の個数・合計数量をExcelの数式(ROUND/SUMIF/COUNTIF)で算出する。
 // F列（数量）の計算式は種類ごとに以下の通り（桁＝C列、布＝D列、高さ＝E列＝座の高さ）。
@@ -10362,18 +10536,6 @@ function scaffQtyFormula(sub, r){
   if(sub==='yagura') return 'ROUND('+sum2+'*'+E+',2)';
   if(sub==='overhang' || sub==='susp') return 'ROUND('+sum2+'*1.5+('+C+'+'+D+'),2)';
   return 'ROUND('+C+'*'+D+',2)'; // 敷板・敷地はどちらも桁×布のみ
-}
-// scaffQtyFormulaと同じ計算式をJS側の数値でも算出する（Excelの数式セルに入れるキャッシュ値用）。
-// 数式と計算内容がずれないよう、必ずscaffQtyFormulaのコメントの計算式と対応させて修正すること。
-function scaffQtyValue(sub, w, d, height){
-  w = w||0; d = d||0; height = height||0;
-  var sum2 = w+w+d+d; // (桁+桁+布+布)
-  var v;
-  if(sub==='asm' || sub==='internal') v = sum2*(height+1)+(w*d);
-  else if(sub==='yagura') v = sum2*height;
-  else if(sub==='overhang' || sub==='susp') v = sum2*1.5+(w+d);
-  else v = w*d; // 敷板・敷地
-  return Math.round(v*100)/100;
 }
 // 物量表の行データを作る（baseRow行目からヘッダーを始める）。戻り値のlastRowは、この表が最後に使った行番号
 // （集計行を含む）。ピン一覧をこの下に続けて配置するために使う。
@@ -10393,7 +10555,7 @@ function buildQuantityRows(items, baseRow){
       xlsxNumCell('C'+r, el.w),
       xlsxNumCell('D'+r, el.d),
       noHeight ? xlsxNumCell('E'+r, null) : xlsxNumCell('E'+r, el.height!=null?el.height:0),
-      xlsxFormulaCell('F'+r, scaffQtyFormula(el.sub, r), scaffQtyValue(el.sub, el.w, el.d, noHeight?0:(el.height!=null?el.height:0)))
+      xlsxFormulaCell('F'+r, scaffQtyFormula(el.sub, r))
     ].join('');
     rows.push('<row r="'+r+'">'+cells+'</row>');
   });
@@ -10407,30 +10569,22 @@ function buildQuantityRows(items, baseRow){
     var dataRange = 'A'+firstDataRow+':A'+lastDataRow;
     var areaRange = 'F'+firstDataRow+':F'+lastDataRow;
     var sumRow = sumStartRow;
-    var totalCount = 0, totalArea = 0;
     SCAFF_KIND_ORDER.forEach(function(sub){
-      var subItems = items.filter(function(e){ return e.sub===sub; });
-      if(!subItems.length) return;
+      if(!items.some(function(e){ return e.sub===sub; })) return;
       sumRow++;
       var label = SCAFF_KIND_LABELS[sub];
-      var count = subItems.length;
-      var area = Math.round(subItems.reduce(function(acc, el){
-        var noHeight = !!SCAFF_NO_HEIGHT[el.sub];
-        return acc + scaffQtyValue(el.sub, el.w, el.d, noHeight?0:(el.height!=null?el.height:0));
-      }, 0)*100)/100;
-      totalCount += count; totalArea += area;
       var cells = [
         xlsxTextCell('A'+sumRow, label),
-        xlsxFormulaCell('B'+sumRow, 'COUNTIF('+dataRange+',"'+label+'")', count),
-        xlsxFormulaCell('C'+sumRow, 'SUMIF('+dataRange+',"'+label+'",'+areaRange+')', area)
+        xlsxFormulaCell('B'+sumRow, 'COUNTIF('+dataRange+',"'+label+'")'),
+        xlsxFormulaCell('C'+sumRow, 'SUMIF('+dataRange+',"'+label+'",'+areaRange+')')
       ].join('');
       rows.push('<row r="'+sumRow+'">'+cells+'</row>');
     });
     sumRow++;
     var totalCells = [
       xlsxTextCell('A'+sumRow, '合計'),
-      xlsxFormulaCell('B'+sumRow, 'SUM(B'+(sumStartRow+1)+':B'+(sumRow-1)+')', totalCount),
-      xlsxFormulaCell('C'+sumRow, 'SUM(C'+(sumStartRow+1)+':C'+(sumRow-1)+')', Math.round(totalArea*100)/100)
+      xlsxFormulaCell('B'+sumRow, 'SUM(B'+(sumStartRow+1)+':B'+(sumRow-1)+')'),
+      xlsxFormulaCell('C'+sumRow, 'SUM(C'+(sumStartRow+1)+':C'+(sumRow-1)+')')
     ].join('');
     rows.push('<row r="'+sumRow+'">'+totalCells+'</row>');
     lastRow = sumRow;
@@ -10446,7 +10600,9 @@ function buildPinRows(pins, baseRow, zip, ctx){
   var anchorsXml = [], mediaRels = [], shapeId = 1;
   (pins||[]).forEach(function(p, i){
     var r = baseRow+1+i;
-    var textVals = [p.name, p.item, p.seibi, p.rating, p.size, p.type, p.gasket, p.boltNut, p.law, p.fluid, p.insul, p.removeDate, p.installDate, p.memo];
+    // 名称が未入力のときは空欄のまま出力せず、画面表示（キャンバス上のピン番号）と同じ
+    // 「そのピンの並び順の番号」を代わりに入れる（p.name||(i+1) は画面描画と同じロジック）
+    var textVals = [p.name||String(i+1), p.item, p.seibi, p.rating, p.size, p.type, p.gasket, p.boltNut, p.law, p.fluid, p.insul, p.removeDate, p.installDate, p.memo];
     var cells = textVals.map(function(v, ci){ return xlsxTextCell(xlsxColLetter(ci+1)+r, v||''); }).join('');
     cells += xlsxNumCell(xlsxColLetter(15)+r, (p.specs||[]).length);
     var photos = (p.photos||[]).slice(0, PIN_PHOTO_MAX);
@@ -10876,9 +11032,9 @@ async function xlsxAppendSheetPair(zip, sheetName, rect, ctx){
   // まとめて表示する（密集した図面でも各記号の内容が読み取れるようにするため）。
   var scaffListItems = S.els.filter(function(e){ return e.kind==='scaffold'; });
   if(scaffListItems.length){
-    var listFs = 24; // 表示サイズが小さく見つけにくいという要望に合わせ、元の2倍(12→24)に拡大
+    var listFs = 12;
     var listLineH = listFs*1.6;
-    var listPadding = 16; // 文字サイズに合わせて余白も2倍(8→16)にし、全体のバランスを保つ
+    var listPadding = 8;
     var listTitle = '足場・敷地 一覧';
     var listLines = scaffListItems.map(function(e){ return scaffLabel(e)+'　'+scaffSizeLine(e); });
     // 注意：この関数の引数名「ctx」はExcel出力用の管理オブジェクト（mediaIndex等）であり、
@@ -11001,7 +11157,10 @@ function excelColWidthToPx(chars){
   return Math.floor(((256*chars + Math.floor(128/MDW))/256)*MDW);
 }
 async function xlsxAppendPhotoAlbumSheets(zip, sheetName, pins, ctx){
-  var target = (pins||[]).filter(function(p){ return p.photos && p.photos.length; });
+  // 写真を持つピンだけを対象にするが、画面表示（ピン番号=S.pins内の並び順）と一致させるため
+  // 絞り込む前の元の並び順(idx)を保持しておく
+  var target = (pins||[]).map(function(p, idx){ return {p:p, idx:idx}; })
+    .filter(function(o){ return o.p.photos && o.p.photos.length; });
   if(!target.length) return; // 写真を持つピンが1つも無ければ写真帳シート自体を作らない
 
   var PHOTO_TARGET_PX = 260; // 写真の長辺の目安サイズ（Excelに貼る前の縮小先）
@@ -11010,8 +11169,6 @@ async function xlsxAppendPhotoAlbumSheets(zip, sheetName, pins, ctx){
   var CAP_ROWS = 7; // 1ブロックの行数＝14項目を2列×7行で配置（テンプレートと同じ）
   var ROW_HT_PT = 38.25; // 行の高さ(pt)＝テンプレート「だめ_.xlsx」の値に合わせる
   var BORDER_S = 1; // styles.xml cellXfs[1]＝細線（全辺）。テンプレートは全セルに罫線があるため付与
-  var BORDER_PHOTO_EDGE = 2; // cellXfs[2]＝右辺だけ太線（写真欄側＝B列に使用）
-  var BORDER_CAPTION_EDGE = 3; // cellXfs[3]＝左辺だけ太線（項目欄側＝C列に使用）
   var BLOCKS_PER_PAGE = 3; // テンプレートはページ余白0でA4縦に3ブロックぴったり入る構成
   // 列幅(文字数単位)。A+B＝写真欄、C〜F＝キャプション欄
   // C〜Fは、たろさんがExcel上で4列とも同じ幅(15.85546875)に揃えたものをそのまま反映
@@ -11023,7 +11180,8 @@ async function xlsxAppendPhotoAlbumSheets(zip, sheetName, pins, ctx){
   var rows = [], anchorsXml = [], mediaRels = [], shapeId = 1, mergeCells = [], manualBreakRows = [];
   var r = 1; // 現在の行（1始まり）＝各ブロックの先頭行
   for(var i=0; i<target.length; i++){
-    var pin = target[i];
+    var pin = target[i].p;
+    var pinNum = target[i].idx+1; // 名称未入力時に表示する、画面表示と同じピン番号
     var url = pin.photos[0];
     var compressedUrl = await compressImageDataUrl(url, PHOTO_TARGET_PX, PHOTO_JPEG_QUALITY);
     var info = parseDataUrlImage(compressedUrl);
@@ -11042,9 +11200,14 @@ async function xlsxAppendPhotoAlbumSheets(zip, sheetName, pins, ctx){
     for(var cr=0; cr<CAP_ROWS; cr++){
       var rr = blockStartRow+cr;
       var f1 = PHOTO_ALBUM_FIELDS[cr*2], f2 = PHOTO_ALBUM_FIELDS[cr*2+1];
-      var cells = xlsxEmptyStyledCell('A'+rr, BORDER_S)+xlsxEmptyStyledCell('B'+rr, BORDER_PHOTO_EDGE)+
-        xlsxTextCell('C'+rr, f1.label, BORDER_CAPTION_EDGE)+xlsxTextCell('D'+rr, pin[f1.key]||'', BORDER_S);
-      if(f2) cells += xlsxTextCell('E'+rr, f2.label, BORDER_S)+xlsxTextCell('F'+rr, pin[f2.key]||'', BORDER_S);
+      // 名称が未入力のときは空欄にせず、ピン番号を代わりに表示する
+      var v1 = f1.key==='name' ? (pin[f1.key]||String(pinNum)) : (pin[f1.key]||'');
+      var cells = xlsxEmptyStyledCell('A'+rr, BORDER_S)+xlsxEmptyStyledCell('B'+rr, BORDER_S)+
+        xlsxTextCell('C'+rr, f1.label, BORDER_S)+xlsxTextCell('D'+rr, v1, BORDER_S);
+      if(f2){
+        var v2 = f2.key==='name' ? (pin[f2.key]||String(pinNum)) : (pin[f2.key]||'');
+        cells += xlsxTextCell('E'+rr, f2.label, BORDER_S)+xlsxTextCell('F'+rr, v2, BORDER_S);
+      }
       rows.push('<row r="'+rr+'" ht="'+ROW_HT_PT+'" customHeight="1">'+cells+'</row>');
     }
     mergeCells.push('A'+blockStartRow+':B'+(blockStartRow+CAP_ROWS-1)); // 写真欄をA:B×7行で結合
