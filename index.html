@@ -96,6 +96,20 @@ header{
 .bt .ic{font-size:var(--fs-7);line-height:1;}
 .bt.on{color:#0277bd;background:rgba(2,119,189,0.1);}
 .bt:active{background:#eef1f6;}
+.plotsel-bar{
+  position:absolute;left:50%;top:8px;transform:translateX(-50%);z-index:60;
+  display:none;align-items:center;gap:4px;padding:5px 6px;max-width:calc(100% - 16px);overflow-x:auto;
+  background:#ffffff;border:1px solid #0277bd;border-radius:var(--radius-lg);
+  box-shadow:0 2px 10px rgba(0,0,0,0.18);touch-action:pan-x;
+}
+.plotsel-bar.vis{display:flex;}
+.plotsel-bar .psname{font-size:var(--fs-4);font-weight:700;color:#0277bd;padding:0 6px;white-space:nowrap;}
+.plotsel-bar button{
+  background:#eef1f6;border:1px solid #d8dce3;color:#1a1d27;border-radius:var(--radius-sm);
+  padding:7px 10px;font-size:var(--fs-4);white-space:nowrap;cursor:pointer;min-height:34px;
+}
+.plotsel-bar button:active{background:#dde2ea;}
+.plotsel-bar button.danger{color:#c62828;}
 /* DRAWER */
 .drawer{
   position:absolute;right:0;top:0;bottom:0;width:112px;
@@ -656,6 +670,12 @@ header{
   width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,0.35);cursor:pointer;padding:0;
 }
 .mark-color-btn.active{border-color:#fff;}
+.mark-width-group{display:flex;gap:4px;align-items:center;}
+.mark-width-btn,.mark-fill-btn{
+  height:36px;min-width:36px;padding:0 8px;border-radius:var(--radius-md);border:none;
+  background:rgba(255,255,255,0.15);color:#fff;font-size:14px;font-weight:700;cursor:pointer;
+}
+.mark-width-btn.active,.mark-fill-btn.active{background:#0277bd;}
 .mark-undo-btn,.mark-cancel-btn,.mark-confirm-btn{
   padding:10px 16px;border-radius:var(--radius-lg);border:none;font-size:var(--fs-5);font-weight:700;cursor:pointer;
 }
@@ -742,8 +762,8 @@ header{
   <button class="h-btn" id="btnOpenFile" onclick="triggerLoadFile()">📂開く</button>
   <div class="ov-anchor">
     <div class="ov-menu" id="displayMenu">
-      <div class="ov-menu-row" id="plotMenuRow" onclick="openDisplayMenuItem('plot')">📄 PLOTを開く（PDF/写真）</div>
-      <div class="ov-menu-row" id="removePlotMenuRow" onclick="openDisplayMenuItem('removePlot')" style="display:none;">🗑 プロットを削除</div>
+      <div class="ov-menu-row" id="plotMenuRow" onclick="openDisplayMenuItem('plot')">📄 PLOTを追加（PDF/写真・複数枚OK）</div>
+      <div class="ov-menu-row" id="removePlotMenuRow" onclick="openDisplayMenuItem('removePlot')" style="display:none;">🗑 選択中のプロットを削除</div>
       <div class="ov-menu-row" id="plotSettingsMenuRow" onclick="openDisplayMenuItem('plotSettings')" style="display:none;">🌗👻 プロット設定（背景・重ね表示）</div>
       <div class="ov-menu-row" id="scaffListMenuRow" onclick="openDisplayMenuItem('scaffList')" style="display:none;">📋 足場・敷地一覧</div>
       <div class="ov-menu-row" id="pinListMenuRow" onclick="openDisplayMenuItem('pinList')" style="display:none;">📌 ピン一覧</div>
@@ -766,6 +786,17 @@ header{
     <div class="ok-btn" onclick="confirmAtLastMouse()" title="直近でタップ/クリックした位置で確定します（Enterキーと同じ）">ENTER</div>
     <div class="status" id="status">配管</div>
     <div class="ctx-menu" id="ctxMenu"></div>
+    <!-- プロット選択ツール：選んだプロットに対するコピー／トリミング／削除などの操作バー -->
+    <div class="plotsel-bar" id="plotSelBar">
+      <span class="psname" id="plotSelName">プロット</span>
+      <button onclick="plotSelCopy()" title="選択中のプロットをコピー（貼り付け位置はあとで指定。シートをまたいでも貼り付けられます）">⧉ コピー</button>
+      <button id="plotSelPasteBtn" onclick="plotSelPasteToggle()" title="コピーしたプロットを貼り付ける。押したあと、置きたい場所をタップ" style="display:none;">📋 貼り付け</button>
+      <button onclick="plotSelTrim()" title="選択中のプロットの必要な部分だけ残す">✂ トリミング</button>
+      <button id="plotSelTranspBtn" onclick="toggleBgTransparent()" title="紙の白地を透明にして線だけ残す（もう一度押すと元に戻る）">◻ 白を透明に</button>
+      <button onclick="plotSelOrder(1)" title="重なり順を一つ前面へ">⬆ 前面</button>
+      <button onclick="plotSelOrder(-1)" title="重なり順を一つ背面へ">⬇ 背面</button>
+      <button class="danger" onclick="plotSelDelete()" title="選択中のプロットを削除">🗑 削除</button>
+    </div>
 
     <div class="ovl">
       <div class="ov-label-btn ov-primary" onclick="setToolFitting()" title="継手・ピン・足場・配管などをまとめたメニューを開閉します">
@@ -895,6 +926,15 @@ header{
 
       <div id="plotPanelBgSection">
         <div style="font-size:var(--fs-2);color:#5c6b8a;font-weight:700;">🌗 背景（この階のPDF/写真）</div>
+        <div style="font-size:var(--fs-2);color:#5c6b8a;margin-top:4px;">操作するプロット</div>
+        <select id="bgSelect" onchange="selectBg(this.value)"></select>
+        <div class="rot-btns" style="grid-template-columns:repeat(2,1fr);margin-top:4px;">
+          <button class="rot-btn" onclick="triggerLoadPdf()" title="この階にPDF/写真をもう1枚貼り付ける">＋ 追加</button>
+          <button class="rot-btn" onclick="duplicateBg()" title="選択中のプロットを複製する">⧉ 複製</button>
+          <button class="rot-btn" onclick="moveBgOrder(1)">▲ 前面へ</button>
+          <button class="rot-btn" onclick="moveBgOrder(-1)">▼ 背面へ</button>
+        </div>
+        <button class="rot-btn" id="bgTranspBtn" style="width:100%;margin-top:6px;" onclick="toggleBgTransparent()" title="紙の白地を透明にして、線だけを残します（もう一度押すと元に戻ります）">◻ 白地を透明にする</button>
         <div style="font-size:var(--fs-2);color:#5c6b8a;margin-top:4px;">透明度</div>
         <input type="range" id="bgOpacitySlider" min="10" max="100" value="80" oninput="setBgOpacity(this.value)">
         <div style="font-size:var(--fs-2);color:#5c6b8a;margin-top:4px;">サイズ</div>
@@ -913,8 +953,9 @@ header{
         </div>
         <button class="rot-btn" style="width:100%;margin-top:6px;" onclick="setTool('ruler')">📏 校正</button>
         <button class="rot-btn" style="width:100%;margin-top:6px;" onclick="setTool('movebg')">✋ 位置を調整</button>
-        <button class="rot-btn" style="width:100%;margin-top:6px;" onclick="openBgCropper()">✂ トリミング（不要な部分を切り取る）</button>
-        <button class="rot-close" onclick="removeBg()">背景を削除</button>
+        <button class="rot-btn" style="width:100%;margin-top:6px;" onclick="openBgCropper()">✂ トリミング（選択中のプロット）</button>
+        <button class="rot-btn" style="width:100%;margin-top:6px;" onclick="undoBgCrop()">↩ トリミングを戻す</button>
+        <button class="rot-close" onclick="removeBg()">選択中のプロットを削除</button>
       </div>
 
       <div id="plotPanelDivider" style="margin:10px 0 6px;border-top:1px solid #eef1f6;"></div>
@@ -1141,6 +1182,7 @@ header{
 <div class="btbar">
   <div class="bt-group">
     <button class="bt"    id="bSel"  onclick="setTool('rangesel')" title="左→右にドラッグ＝ウィンドウ選択（枠に完全に収まったものだけ選択）／右→左にドラッグ＝交差選択（枠に触れたものも選択）"><span class="ic">⬚</span>選択/寸法</button>
+    <button class="bt"    id="bPlotSel" onclick="setTool('plotsel')" title="プロット（PDF/写真）をタップして選択。ドラッグで移動、コピー・トリミング・削除ができます"><span class="ic">🖼</span>プロット選択</button>
     <button class="bt"    id="bTxt"  onclick="setTool('text')"><span class="ic">Ａ</span>文字</button>
     <button class="bt"    id="bFree" onclick="setTool('freehand')"><span class="ic">✏️</span>手書き</button>
   </div>
@@ -1432,14 +1474,28 @@ header{
   </div>
   <div class="mark-toolbar" id="photoMarkToolbar">
     <div class="mark-shape-group">
-      <button class="mark-shape-btn active" data-shape="circle" onclick="setMarkShape('circle')" title="丸で囲む">○</button>
+      <button class="mark-shape-btn active" data-shape="circle" onclick="setMarkShape('circle')" title="楕円（丸で囲む）">○</button>
+      <button class="mark-shape-btn" data-shape="rect" onclick="setMarkShape('rect')" title="四角">□</button>
+      <button class="mark-shape-btn" data-shape="line" onclick="setMarkShape('line')" title="直線">／</button>
+      <button class="mark-shape-btn" data-shape="arrow" onclick="setMarkShape('arrow')" title="矢印">➚</button>
       <button class="mark-shape-btn" data-shape="free" onclick="setMarkShape('free')" title="フリーハンド">✏</button>
+      <button class="mark-shape-btn" data-shape="text" onclick="setMarkShape('text')" title="文字（タップした位置に入力）">T</button>
     </div>
     <div class="mark-color-group">
       <button class="mark-color-btn active" data-color="#ff3b30" style="background:#ff3b30" onclick="setMarkColor('#ff3b30')" title="赤"></button>
       <button class="mark-color-btn" data-color="#ffcc00" style="background:#ffcc00" onclick="setMarkColor('#ffcc00')" title="黄"></button>
       <button class="mark-color-btn" data-color="#0a84ff" style="background:#0a84ff" onclick="setMarkColor('#0a84ff')" title="青"></button>
+      <button class="mark-color-btn" data-color="#34c759" style="background:#34c759" onclick="setMarkColor('#34c759')" title="緑"></button>
+      <button class="mark-color-btn" data-color="#ffffff" style="background:#ffffff" onclick="setMarkColor('#ffffff')" title="白"></button>
+      <button class="mark-color-btn" data-color="#000000" style="background:#000000" onclick="setMarkColor('#000000')" title="黒"></button>
     </div>
+    <div class="mark-width-group">
+      <button class="mark-width-btn" data-w="0.6" onclick="setMarkWidth(0.6)" title="細い線／小さい文字">細</button>
+      <button class="mark-width-btn active" data-w="1" onclick="setMarkWidth(1)" title="標準">中</button>
+      <button class="mark-width-btn" data-w="1.8" onclick="setMarkWidth(1.8)" title="太い線／大きい文字">太</button>
+      <button class="mark-fill-btn" id="markFillBtn" onclick="toggleMarkFill()" title="四角・楕円は半透明で塗りつぶし／文字は背景を付ける">▨ 塗り</button>
+    </div>
+    <button class="mark-undo-btn" onclick="deleteSelectedMark()" title="選択中の図形を消す">🗑 削除</button>
     <button class="mark-undo-btn" onclick="undoMarkStroke()">↩ 戻す</button>
     <button class="mark-undo-btn" onclick="redoMarkStroke()">↪ 進む</button>
     <button class="mark-cancel-btn" onclick="cancelPhotoMark()">✕ キャンセル</button>
@@ -1797,6 +1853,8 @@ var S = {
   pinScale:1,
   // ── 階の半透明重ね表示（位置合わせ用） ──
   ghostSheet:0, ghostOpacity:1, ghostShowPins:true, plotPanelOpen:false,
+  bgs:[], // この階に貼り付けた全プロット（複数枚）。S.bg はその中の「選択中」の1枚
+
 };
 var PIN_COLORS = ['#0277bd','#d32f2f','#2e7d32','#f9a825','#6a1b9a','#546e7a'];
 var LONG_PRESS_MS = 480;
@@ -2088,28 +2146,117 @@ function drawPipeLineWithGaps(p1,p2,cutTs){
   ctx.stroke();
 }
 
+// ── 複数プロット：1つのシート（階）に複数のPDF/写真を貼り付けられるようにする ──
+// S.bgs = この階の全プロット（配列の後ろほど前面）／S.bg = そのうち「選択中」の1枚（濃さ・回転・校正・トリミング等の対象）
+function sheetBgList(sh){
+  if(!sh) return [];
+  if(Array.isArray(sh.bgs)) return sh.bgs.filter(function(b){ return b && b.img; });
+  return (sh.bg && sh.bg.img) ? [sh.bg] : [];
+}
+function bgHitTest(b, wx, wy){
+  if(!b || !b.img) return false;
+  var dx = wx-b.wx, dy = wy-b.wy, rad = -(b.angle||0)*Math.PI/180;
+  var lx = dx*Math.cos(rad) - dy*Math.sin(rad);
+  var ly = dx*Math.sin(rad) + dy*Math.cos(rad);
+  return Math.abs(lx) <= b.baseW*b.scale/2 && Math.abs(ly) <= b.baseH*b.scale/2;
+}
+// 「白を透明にする」：紙の白地を透明にし、線だけを残した画像を作る（色付きの線は色を保つ）。
+// 元画像は変更せず、表示・書き出し用に派生Canvasを作ってキャッシュする（元に戻せる）。
+var BG_KEY_THRESHOLD = 16; // 白に近いごく薄い汚れ（JPEGノイズ等）は透明扱いにする
+function getKeyedBgCanvas(b){
+  if(!b || !b.img || !b.img.complete) return null;
+  if(b._keyCanvas && b._keySrc===b.img.src) return b._keyCanvas;
+  var w=b.img.naturalWidth||b.img.width, h=b.img.naturalHeight||b.img.height;
+  if(!w||!h) return null;
+  try{
+    var oc=document.createElement('canvas'); oc.width=w; oc.height=h;
+    var octx=oc.getContext('2d');
+    octx.drawImage(b.img,0,0,w,h);
+    var id=octx.getImageData(0,0,w,h), d=id.data, T=BG_KEY_THRESHOLD;
+    for(var i=0;i<d.length;i+=4){
+      var r=d[i], g=d[i+1], bl=d[i+2];
+      var mn=Math.min(r,g,bl);
+      var ink=255-mn;                     // 白からどれだけ離れているか
+      if(ink<=T){ d[i+3]=0; continue; }   // ほぼ白 → 完全に透明
+      var a=(ink-T)/(255-T);              // 0〜1
+      // 白地の上に重なっていた色を、透明度付きの色に戻す
+      var k=255*(1-a);
+      d[i]  =Math.max(0,Math.min(255,Math.round((r-k)/a)));
+      d[i+1]=Math.max(0,Math.min(255,Math.round((g-k)/a)));
+      d[i+2]=Math.max(0,Math.min(255,Math.round((bl-k)/a)));
+      d[i+3]=Math.round(a*d[i+3]);
+    }
+    octx.putImageData(id,0,0);
+    b._keyCanvas=oc; b._keySrc=b.img.src;
+    return oc;
+  }catch(err){ return null; }
+}
+function toggleBgTransparent(){
+  if(!S.bg || !S.bg.img){ showToast('背景（PDF/写真）が読み込まれていません'); return; }
+  S.bg.transparent = !S.bg.transparent;
+  S.bg._mips = null; S.bg._mipsSrc = null;
+  updatePlotPanel(); updatePlotSelBar();
+  render();
+  if(typeof scheduleAutosave==='function') scheduleAutosave();
+  showToast(S.bg.transparent ? '白地を透明にしました（下のプロットや図面が透けて見えます）' : '白地を元に戻しました');
+}
+function drawBgItem(b){
+  if(!b || !b.img || !b.img.complete) return;
+  var bgW = b.baseW*b.scale, bgH = b.baseH*b.scale;
+  var c = w2s(b.wx, b.wy);
+  var pw = bgW*PX_PER_M*S.zoom, ph = bgH*PX_PER_M*S.zoom;
+  // 縮小表示時にPDF/写真がにじんで見づらくならないよう、段階的に縮小したミップマップから
+  // 表示サイズに最も近いものを選んで描画する（拡大表示時は元画像のまま高品質に描画される）。
+  var mipKey = (b.transparent?'T:':'')+b.img.src;
+  if(!b._mips || b._mipsSrc!==mipKey){
+    b._mips = buildGhostMip(b.transparent ? (getKeyedBgCanvas(b)||b.img) : b.img);
+    b._mipsSrc = mipKey;
+  }
+  var mip = pickGhostMip(b._mips, Math.max(pw,ph));
+  ctx.save();
+  ctx.globalAlpha = b.opacity;
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  ctx.translate(c.x, c.y);
+  ctx.rotate((b.angle||0) * Math.PI/180);
+  ctx.drawImage(mip.canvas, -pw/2, -ph/2, pw, ph);
+  ctx.restore();
+}
+// 2枚以上あるとき、選択中のプロットに青い点線の枠を出す（どれを操作中か分かるように）
+function drawBgSelectionOutline(){
+  if(!S.bg || !S.bg.img) return;
+  if(S.tool==='plotsel'){ if(!S.plotSelPicked) return; }
+  else {
+    if(S.bgs.length<2) return;
+    if(!(S.plotPanelOpen || S.tool==='movebg')) return;
+  }
+  var b = S.bg;
+  var c = w2s(b.wx, b.wy);
+  var pw = b.baseW*b.scale*PX_PER_M*S.zoom, ph = b.baseH*b.scale*PX_PER_M*S.zoom;
+  ctx.save();
+  ctx.translate(c.x, c.y);
+  ctx.rotate((b.angle||0) * Math.PI/180);
+  ctx.setLineDash([8,5]);
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#0277bd';
+  ctx.strokeRect(-pw/2, -ph/2, pw, ph);
+  ctx.setLineDash([]);
+  var label = 'プロット'+(S.bgs.indexOf(b)+1)+'（選択中）';
+  if(S.tool==='plotsel') label = 'プロット'+(S.bgs.indexOf(b)+1);
+  ctx.font = 'bold 12px system-ui, sans-serif';
+  var tw = ctx.measureText(label).width + 10;
+  ctx.fillStyle = '#0277bd';
+  ctx.fillRect(-pw/2, -ph/2-20, tw, 20);
+  ctx.fillStyle = '#fff';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, -pw/2+5, -ph/2-10);
+  ctx.restore();
+}
+
 function render(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   if(S.showGrid) drawGrid();
-  if(S.bg && S.bg.img && S.bg.img.complete){
-    var bgW = S.bg.baseW*S.bg.scale, bgH = S.bg.baseH*S.bg.scale;
-    var bgCenterScr = w2s(S.bg.wx, S.bg.wy);
-    var bgPxW = bgW*PX_PER_M*S.zoom, bgPxH = bgH*PX_PER_M*S.zoom;
-    // 縮小表示時にPDF/写真がにじんで見づらくならないよう、段階的に縮小したミップマップから
-    // 表示サイズに最も近いものを選んで描画する（拡大表示時は元画像のまま高品質に描画される）。
-    if(!S.bg._mips || S.bg._mipsSrc!==S.bg.img.src){
-      S.bg._mips = buildGhostMip(S.bg.img);
-      S.bg._mipsSrc = S.bg.img.src;
-    }
-    var bgMip = pickGhostMip(S.bg._mips, Math.max(bgPxW,bgPxH));
-    ctx.save();
-    ctx.globalAlpha = S.bg.opacity;
-    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-    ctx.translate(bgCenterScr.x, bgCenterScr.y);
-    ctx.rotate((S.bg.angle||0) * Math.PI/180);
-    ctx.drawImage(bgMip.canvas, -bgPxW/2, -bgPxH/2, bgPxW, bgPxH);
-    ctx.restore();
-  }
+  S.bgs.forEach(function(b){ drawBgItem(b); });
+  drawBgSelectionOutline();
   drawGhost();
   // 足場・敷地の矩形は面として広く塗るため、配管より先（一番奥）に描画する
   S.els.forEach(function(e){ if(e.kind==='scaffold') drawEl(e, e===S.sel||e===S.dragEl||S.multiSel.indexOf(e)>=0, false); });
@@ -2550,8 +2697,8 @@ function drawGhost(){
   if(S.ghostSheet==null || S.ghostSheet<0 || S.ghostSheet===S.activeSheet) return;
   var sh=S.sheets[S.ghostSheet]; if(!sh) return;
   var op=(S.ghostOpacity!=null)?S.ghostOpacity:1;
-  if(sh.bg && sh.bg.img && sh.bg.img.complete){
-    var b=sh.bg;
+  sheetBgList(sh).forEach(function(b){
+    if(!b.img.complete) return;
     var bgW=b.baseW*b.scale, bgH=b.baseH*b.scale;
     var c=w2s(b.wx,b.wy);
     var bgPxW=bgW*PX_PER_M*S.zoom, bgPxH=bgH*PX_PER_M*S.zoom;
@@ -2568,7 +2715,7 @@ function drawGhost(){
     ctx.rotate((b.angle||0)*Math.PI/180);
     ctx.drawImage(mip.canvas,-bgPxW/2,-bgPxH/2,bgPxW,bgPxH);
     ctx.restore();
-  }
+  });
   if(S.ghostShowPins!==false && sh.pins && sh.pins.length){
     ctx.save();
     ctx.globalAlpha=Math.min(1,op+0.35);
@@ -5050,8 +5197,44 @@ function startPress(pos){
     S.lastPinTapTime = 0; S.lastPinTapPin = null; // ピン以外をタップしたら連続タップ判定をリセット
   }
 
+  // プロット選択モード：タップしたプロットを選択し、そのままドラッグで移動する。
+  // 何もない所をタップしたら選択を解除する（操作バーも消える）。
+  if(S.tool==='plotsel'){
+    var wpSel = s2w(pos.x,pos.y), hitSel = null;
+    // 貼り付け待ち：タップした位置を中心にコピー済みプロットを置く（今表示しているシートへ）
+    if(S.plotPasteArmed && S.plotClip){
+      plotSelPasteAt(wpSel.x, wpSel.y);
+      S.bgDragging = false;
+      return;
+    }
+    for(var pi=S.bgs.length-1; pi>=0; pi--){
+      if(bgHitTest(S.bgs[pi], wpSel.x, wpSel.y)){ hitSel = S.bgs[pi]; break; }
+    }
+    if(!hitSel){
+      S.plotSelPicked = false; S.bgDragging = false;
+      updatePlotSelBar(); render();
+      return;
+    }
+    S.bg = hitSel; S.plotSelPicked = true;
+    S.bgDragging = true;
+    S.bgDragStart = wpSel;
+    S.bgOrig = {x:S.bg.wx, y:S.bg.wy};
+    S.bgMoved = false;
+    updatePlotPanel(); updatePlotSelBar(); render();
+    return;
+  }
+
   // 背景PDFの位置調整モード：長押し判定を挟まず、そのままドラッグで移動する
-  if(S.tool==='movebg' && S.bg){
+  if(S.tool==='movebg' && (S.bg || S.bgs.length)){
+    // 複数プロット：タップした位置にある一番手前のプロットを選択してから、そのままドラッグで移動する
+    var wp0 = s2w(pos.x,pos.y);
+    for(var bi=S.bgs.length-1; bi>=0; bi--){
+      if(bgHitTest(S.bgs[bi], wp0.x, wp0.y)){
+        if(S.bg !== S.bgs[bi]){ S.bg = S.bgs[bi]; updatePlotPanel(); render(); }
+        break;
+      }
+    }
+    if(!S.bg) S.bg = S.bgs[S.bgs.length-1];
     S.bgDragging = true;
     S.bgDragStart = s2w(pos.x,pos.y);
     S.bgOrig = {x:S.bg.wx, y:S.bg.wy};
@@ -5214,6 +5397,7 @@ function movePress(pos){
     var wgp = s2w(pos.x,pos.y);
     S.bg.wx = S.bgOrig.x + (wgp.x - S.bgDragStart.x);
     S.bg.wy = S.bgOrig.y + (wgp.y - S.bgDragStart.y);
+    if(S.tool==='plotsel'){ S.bgMoved = true; updatePlotSelBar(); }
     render();
     return;
   }
@@ -5580,6 +5764,14 @@ function endPress(pos){
     S.angleBase = null;
     S.angleEditTarget = null;
     render();
+    return;
+  }
+  if(S.tool==='plotsel'){
+    // プロット選択モードでは、離した時に他のツール処理（配管の確定など）へ流さない
+    var wasMoved = S.bgDragging && S.bgMoved;
+    S.bgDragging=false; S.bgMoved=false;
+    if(wasMoved && typeof scheduleAutosave==='function') scheduleAutosave();
+    updatePlotSelBar(); render();
     return;
   }
   if(S.bgDragging){ S.bgDragging=false; return; }
@@ -6732,8 +6924,43 @@ function showContextMenuItems(items,pos){
   menu.style.top=Math.max(4,Math.min(pos.y,wh-mh-4))+'px';
 }
 // 右クリックした位置に応じてメニュー内容を出し分ける
+// 右クリック位置にあるプロット（一番手前）を返す
+function plotAtScreen(pos){
+  var w = s2w(pos.x,pos.y);
+  for(var i=S.bgs.length-1;i>=0;i--){ if(bgHitTest(S.bgs[i], w.x, w.y)) return S.bgs[i]; }
+  return null;
+}
+// プロット操作の右クリック項目を作る（hit：右クリック位置のプロット。無ければnull）
+function pushPlotMenuItems(items, pos, hit){
+  var w = s2w(pos.x,pos.y);
+  if(hit){
+    items.push({label:'プロットをコピー',fn:function(){ S.bg=hit; S.plotSelPicked=true; plotSelCopy(); }});
+  }
+  if(S.plotClip){
+    items.push({label:'ここに貼り付け',fn:function(){ plotSelPasteAt(w.x, w.y); }});
+  }
+  if(hit){
+    items.push({label:'トリミング',fn:function(){ S.bg=hit; plotSelTrim(); }});
+    items.push({label:hit.transparent?'白地を元に戻す':'白地を透明にする',fn:function(){ S.bg=hit; toggleBgTransparent(); }});
+    items.push({label:'前面へ',fn:function(){ S.bg=hit; moveBgOrder(1); }});
+    items.push({label:'背面へ',fn:function(){ S.bg=hit; moveBgOrder(-1); }});
+    items.push({sep:true});
+    items.push({label:'プロットを削除',fn:function(){ S.bg=hit; plotSelDelete(); }});
+  }
+}
 function openContextMenu(pos){
   var items=[];
+  // ⓪ プロット選択モード：プロットを右クリックで選択し、プロット用のメニューを出す
+  if(S.tool==='plotsel'){
+    var phit = plotAtScreen(pos);
+    if(phit){ S.bg=phit; S.plotSelPicked=true; updatePlotPanel(); updatePlotSelBar(); render(); }
+    pushPlotMenuItems(items, pos, phit);
+    if(!items.length){ items.push({label:'（プロットがありません）',fn:hideContextMenu}); }
+    items.push({sep:true});
+    items.push({label:'キャンセル',fn:hideContextMenu});
+    showContextMenuItems(items,pos);
+    return;
+  }
   // ① 範囲選択中で、選択済みの範囲内を右クリックした場合はグループ操作メニュー
   if(S.tool==='rangesel' && S.multiSel && S.multiSel.length>0){
     var bbox=multiSelScreenBBox();
@@ -6778,6 +7005,17 @@ function openContextMenu(pos){
   items.push({label:'元に戻す（undo）',fn:undoAct});
   items.push({label:'やり直し（redo）',fn:redoAct});
   if(S.bg){ items.push({label:'背景の位置調整',fn:function(){ setTool('movebg'); }}); }
+  // プロット（背景PDF/写真）の上、またはコピー済みの場合は、プロット操作の項目も出す
+  var phit3 = plotAtScreen(pos);
+  if(phit3 || S.plotClip){
+    items.push({sep:true});
+    if(phit3){
+      items.push({label:'このプロットを選択（プロット選択モード）',fn:function(){
+        setTool('plotsel'); S.bg=phit3; S.plotSelPicked=true; updatePlotPanel(); updatePlotSelBar(); render();
+      }});
+    }
+    pushPlotMenuItems(items, pos, phit3);
+  }
   items.push({sep:true});
   items.push({label:'全削除',fn:clearAll});
   items.push({sep:true});
@@ -7509,6 +7747,7 @@ function renderPhotoRowInto(hostId, obj, inputId){
       +'<div class="pin-photo-del" onclick="event.stopPropagation();removePinPhoto('+idx+')">✕</div></div>';
   });
   html += '<div class="pin-photo-add" onclick="document.getElementById(\''+inputId+'\').click();" title="写真を追加">＋</div>';
+  html += '<div class="pin-photo-add" onclick="pastePhotoFromClipboard();" title="スクショを貼り付け">📋</div>';
   host.innerHTML = html;
 }
 function renderPinPhotoRow(){
@@ -7594,10 +7833,11 @@ function openPhotoMark(){
   ctx.setTransform(dpr,0,0,dpr,0,0);
   S.photoMark = {
     idx: S.photoViewer.idx, natW: img.naturalWidth, natH: img.naturalHeight,
-    dispW: dispW, dispH: dispH, shape:'circle', color:'#ff3b30',
+    dispW: dispW, dispH: dispH, shape:'circle', color:'#ff3b30', wm:1, fill:false, textTap:null, tapEdit:false, moved:false,
     strokes:[], drawing:false, cur:null, ctx:ctx,
     selectedIdx:null, redoStack:[], dragMode:null, dragHandle:null, dragStart:null, dragOrig:null
   };
+  resetMarkToolbarUI(); // 前回の選択状態がボタンに残らないよう初期状態に戻す
   canvas.style.display = 'block';
   document.getElementById('photoMarkToolbar').style.display = 'flex';
   document.getElementById('photoViewBtns').style.display = 'none';
@@ -7605,17 +7845,50 @@ function openPhotoMark(){
   document.getElementById('photoViewNext').style.display = 'none';
   var hint = document.getElementById('photoViewZoomHint'); if(hint) hint.style.opacity = '0';
 }
+// ツールバーのボタンの強調表示を、現在の書き込み状態に合わせる
+function resetMarkToolbarUI(){
+  var pm = S.photoMark; if(!pm) return;
+  document.querySelectorAll('.mark-shape-btn').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-shape')===pm.shape); });
+  document.querySelectorAll('.mark-color-btn').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-color')===pm.color); });
+  document.querySelectorAll('.mark-width-btn').forEach(function(b){ b.classList.toggle('active', Number(b.getAttribute('data-w'))===pm.wm); });
+  var fb = document.getElementById('markFillBtn'); if(fb) fb.classList.toggle('active', !!pm.fill);
+}
 function setMarkShape(shape){
   if(!S.photoMark) return;
   S.photoMark.shape = shape;
   S.photoMark.selectedIdx = null; // 新規描画モードに切り替えるので選択は解除する
-  document.querySelectorAll('.mark-shape-btn').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-shape')===shape); });
+  resetMarkToolbarUI();
+  renderMarkCanvas();
+  if(shape==='text') showToast('写真をタップした位置に文字を入れます');
+}
+// 色・太さ・塗りは「これから描くもの」の設定。図形を選択中ならその図形にも反映する。
+function setMarkColor(color){
+  var pm = S.photoMark; if(!pm) return;
+  pm.color = color;
+  if(pm.selectedIdx!=null && pm.strokes[pm.selectedIdx]) pm.strokes[pm.selectedIdx].color = color;
+  resetMarkToolbarUI();
   renderMarkCanvas();
 }
-function setMarkColor(color){
-  if(!S.photoMark) return;
-  S.photoMark.color = color;
-  document.querySelectorAll('.mark-color-btn').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-color')===color); });
+function setMarkWidth(w){
+  var pm = S.photoMark; if(!pm) return;
+  pm.wm = w;
+  if(pm.selectedIdx!=null && pm.strokes[pm.selectedIdx]) pm.strokes[pm.selectedIdx].wm = w;
+  resetMarkToolbarUI();
+  renderMarkCanvas();
+}
+function toggleMarkFill(){
+  var pm = S.photoMark; if(!pm) return;
+  pm.fill = !pm.fill;
+  if(pm.selectedIdx!=null && pm.strokes[pm.selectedIdx]) pm.strokes[pm.selectedIdx].fill = pm.fill;
+  resetMarkToolbarUI();
+  renderMarkCanvas();
+}
+function deleteSelectedMark(){
+  var pm = S.photoMark; if(!pm) return;
+  if(pm.selectedIdx==null || !pm.strokes[pm.selectedIdx]){ showToast('消したい図形をタップして選んでください'); return; }
+  pm.strokes.splice(pm.selectedIdx, 1);
+  pm.selectedIdx = null;
+  renderMarkCanvas();
 }
 // 「戻す」「進む」：描いた（追加した）図形1つ分だけを対象とする。移動・リサイズはこの履歴に含めない。
 function undoMarkStroke(){
@@ -7659,17 +7932,38 @@ function renderMarkCanvas(){
     drawMarkSelection(ctx, pm.strokes[pm.selectedIdx]);
   }
 }
-// 選択中の図形の枠とハンドルを描く。丸は角の2点をつまんでリサイズできるようにする。
+// 2点（x0,y0）-（x1,y1）で形が決まる図形（楕円・四角・直線・矢印）は、同じハンドル操作でサイズ変更する
+function isTwoPointMark(s){ return s.type==='circle' || s.type==='rect' || s.type==='line' || s.type==='arrow'; }
+var MARK_TEXT_BASE = 20; // 文字サイズの基準（表示上のpx）。「細／中／太」の倍率が掛かる
+// 文字の囲み枠（左上x,y・幅w・高さh）を返す。kは表示→写真実寸の拡大率（画面上では1）
+function markTextBox(ctx, s, k){
+  var fs = MARK_TEXT_BASE * (s.wm||1) * k;
+  ctx.save();
+  ctx.font = 'bold '+fs+'px sans-serif';
+  var w = ctx.measureText(s.text).width;
+  ctx.restore();
+  var pad = 4*k;
+  return {x:s.x, y:s.y, w:w+pad*2, h:fs*1.25+pad*2, fs:fs, pad:pad};
+}
+// 明るい色（白・黄）の文字には黒い背景、それ以外は白い背景を使う
+function markIsLight(hex){
+  var m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex||'');
+  if(!m) return false;
+  return (0.299*parseInt(m[1],16) + 0.587*parseInt(m[2],16) + 0.114*parseInt(m[3],16)) > 160;
+}
+// 選択中の図形の枠とハンドルを描く。2点図形は両端の点をつまんでリサイズできる。
 function drawMarkSelection(ctx, s){
   ctx.save();
   ctx.lineWidth = 1.5;
   ctx.strokeStyle = '#0277bd';
-  if(s.type==='circle'){
-    var minX=Math.min(s.x0,s.x1), minY=Math.min(s.y0,s.y1);
-    var w=Math.abs(s.x1-s.x0), h=Math.abs(s.y1-s.y0);
-    ctx.setLineDash([4,3]);
-    ctx.strokeRect(minX-4, minY-4, w+8, h+8);
-    ctx.setLineDash([]);
+  if(isTwoPointMark(s)){
+    if(s.type==='circle' || s.type==='rect'){
+      var minX=Math.min(s.x0,s.x1), minY=Math.min(s.y0,s.y1);
+      var w=Math.abs(s.x1-s.x0), h=Math.abs(s.y1-s.y0);
+      ctx.setLineDash([4,3]);
+      ctx.strokeRect(minX-4, minY-4, w+8, h+8);
+      ctx.setLineDash([]);
+    }
     [{x:s.x0,y:s.y0},{x:s.x1,y:s.y1}].forEach(function(hp){
       ctx.beginPath(); ctx.arc(hp.x, hp.y, 7, 0, Math.PI*2);
       ctx.fillStyle = '#fff'; ctx.fill();
@@ -7682,10 +7976,15 @@ function drawMarkSelection(ctx, s){
     ctx.setLineDash([4,3]);
     ctx.strokeRect(minX2-6, minY2-6, (maxX2-minX2)+12, (maxY2-minY2)+12);
     ctx.setLineDash([]);
+  } else if(s.type==='text'){
+    var b = markTextBox(ctx, s, 1);
+    ctx.setLineDash([4,3]);
+    ctx.strokeRect(b.x-2, b.y-2, b.w+4, b.h+4);
+    ctx.setLineDash([]);
   }
   ctx.restore();
 }
-// タップ位置が図形の上かどうかを判定する（丸＝内側／フリーハンド＝線の近く）。後ろ（新しく描いた方）から探す。
+// タップ位置が図形の上かどうかを判定する（楕円＝内側／四角＝枠線の近く（塗りありは内側も）／直線・矢印・フリーハンド＝線の近く／文字＝文字の枠内）。後ろ（新しく描いた方）から探す。
 function hitTestMarkStroke(pm, x, y){
   for(var i=pm.strokes.length-1;i>=0;i--){
     var s = pm.strokes[i];
@@ -7695,6 +7994,16 @@ function hitTestMarkStroke(pm, x, y){
       if(rx<1 || ry<1) continue;
       var nx=(x-cx)/rx, ny=(y-cy)/ry;
       if(nx*nx+ny*ny <= 1.2*1.2) return i; // 枠のすぐ外側まで少し余裕を持たせて当たり判定にする
+    } else if(s.type==='rect'){
+      var l=Math.min(s.x0,s.x1), r=Math.max(s.x0,s.x1), t=Math.min(s.y0,s.y1), b=Math.max(s.y0,s.y1);
+      if(s.fill && x>=l && x<=r && y>=t && y<=b) return i;
+      if(distToSegment(x,y,l,t,r,t)<14 || distToSegment(x,y,r,t,r,b)<14 ||
+         distToSegment(x,y,r,b,l,b)<14 || distToSegment(x,y,l,b,l,t)<14) return i;
+    } else if(s.type==='line' || s.type==='arrow'){
+      if(distToSegment(x,y,s.x0,s.y0,s.x1,s.y1) < 14) return i;
+    } else if(s.type==='text'){
+      var tb = markTextBox(pm.ctx, s, 1);
+      if(x>=tb.x-6 && x<=tb.x+tb.w+6 && y>=tb.y-6 && y<=tb.y+tb.h+6) return i;
     } else if(s.type==='free' && s.pts && s.pts.length>1){
       for(var j=0;j<s.pts.length-1;j++){
         if(distToSegment(x,y,s.pts[j].x,s.pts[j].y,s.pts[j+1].x,s.pts[j+1].y) < 14){ return i; }
@@ -7703,20 +8012,24 @@ function hitTestMarkStroke(pm, x, y){
   }
   return -1;
 }
-// 選択中の丸のリサイズハンドル（対角2点）に当たっているか判定する
+// 選択中の2点図形のリサイズハンドル（両端2点）に当たっているか判定する
 function hitTestMarkHandle(pm, x, y){
   if(pm.selectedIdx==null) return null;
   var s = pm.strokes[pm.selectedIdx];
-  if(!s || s.type!=='circle') return null;
+  if(!s || !isTwoPointMark(s)) return null;
   var handles = [{k:'x0y0',x:s.x0,y:s.y0},{k:'x1y1',x:s.x1,y:s.y1}];
   for(var i=0;i<handles.length;i++){
     if(Math.hypot(x-handles[i].x, y-handles[i].y) < 16) return handles[i].k;
   }
   return null;
 }
+// 図形1つ分を描く。lineWidthは基準の線の太さ（画面上は4、写真の実寸に焼き込む時は拡大して渡す）。
+// 実際の太さは図形ごとの倍率wm（細0.6／中1／太1.8）を掛ける。文字の大きさも同じ倍率に従う。
 function drawMarkStroke(ctx, s, lineWidth){
-  ctx.lineWidth = lineWidth;
-  ctx.strokeStyle = s.color;
+  var k = lineWidth/4;
+  var lw = lineWidth * (s.wm||1);
+  ctx.lineWidth = lw;
+  ctx.strokeStyle = s.color; ctx.fillStyle = s.color;
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   if(s.type === 'circle'){
     var cx = (s.x0+s.x1)/2, cy = (s.y0+s.y1)/2;
@@ -7724,7 +8037,49 @@ function drawMarkStroke(ctx, s, lineWidth){
     if(rx<2 || ry<2) return;
     ctx.beginPath();
     ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2);
+    if(s.fill){ ctx.save(); ctx.globalAlpha = 0.25; ctx.fill(); ctx.restore(); }
     ctx.stroke();
+  } else if(s.type === 'rect'){
+    var l = Math.min(s.x0,s.x1), t = Math.min(s.y0,s.y1);
+    var w = Math.abs(s.x1-s.x0), h = Math.abs(s.y1-s.y0);
+    if(w<2 || h<2) return;
+    ctx.beginPath();
+    ctx.rect(l, t, w, h);
+    if(s.fill){ ctx.save(); ctx.globalAlpha = 0.25; ctx.fill(); ctx.restore(); }
+    ctx.stroke();
+  } else if(s.type === 'line' || s.type === 'arrow'){
+    var len = Math.hypot(s.x1-s.x0, s.y1-s.y0);
+    if(len<2) return;
+    ctx.beginPath();
+    ctx.moveTo(s.x0, s.y0);
+    ctx.lineTo(s.x1, s.y1);
+    ctx.stroke();
+    if(s.type === 'arrow'){
+      var ang = Math.atan2(s.y1-s.y0, s.x1-s.x0);
+      var hl = Math.min(len*0.8, 10*k + lw*2.5); // 矢じりの長さ（短い矢印でははみ出さないよう制限）
+      var spread = Math.PI/7;
+      ctx.beginPath();
+      ctx.moveTo(s.x1, s.y1);
+      ctx.lineTo(s.x1 - hl*Math.cos(ang-spread), s.y1 - hl*Math.sin(ang-spread));
+      ctx.lineTo(s.x1 - hl*Math.cos(ang+spread), s.y1 - hl*Math.sin(ang+spread));
+      ctx.closePath();
+      ctx.fill();
+    }
+  } else if(s.type === 'text'){
+    var tb = markTextBox(ctx, s, k);
+    if(s.fill){
+      ctx.save();
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = markIsLight(s.color) ? '#000000' : '#ffffff';
+      ctx.fillRect(tb.x, tb.y, tb.w, tb.h);
+      ctx.restore();
+    }
+    ctx.save();
+    ctx.font = 'bold '+tb.fs+'px sans-serif';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = s.color;
+    ctx.fillText(s.text, tb.x+tb.pad, tb.y+tb.pad);
+    ctx.restore();
   } else if(s.type === 'free' && s.pts && s.pts.length>1){
     ctx.beginPath();
     ctx.moveTo(s.pts[0].x, s.pts[0].y);
@@ -7732,8 +8087,51 @@ function drawMarkStroke(ctx, s, lineWidth){
     ctx.stroke();
   }
 }
-// キャンバスのポインター操作（丸ドラッグ／フリーハンド）。stage側のピンチズーム処理へ
-// イベントが伝わらないようstopPropagationする。
+// 移動・リサイズ用に、図形の位置情報だけを控える／ずらして反映する
+function snapshotMark(s){
+  if(isTwoPointMark(s)) return {x0:s.x0,y0:s.y0,x1:s.x1,y1:s.y1};
+  if(s.type==='text') return {x:s.x,y:s.y};
+  return {pts: s.pts.map(function(pt){ return {x:pt.x,y:pt.y}; })};
+}
+function applyMoveMark(s, o, dx, dy){
+  if(isTwoPointMark(s)){ s.x0=o.x0+dx; s.y0=o.y0+dy; s.x1=o.x1+dx; s.y1=o.y1+dy; }
+  else if(s.type==='text'){ s.x=o.x+dx; s.y=o.y+dy; }
+  else { s.pts = o.pts.map(function(pt){ return {x:pt.x+dx, y:pt.y+dy}; }); }
+}
+// 写真の実寸解像度に合わせて座標を拡大したコピーを作る（焼き込み用）
+function scaleMarkStroke(s, sx, sy){
+  var o = {type:s.type, color:s.color, wm:s.wm, fill:s.fill};
+  if(isTwoPointMark(s)){ o.x0=s.x0*sx; o.y0=s.y0*sy; o.x1=s.x1*sx; o.y1=s.y1*sy; }
+  else if(s.type==='text'){ o.x=s.x*sx; o.y=s.y*sy; o.text=s.text; }
+  else { o.pts = s.pts.map(function(p){ return {x:p.x*sx, y:p.y*sy}; }); }
+  return o;
+}
+// 文字の新規入力・修正（入力はブラウザ標準の入力ダイアログを使う）
+function addMarkText(pm, p){
+  var t = window.prompt('書き込む文字を入力してください', '');
+  if(t==null) return;
+  t = String(t).trim();
+  if(!t) return;
+  pm.strokes.push({type:'text', x:p.x, y:p.y, text:t, color:pm.color, wm:pm.wm, fill:pm.fill});
+  pm.redoStack = [];
+  pm.selectedIdx = pm.strokes.length-1;
+  renderMarkCanvas();
+}
+function editMarkText(pm, s){
+  var t = window.prompt('文字を修正してください（空にすると削除します）', s.text);
+  if(t==null) return;
+  t = String(t).trim();
+  if(!t){
+    var idx = pm.strokes.indexOf(s);
+    if(idx>=0) pm.strokes.splice(idx,1);
+    pm.selectedIdx = null;
+  } else {
+    s.text = t;
+  }
+  renderMarkCanvas();
+}
+// キャンバスのポインター操作（図形のドラッグ描画／フリーハンド／文字のタップ配置／移動・リサイズ）。
+// stage側のピンチズーム処理へイベントが伝わらないようstopPropagationする。
 function initPhotoMarkHandlers(){
   var canvas = document.getElementById('photoMarkCanvas');
   if(!canvas) return;
@@ -7746,32 +8144,38 @@ function initPhotoMarkHandlers(){
     e.stopPropagation();
     try{ canvas.setPointerCapture(e.pointerId); }catch(err){}
     var p = getPos(e);
-    // ① 選択中の丸のハンドルをつまんだら：半径のリサイズを開始（対角の点はそのまま固定）
+    // ① 選択中の図形のハンドルをつまんだら：リサイズを開始（反対側の点はそのまま固定）
     var handle = hitTestMarkHandle(pm, p.x, p.y);
     if(handle){
       pm.dragMode = 'resize'; pm.dragHandle = handle; pm.dragStart = p;
-      var sSel = pm.strokes[pm.selectedIdx];
-      pm.dragOrig = {x0:sSel.x0, y0:sSel.y0, x1:sSel.x1, y1:sSel.y1};
+      pm.dragOrig = snapshotMark(pm.strokes[pm.selectedIdx]);
       return;
     }
     // ② 既存の図形の上をつまんだら：選択してそのまま移動を開始
+    //    （文字ツール中は、文字以外の図形の上でも新しく文字を置けるよう、文字だけを選択対象にする）
     var hitIdx = hitTestMarkStroke(pm, p.x, p.y);
+    if(hitIdx>=0 && pm.shape==='text' && pm.strokes[hitIdx].type!=='text') hitIdx = -1;
     if(hitIdx>=0){
+      var sMv = pm.strokes[hitIdx];
+      pm.tapEdit = (sMv.type==='text' && pm.selectedIdx===hitIdx); // 選択済みの文字を動かさずタップ＝文字の修正
+      pm.moved = false;
       pm.selectedIdx = hitIdx;
       pm.dragMode = 'move'; pm.dragStart = p;
-      var sMv = pm.strokes[hitIdx];
-      pm.dragOrig = (sMv.type==='circle')
-        ? {x0:sMv.x0,y0:sMv.y0,x1:sMv.x1,y1:sMv.y1}
-        : {pts: sMv.pts.map(function(pt){ return {x:pt.x,y:pt.y}; })};
+      pm.dragOrig = snapshotMark(sMv);
       renderMarkCanvas();
       return;
     }
     // ③ 何もない場所：選択を解除して新規に描き始める
     pm.selectedIdx = null;
-    if(pm.shape === 'circle'){
-      pm.cur = {type:'circle', x0:p.x, y0:p.y, x1:p.x, y1:p.y, color:pm.color};
+    if(pm.shape === 'text'){
+      pm.textTap = p; // 指を離した時に文字入力を開く
+      renderMarkCanvas();
+      return;
+    }
+    if(pm.shape === 'free'){
+      pm.cur = {type:'free', pts:[p], color:pm.color, wm:pm.wm};
     } else {
-      pm.cur = {type:'free', pts:[p], color:pm.color};
+      pm.cur = {type:pm.shape, x0:p.x, y0:p.y, x1:p.x, y1:p.y, color:pm.color, wm:pm.wm, fill:pm.fill};
     }
     pm.drawing = true;
   });
@@ -7781,13 +8185,8 @@ function initPhotoMarkHandlers(){
     var p = getPos(e);
     if(pm.dragMode==='move' && pm.dragOrig){
       var dx = p.x - pm.dragStart.x, dy = p.y - pm.dragStart.y;
-      var s = pm.strokes[pm.selectedIdx];
-      if(s.type==='circle'){
-        s.x0 = pm.dragOrig.x0+dx; s.y0 = pm.dragOrig.y0+dy;
-        s.x1 = pm.dragOrig.x1+dx; s.y1 = pm.dragOrig.y1+dy;
-      } else {
-        s.pts = pm.dragOrig.pts.map(function(pt){ return {x:pt.x+dx, y:pt.y+dy}; });
-      }
+      if(Math.hypot(dx,dy) > 5) pm.moved = true;
+      applyMoveMark(pm.strokes[pm.selectedIdx], pm.dragOrig, dx, dy);
       renderMarkCanvas();
       return;
     }
@@ -7799,25 +8198,44 @@ function initPhotoMarkHandlers(){
       return;
     }
     if(!pm.drawing || !pm.cur) return;
-    if(pm.cur.type === 'circle'){ pm.cur.x1 = p.x; pm.cur.y1 = p.y; }
-    else { pm.cur.pts.push(p); }
+    if(pm.cur.type === 'free'){ pm.cur.pts.push(p); }
+    else {
+      pm.cur.x1 = p.x; pm.cur.y1 = p.y;
+      if(pm.cur.type==='line' || pm.cur.type==='arrow'){
+        // ほぼ水平・垂直なら、ぴったり水平・垂直に吸着させる
+        if(Math.abs(pm.cur.y1-pm.cur.y0) < 8) pm.cur.y1 = pm.cur.y0;
+        if(Math.abs(pm.cur.x1-pm.cur.x0) < 8) pm.cur.x1 = pm.cur.x0;
+      }
+    }
     renderMarkCanvas();
   });
   function endStroke(e){
     var pm = S.photoMark; if(!pm) return;
     if(e) e.stopPropagation();
+    if(pm.textTap){
+      var tp = pm.textTap; pm.textTap = null;
+      addMarkText(pm, tp);
+      return;
+    }
     if(pm.dragMode){
       // 移動・リサイズの確定（この操作自体は「戻す／進む」の対象には含めない）
-      pm.dragMode = null; pm.dragHandle = null; pm.dragOrig = null;
+      var wasMove = (pm.dragMode==='move'), wasTapEdit = pm.tapEdit, wasMoved = pm.moved;
+      pm.dragMode = null; pm.dragHandle = null; pm.dragOrig = null; pm.tapEdit = false;
+      var selS = pm.strokes[pm.selectedIdx];
+      if(wasMove && wasTapEdit && !wasMoved && selS && selS.type==='text'){
+        editMarkText(pm, selS);
+        return;
+      }
       renderMarkCanvas();
       return;
     }
     if(!pm.drawing) return;
     pm.drawing = false;
     if(pm.cur){
-      var valid = pm.cur.type==='circle'
-        ? (Math.abs(pm.cur.x1-pm.cur.x0)>4 && Math.abs(pm.cur.y1-pm.cur.y0)>4)
-        : (pm.cur.pts.length>1);
+      var valid;
+      if(pm.cur.type==='free') valid = pm.cur.pts.length>1;
+      else if(pm.cur.type==='line' || pm.cur.type==='arrow') valid = Math.hypot(pm.cur.x1-pm.cur.x0, pm.cur.y1-pm.cur.y0) > 6;
+      else valid = (Math.abs(pm.cur.x1-pm.cur.x0)>4 && Math.abs(pm.cur.y1-pm.cur.y0)>4);
       if(valid){
         pm.strokes.push(pm.cur);
         pm.redoStack = []; // 新しく描いたら「進む」履歴は破棄する
@@ -7845,13 +8263,7 @@ function confirmPhotoMark(){
     var scaleX = pm.natW/pm.dispW, scaleY = pm.natH/pm.dispH;
     var lineWidth = 4 * ((scaleX+scaleY)/2);
     pm.strokes.forEach(function(s){
-      var scaled;
-      if(s.type === 'circle'){
-        scaled = {type:'circle', x0:s.x0*scaleX, y0:s.y0*scaleY, x1:s.x1*scaleX, y1:s.y1*scaleY, color:s.color};
-      } else {
-        scaled = {type:'free', color:s.color, pts:s.pts.map(function(p){ return {x:p.x*scaleX, y:p.y*scaleY}; })};
-      }
-      drawMarkStroke(ctx, scaled, lineWidth);
+      drawMarkStroke(ctx, scaleMarkStroke(s, scaleX, scaleY), lineWidth);
     });
     var rawUrl = cv.toDataURL('image/jpeg', 0.9);
     compressImageDataUrl(rawUrl, 1000, 0.65).then(function(finalUrl){
@@ -8218,6 +8630,47 @@ function handleScaffPhotoAdd(evt){
   addPinPhotoFiles(evt.target.files);
   evt.target.value = '';
 }
+// ── スクショ（クリップボードの画像）を写真として貼り付ける ──
+// 貼り付けた画像は通常の写真追加と同じ流れ（圧縮して保存）に乗せる。スクショにGPSは無いのでGPS探索は行わない。
+function addPastedImage(blob){
+  var file = new File([blob], 'screenshot_'+Date.now()+'.png', {type: blob.type || 'image/png'});
+  addPinPhotoFiles([file], true);
+  showToast('スクショを貼り付けました（写真をタップ→✂ トリミングで不要部分を切り取れます）');
+}
+function pastePhotoFromClipboard(){
+  if(!photoHost()){ showToast('ピン／足場の編集画面を開いてから貼り付けてください'); return; }
+  if(!navigator.clipboard || !navigator.clipboard.read){
+    showToast('この環境ではボタンが使えません。PCならCtrl+Vで貼り付けてください');
+    return;
+  }
+  navigator.clipboard.read().then(function(items){
+    for(var i=0;i<items.length;i++){
+      var type = null;
+      for(var j=0;j<items[i].types.length;j++){
+        if(items[i].types[j].indexOf('image/')===0){ type = items[i].types[j]; break; }
+      }
+      if(type){
+        return items[i].getType(type).then(function(blob){ addPastedImage(blob); });
+      }
+    }
+    showToast('クリップボードに画像がありません（先にスクショをコピーしてください）');
+  }).catch(function(){
+    showToast('貼り付けに失敗しました（クリップボードの許可が必要です。PCならCtrl+Vをお試しください）');
+  });
+}
+// PCのCtrl+V：編集画面が開いている時だけ、クリップボードに画像があれば写真として追加する
+document.addEventListener('paste', function(e){
+  if(S.photoViewer || S.photoMark || S.cropTool) return;
+  if(!photoHost()) return;
+  var cd = e.clipboardData; if(!cd || !cd.items) return;
+  var imgFile = null;
+  for(var i=0;i<cd.items.length;i++){
+    if(cd.items[i].kind==='file' && cd.items[i].type.indexOf('image/')===0){ imgFile = cd.items[i].getAsFile(); break; }
+  }
+  if(!imgFile) return; // 画像でなければ通常の貼り付け（文字入力欄など）を邪魔しない
+  e.preventDefault();
+  addPastedImage(imgFile);
+});
 // ── GPS基準点によるピン自動配置 ──────────────────────────────
 // 屋内ではGPS単体の精度が低く使い物にならないことが多いため、「あらかじめ位置が分かっている
 // GPS付き写真のピン」を2点以上、図面上の実際の位置に人力で合わせて登録しておき、その対応関係から
@@ -8380,14 +8833,14 @@ function compressImageDataUrl(srcDataUrl, maxSide, quality){
   });
 }
 // input選択・ドラッグ&ドロップの両方から呼べる共通処理
-function addPinPhotoFiles(files){
+function addPinPhotoFiles(files, skipGps){
   var pin = photoHost();
   if(!files || !files.length || !pin) return;
   // GPSがまだ見つかっていないピンに写真を追加した場合、1枚目にGPSが無くても
   // 2枚目・3枚目…と順番に探していき、最初に見つかった写真のGPSを採用する。
   // （写真は取り込み後に圧縮・再エンコードされてExifが失われるため、追加のこの瞬間にしか探せない）
   // ※GPS基準点はピンの機能のため、足場（kind==='scaffold'）には適用しない。
-  if(pin.kind!=='scaffold' && !pin.gpsExif){
+  if(pin.kind!=='scaffold' && !pin.gpsExif && !skipGps){
     var imageFiles = Array.prototype.filter.call(files, function(f){ return f.type && f.type.indexOf('image/')===0; });
     findGpsInFilesSequentially(imageFiles, 0, pin);
   }
@@ -8623,10 +9076,12 @@ function confirmBgCrop(ct, img, nx, ny, nw, nh){
     var outUrl = canvasToDataUrlBestFormat(cv, 0.92);
     var newImg = new Image();
     newImg.onload = function(){
+      bg._cropUndo = {img:bg.img, wx:bg.wx, wy:bg.wy, baseW:bg.baseW, baseH:bg.baseH}; // 1回分だけ元に戻せるよう退避
       bg.img = newImg;
       bg.wx = newWx; bg.wy = newWy;
       bg.baseW = newBaseW; bg.baseH = newBaseH;
-      bg._mips = null; bg._mipsSrc = null; // ミップマップを次回描画時に作り直させる
+      bg._mips = null; bg._mipsSrc = null; bg._ghostCanvas = null; bg._ghostMips = null; // ミップマップを次回描画時に作り直させる
+      if(typeof scheduleAutosave==='function') scheduleAutosave();
       render();
       closePhotoCropper();
       showToast('背景をトリミングしました（実寸スケールはそのまま維持されます）');
@@ -8671,8 +9126,9 @@ async function bulkRecompressAllPhotos(){
   showToast('プロット・写真を再圧縮しています…');
   for(var si=0; si<S.sheets.length; si++){
     var sheet = S.sheets[si];
-    if(sheet && sheet.bg){
-      var bgResult = await recompressBgImage(sheet.bg);
+    var sheetBgs = sheetBgList(sheet);
+    for(var bgi=0; bgi<sheetBgs.length; bgi++){
+      var bgResult = await recompressBgImage(sheetBgs[bgi]);
       totalBefore += bgResult.before;
       totalAfter += bgResult.after;
       if(bgResult.before) count++;
@@ -9444,6 +9900,13 @@ function setTool(t, silent, keepDrawer){
   if(bCalib) bCalib.classList.toggle('on', t==='ruler');
   var bPin=document.getElementById('bPin');
   if(bPin) bPin.classList.toggle('on', t==='addpin');
+  var bPlotSel=document.getElementById('bPlotSel');
+  if(bPlotSel) bPlotSel.classList.toggle('on', t==='plotsel');
+  if(t==='plotsel'){
+    if(!S.bgs.length) showToast('プロット（PDF/写真）がまだ読み込まれていません。「📄プロット」から取り込んでください');
+    else showToast('プロットをタップして選択：ドラッグで移動／上のバーでコピー・トリミング・削除');
+    S.plotSelPicked = false; // 切替直後は未選択から始める
+  } else { S.plotSelPicked = false; S.plotPasteArmed = false; }
   if(t!=='scaff'){
     ['bScaffAsm','bScaffSusp','bScaffInternal','bScaffOverhang','bScaffYagura','bScaffBoard','bScaffSite'].forEach(function(id){
       var b=document.getElementById(id); if(b) b.classList.remove('on');
@@ -9451,7 +9914,7 @@ function setTool(t, silent, keepDrawer){
   }
   var keepDrawerOpen = ['fitting','stampExisting','stampNew','split','join','hose','freehand','headerPlan','headerIso','trim','extend','scaff'];
   if(!keepDrawer && keepDrawerOpen.indexOf(t)===-1) closeDrawer();
-  updateSt(); updateMirrorButton(); updateMultiSelPanel(); updatePipeEditPanel(); updateScaffEditPanel(); updateAngleGrpEditPanel(); updatePipeModeSwitch(); updateAngleStepSwitch(); updatePlotPanel(); updateFreehandBar();
+  updateSt(); updateMirrorButton(); updateMultiSelPanel(); updatePipeEditPanel(); updateScaffEditPanel(); updateAngleGrpEditPanel(); updatePipeModeSwitch(); updateAngleStepSwitch(); updatePlotPanel(); updateFreehandBar(); updatePlotSelBar();
 }
 // ── 配管の描画モード切替（アイソメ／平面図） ─────────────
 // 角度の合わせ単位は角度固定ボタン（15°/30°/45°/90°）でアイソメ・平面図共通に切り替える。長さはどちらも0.01m単位。
@@ -9607,26 +10070,31 @@ function setWeldTool(t){
 // 1つのファイルの中に複数の作図ページ（シート）を持てるようにする。
 // 各シートは配管等の要素（els）・元に戻す履歴（hist/histRedo）・背景PDF/写真（bg）を個別に持つ。
 function makeSheet(name){
-  return {id:'sh_'+Date.now()+'_'+Math.floor(Math.random()*10000), name:name, els:[], hist:[], histRedo:[], bg:null, pins:[]};
+  return {id:'sh_'+Date.now()+'_'+Math.floor(Math.random()*10000), name:name, els:[], hist:[], histRedo:[], bg:null, bgs:[], pins:[]};
 }
 // 現在画面に出ている内容を、今アクティブなシートのデータとして保存し直す（切替・保存前に必ず呼ぶ）
 function syncActiveSheetFromState(){
   var sh = S.sheets[S.activeSheet];
   if(!sh) return;
-  sh.els = S.els; sh.hist = S.hist; sh.histRedo = S.histRedo; sh.bg = S.bg; sh.pins = S.pins;
+  sh.els = S.els; sh.hist = S.hist; sh.histRedo = S.histRedo; sh.bg = S.bg; sh.bgs = S.bgs; sh.pins = S.pins;
 }
 // 指定したシートのデータを画面に反映する（アクティブシートの切替の実処理）
 function loadSheetIntoState(idx){
   var sh = S.sheets[idx];
   if(!sh) return;
   S.activeSheet = idx;
-  S.els = sh.els; S.hist = sh.hist; S.histRedo = sh.histRedo; S.bg = sh.bg || null;
+  S.els = sh.els; S.hist = sh.hist; S.histRedo = sh.histRedo;
+  if(!Array.isArray(sh.bgs)) sh.bgs = sh.bg ? [sh.bg] : [];
+  S.bgs = sh.bgs;
+  S.bg = (sh.bg && sh.bgs.indexOf(sh.bg)>=0) ? sh.bg : (sh.bgs.length ? sh.bgs[sh.bgs.length-1] : null);
   if(!sh.pins) sh.pins = [];
   S.pins = sh.pins;
   S.sel=null; S.multiSel=[]; hidePop();
   rebuildScaffCounters();
   updatePlotPanel();
   updatePinListPanel();
+  S.plotSelPicked = false; // シートが変わったので選択は解除（コピー内容は保持）
+  if(typeof updatePlotSelBar==='function') updatePlotSelBar();
 }
 function ensureAtLeastOneSheet(){
   if(!S.sheets.length){
@@ -9676,7 +10144,7 @@ function deleteSheet(idx){
   var sh = S.sheets[idx]; if(!sh) return;
   if(S.sheets.length<=1){ showToast('シートは1つ以上必要です'); return; }
   var pinCount = (sh.pins||[]).length;
-  var hasBg = !!sh.bg;
+  var hasBg = sheetBgList(sh).length>0;
   var detail = 'この階の配管・ピン';
   if(pinCount) detail += '（'+pinCount+'件）';
   if(hasBg) detail += '・PLOT（PDF/写真）';
@@ -9766,7 +10234,7 @@ function closeDrawer(){
 
 // ── STATUS / TOAST ─────────────────────────────
 function updateSt(){
-  var tn={pipe:'配管',fitting:'継手',dim:'寸法',text:'文字',eraser:'消去',northarrow:'プラントノース',split:'分割',join:'結合',trim:'トリム',extend:'延長',angle:'角度(補助三角形)',headerPlan:'ヘッダー(平面)',headerIso:'ヘッダー(アイソメ)',movebg:'背景PDF位置調整',hose:'ホース',freehand:'手書き（描き終えたら✅確定を押してください）',rangesel:'選択',ruler:'校正',addpin:'ピン追加（タップ=その場に設置／ドラッグ・長押し=引き出し線で①の位置を指定。Shift+タップで折れ点／既存ピンはドラッグで移動）'};
+  var tn={pipe:'配管',fitting:'継手',dim:'寸法',text:'文字',eraser:'消去',northarrow:'プラントノース',split:'分割',join:'結合',trim:'トリム',extend:'延長',angle:'角度(補助三角形)',headerPlan:'ヘッダー(平面)',headerIso:'ヘッダー(アイソメ)',movebg:'プロット位置調整（動かしたいプロットをタップ→ドラッグ）',plotsel:'プロット選択（タップで選択→ドラッグで移動／コピー・トリミングは上のバー）',hose:'ホース',freehand:'手書き（描き終えたら✅確定を押してください）',rangesel:'選択',ruler:'校正',addpin:'ピン追加（タップ=その場に設置／ドラッグ・長押し=引き出し線で①の位置を指定。Shift+タップで折れ点／既存ピンはドラッグで移動）'};
   var mode='';
   if(S.dragMode==='move'){
     if(S.dragEl && S.dragEl.kind==='fitting'){
@@ -10380,20 +10848,26 @@ function buildFullSvg(rect){
 // PDF/Excel出力用：作図（buildFullSvgと同じ内容）に加えて、背景PDF/写真も
 // 画面表示と同じ位置・回転・濃さでSVGの<image>として重ねて出力する。
 // 既存のSVG保存・メール送付（背景なし・線のみ）の仕様には一切影響しない。
-function buildExportSvg(rect){
-  var bodySvg = buildFullSvg(rect);
-  if(!S.bg || !S.bg.img) return bodySvg;
-  var bgW = S.bg.baseW*S.bg.scale, bgH = S.bg.baseH*S.bg.scale;
-  var bgCenterScr = w2s(S.bg.wx, S.bg.wy);
+// 背景プロット1枚分を、画面表示と同じ位置・回転・濃さのSVG <g><image> にする
+function bgGroupMarkup(b){
+  var bgW = b.baseW*b.scale, bgH = b.baseH*b.scale;
+  var bgCenterScr = w2s(b.wx, b.wy);
   var bgPxW = bgW*PX_PER_M*S.zoom, bgPxH = bgH*PX_PER_M*S.zoom;
   var tmpCanvas = document.createElement('canvas');
-  tmpCanvas.width = S.bg.img.naturalWidth || S.bg.img.width;
-  tmpCanvas.height = S.bg.img.naturalHeight || S.bg.img.height;
+  tmpCanvas.width = b.img.naturalWidth || b.img.width;
+  tmpCanvas.height = b.img.naturalHeight || b.img.height;
   var tctx = tmpCanvas.getContext('2d');
-  tctx.drawImage(S.bg.img, 0, 0);
+  tctx.drawImage((b.transparent && getKeyedBgCanvas(b)) || b.img, 0, 0);
   var bgDataUrl = tmpCanvas.toDataURL('image/png');
-  var bgImg = '<g transform="translate('+bgCenterScr.x.toFixed(2)+' '+bgCenterScr.y.toFixed(2)+') rotate('+(S.bg.angle||0)+')">'+
-    '<image href="'+bgDataUrl+'" x="'+(-bgPxW/2).toFixed(2)+'" y="'+(-bgPxH/2).toFixed(2)+'" width="'+bgPxW.toFixed(2)+'" height="'+bgPxH.toFixed(2)+'" opacity="'+S.bg.opacity+'"/></g>';
+  return '<g transform="translate('+bgCenterScr.x.toFixed(2)+' '+bgCenterScr.y.toFixed(2)+') rotate('+(b.angle||0)+')">'+
+    '<image href="'+bgDataUrl+'" x="'+(-bgPxW/2).toFixed(2)+'" y="'+(-bgPxH/2).toFixed(2)+'" width="'+bgPxW.toFixed(2)+'" height="'+bgPxH.toFixed(2)+'" opacity="'+b.opacity+'"/></g>';
+}
+function buildExportSvg(rect){
+  var bodySvg = buildFullSvg(rect);
+  var list = sheetBgList({bgs:S.bgs});
+  if(!list.length) return bodySvg;
+  // 配列の先頭＝一番奥、末尾＝一番手前の順に並べる（画面表示と同じ重なり順）
+  var bgImg = list.map(bgGroupMarkup).join('');
   // <svg ...>本体の直後に背景を差し込む（本体の中身より前＝一番奥に描画されるようにする）
   return bodySvg.replace(/(<svg[^>]*>)/, '$1'+bgImg);
 }
@@ -10436,9 +10910,9 @@ function computeSheetContentScreenRect(sheetData){
     if(p.lx!=null && p.ly!=null) addWorldPt(p.lx,p.ly); // 風船式：バルーンが離れた位置にある場合も出力範囲に含める
     if(p.bends && p.bends.length) p.bends.forEach(function(b){ addWorldPt(b.x,b.y); });
   });
-  if(sheetData.bg && sheetData.bg.img){
-    addRotatedRect(sheetData.bg.wx, sheetData.bg.wy, sheetData.bg.baseW*sheetData.bg.scale, sheetData.bg.baseH*sheetData.bg.scale, sheetData.bg.angle||0);
-  }
+  sheetBgList(sheetData).forEach(function(b){
+    addRotatedRect(b.wx, b.wy, b.baseW*b.scale, b.baseH*b.scale, b.angle||0);
+  });
   if(!isFinite(minX)) return null; // 何も描かれていないシート（出力対象外）
   var p1 = w2s(minX, minY), p2 = w2s(maxX, maxY);
   var x0 = Math.min(p1.x,p2.x), y0 = Math.min(p1.y,p2.y);
@@ -10449,7 +10923,7 @@ function computeSheetContentScreenRect(sheetData){
 }
 // 従来呼び出し箇所との互換用：現在アクティブなシートの内容だけで計算する
 function computeFullContentScreenRect(){
-  return computeSheetContentScreenRect({els:S.els, pins:S.pins, bg:S.bg});
+  return computeSheetContentScreenRect({els:S.els, pins:S.pins, bg:S.bg, bgs:S.bgs});
 }
 function getDefaultExportRect(){
   return computeFullContentScreenRect() || {x:0, y:0, w:canvas.width, h:canvas.height};
@@ -10832,19 +11306,10 @@ function parseDataUrlImage(url){
 }
 // 背景（PDF/写真）だけを1枚のsvgにする（buildExportSvgの背景部分を単独レイヤーとして切り出したもの）
 function buildBgOnlySvg(rect){
-  if(!S.bg || !S.bg.img) return null;
+  var bgList = sheetBgList({bgs:S.bgs});
+  if(!bgList.length) return null;
   var vx=rect.x, vy=rect.y, vw=rect.w, vh=rect.h;
-  var bgW = S.bg.baseW*S.bg.scale, bgH = S.bg.baseH*S.bg.scale;
-  var bgCenterScr = w2s(S.bg.wx, S.bg.wy);
-  var bgPxW = bgW*PX_PER_M*S.zoom, bgPxH = bgH*PX_PER_M*S.zoom;
-  var tmpCanvas = document.createElement('canvas');
-  tmpCanvas.width = S.bg.img.naturalWidth || S.bg.img.width;
-  tmpCanvas.height = S.bg.img.naturalHeight || S.bg.img.height;
-  var tctx = tmpCanvas.getContext('2d');
-  tctx.drawImage(S.bg.img, 0, 0);
-  var bgDataUrl = tmpCanvas.toDataURL('image/png');
-  var bgImg = '<g transform="translate('+bgCenterScr.x.toFixed(2)+' '+bgCenterScr.y.toFixed(2)+') rotate('+(S.bg.angle||0)+')">'+
-    '<image href="'+bgDataUrl+'" x="'+(-bgPxW/2).toFixed(2)+'" y="'+(-bgPxH/2).toFixed(2)+'" width="'+bgPxW.toFixed(2)+'" height="'+bgPxH.toFixed(2)+'" opacity="'+S.bg.opacity+'"/></g>';
+  var bgImg = bgList.map(bgGroupMarkup).join('');
   return '<svg xmlns="http://www.w3.org/2000/svg" width="'+vw+'" height="'+vh+'" viewBox="'+vx+' '+vy+' '+vw+' '+vh+'">'+bgImg+'</svg>';
 }
 // ピン1個分の単体svgを作る（drawPinIcon/drawPinNameLabelと同じ見た目：色付きの旗＋番号、名前があれば右側にラベル）。
@@ -11523,19 +11988,19 @@ async function exportAllSheetsXlsx(){
 
   var zip = new JSZip();
   var ctx = {sheetDefs:[], usedNames:{}, mediaIndex:1, drawingIndex:0, sheetId:1, wsFileIndex:0};
-  var origEls = S.els, origPins = S.pins, origBg = S.bg;
+  var origEls = S.els, origPins = S.pins, origBg = S.bg, origBgs = S.bgs;
 
   try{
     for(var t=0; t<targets.length; t++){
       var sh = targets[t].sheet;
       // このシートのデータを一時的にグローバル状態へ反映し、既存の描画関数をシート切替なしに再利用する
       // （画面表示中のアクティブシートには影響しない。最後に必ず元へ戻す）
-      S.els = sh.els||[]; S.pins = sh.pins||[]; S.bg = sh.bg||null;
+      S.els = sh.els||[]; S.pins = sh.pins||[]; S.bgs = sheetBgList(sh); S.bg = S.bgs.length ? S.bgs[S.bgs.length-1] : null;
       await xlsxAppendSheetPair(zip, sh.name||('シート'+(t+1)), targets[t].rect, ctx);
     }
   } finally {
     // グローバル状態を画面表示中のアクティブシートへ必ず戻す
-    S.els = origEls; S.pins = origPins; S.bg = origBg;
+    S.els = origEls; S.pins = origPins; S.bg = origBg; S.bgs = origBgs;
   }
 
   var stylesRId = 'rId'+(ctx.wsFileIndex+1);
@@ -11587,26 +12052,44 @@ var PROJECT_FILE_VERSION = 3;
 // 背景（Image要素を持つ）はそのままではJSON化できないため、img.src（常にdataURL）だけを取り出して保存する
 function serializeBg(bg){
   if(!bg || !bg.img) return null;
-  return {dataUrl:bg.img.src, wx:bg.wx, wy:bg.wy, baseW:bg.baseW, baseH:bg.baseH, scale:bg.scale, opacity:bg.opacity, angle:bg.angle};
+  return {dataUrl:bg.img.src, wx:bg.wx, wy:bg.wy, baseW:bg.baseW, baseH:bg.baseH, scale:bg.scale, opacity:bg.opacity, angle:bg.angle, transparent:!!bg.transparent};
 }
 function sheetToSaveObj(s){
-  return {name:s.name, els:s.els, pins:s.pins||[], bg:serializeBg(s.bg)};
+  var list = sheetBgList(s);
+  // 1枚だけの場合は従来と同じ形式（bg）で保存し、2枚以上のときだけ bgs 配列で保存する（画像の二重保存を避ける）
+  if(list.length <= 1) return {name:s.name, els:s.els, pins:s.pins||[], bg:serializeBg(list[0]||null)};
+  return {name:s.name, els:s.els, pins:s.pins||[], bg:null, bgs:list.map(serializeBg), bgSel:list.indexOf(s.bg)};
 }
 // 保存データからシートを復元する。背景がある場合は画像の読み込み完了を待ってから完了通知する（非同期）
 function sheetFromSaveObj(obj, idx, done){
   var sh = makeSheet(obj.name || ((idx+1)+'階'));
   sh.els = Array.isArray(obj.els) ? obj.els : [];
   sh.pins = Array.isArray(obj.pins) ? obj.pins : [];
-  if(obj.bg && obj.bg.dataUrl){
-    var img = new Image();
-    img.onload = function(){
-      sh.bg = {img:img, wx:obj.bg.wx, wy:obj.bg.wy, baseW:obj.bg.baseW, baseH:obj.bg.baseH, scale:obj.bg.scale, opacity:obj.bg.opacity, angle:obj.bg.angle};
+  var items = (Array.isArray(obj.bgs) && obj.bgs.length) ? obj.bgs : ((obj.bg && obj.bg.dataUrl) ? [obj.bg] : []);
+  sh.bg = null; sh.bgs = [];
+  if(!items.length){
+    setTimeout(done, 0);
+  } else {
+    var loadedBgs = new Array(items.length);
+    var remainingBgs = items.length;
+    var finishOne = function(){
+      remainingBgs--;
+      if(remainingBgs > 0) return;
+      sh.bgs = loadedBgs.filter(Boolean);
+      var si = (typeof obj.bgSel === 'number') ? obj.bgSel : -1;
+      sh.bg = (si>=0 && loadedBgs[si]) ? loadedBgs[si] : (sh.bgs.length ? sh.bgs[sh.bgs.length-1] : null);
       done();
     };
-    img.onerror = function(){ sh.bg = null; done(); };
-    img.src = obj.bg.dataUrl;
-  } else {
-    setTimeout(done, 0);
+    items.forEach(function(o, i){
+      if(!o || !o.dataUrl){ finishOne(); return; }
+      var img = new Image();
+      img.onload = function(){
+        loadedBgs[i] = {img:img, wx:o.wx, wy:o.wy, baseW:o.baseW, baseH:o.baseH, scale:o.scale, opacity:o.opacity, angle:o.angle, transparent:!!o.transparent};
+        finishOne();
+      };
+      img.onerror = function(){ finishOne(); };
+      img.src = o.dataUrl;
+    });
   }
   return sh;
 }
@@ -11842,14 +12325,18 @@ function finishBgImageLoad(img, loadedLabel){
   // ─ 実寸ではなく初期表示用の目安なので、配置後に「サイズ」ボタンで調整する前提
   var centerScr = s2w(canvas.width/2, canvas.height/2);
   var baseW = img.naturalWidth/300, baseH = img.naturalHeight/300;
-  S.bg = {img:img, wx:centerScr.x, wy:centerScr.y, baseW:baseW, baseH:baseH, scale:2.594, opacity:0.8, angle:0};
+  // 既にプロットがある場合は置き換えず、新しい1枚として追加する（複数枚を1シートに貼り付けられる）
+  var newBg = {img:img, wx:centerScr.x, wy:centerScr.y, baseW:baseW, baseH:baseH, scale:2.594, opacity:0.8, angle:0};
+  S.bgs.push(newBg);
+  S.bg = newBg;
   document.getElementById('bgOpacitySlider').value = 80;
   S.plotPanelOpen = true;
   S.showGrid = false; // プロット（写真/PDF）を貼り付けた直後は、下敷きが見やすいようグリッドを自動的に隠す（ツールバーの「⊞ グリッド切替」でいつでも再表示できる）
   updatePlotPanel();
   setTool('ruler', true); // 取込に続けて校正モードを自動で起動する（不要な場合は背景メニューの「校正をキャンセル」で戻れる）
   render();
-  showToast(loadedLabel+'を読み込みました（グリッドは非表示にしました／「⊞ グリッド切替」で再表示できます）。続けて校正を行ってください（不要なら背景メニューでキャンセルできます）');
+  if(typeof scheduleAutosave==='function') scheduleAutosave();
+  showToast(loadedLabel+'を'+S.bgs.length+'枚目のプロットとして追加しました。続けて校正を行ってください（不要なら背景メニューでキャンセルできます）。位置は「✋位置を調整」でプロットをタップ→ドラッグ');
 }
 // 写真（jpg/png等）を背景として読み込む。PDF取込と同じ下敷き機構（濃さ・サイズ・回転・位置）をそのまま使う。
 // 解像度はそのまま・保存形式だけWebP（対応環境。非対応時はJPEG）に変換することでファイルサイズを大きく抑える。
@@ -11927,11 +12414,119 @@ function resetBgScale(){
 }
 function removeBg(){
   if(!S.bg) return;
-  if(S.tool==='movebg') setTool('pipe', true);
-  S.bg = null;
+  var ri = S.bgs.indexOf(S.bg);
+  if(ri>=0) S.bgs.splice(ri,1);
+  S.bg = S.bgs.length ? S.bgs[Math.min(ri, S.bgs.length-1)] : null;
+  if(!S.bg && S.tool==='movebg') setTool('pipe', true);
+  S.plotSelPicked = false; updatePlotSelBar();
   updatePlotPanel();
   render();
-  showToast('プロットを削除しました');
+  if(typeof scheduleAutosave==='function') scheduleAutosave();
+  showToast('選択中のプロットを削除しました'+(S.bgs.length?'（残り'+S.bgs.length+'枚）':''));
+}
+// 複数プロット：操作対象（選択中）のプロットを切り替える
+function selectBg(i){
+  i = parseInt(i,10);
+  if(isNaN(i) || !S.bgs[i]) return;
+  S.bg = S.bgs[i];
+  updatePlotPanel();
+  render();
+}
+// 重なり順の入れ替え（dir=+1で前面へ、-1で背面へ）
+function moveBgOrder(dir){
+  var i = S.bgs.indexOf(S.bg), j = i+dir;
+  if(i<0 || j<0 || j>=S.bgs.length){ showToast(dir>0?'すでに一番前面です':'すでに一番背面です'); return; }
+  var tmp = S.bgs[i]; S.bgs[i] = S.bgs[j]; S.bgs[j] = tmp;
+  updatePlotPanel();
+  render();
+  if(typeof scheduleAutosave==='function') scheduleAutosave();
+}
+// 選択中のプロットを複製する（同じPDFの別の部分をトリミングして並べたいとき等に使う）
+function duplicateBg(){
+  if(!S.bg || !S.bg.img){ showToast('背景（PDF/写真）が読み込まれていません'); return; }
+  var b = S.bg;
+  var nb = {img:b.img, wx:b.wx+b.baseW*b.scale*0.1, wy:b.wy+b.baseH*b.scale*0.1,
+            baseW:b.baseW, baseH:b.baseH, scale:b.scale, opacity:b.opacity, angle:b.angle||0, transparent:!!b.transparent};
+  S.bgs.push(nb);
+  S.bg = nb;
+  updatePlotPanel();
+  render();
+  if(typeof scheduleAutosave==='function') scheduleAutosave();
+  showToast('プロットを複製しました（少しずらして配置）。「✂ トリミング」で必要な部分だけ残せます');
+}
+// ── プロット選択ツール：操作バー ──
+function updatePlotSelBar(){
+  var bar = document.getElementById('plotSelBar');
+  if(!bar) return;
+  var picked = S.tool==='plotsel' && S.plotSelPicked && !!S.bg && S.bgs.indexOf(S.bg)>=0 && !S.bgDragging;
+  var canPaste = S.tool==='plotsel' && !!S.plotClip && !S.bgDragging;
+  bar.classList.toggle('vis', picked || canPaste);
+  // 選択中のプロットがある時だけ、そのプロット用のボタンを出す
+  Array.prototype.forEach.call(bar.querySelectorAll('button, .psname'), function(el){
+    if(el.id==='plotSelPasteBtn') return;
+    el.style.display = picked ? '' : 'none';
+  });
+  var pb = document.getElementById('plotSelPasteBtn');
+  if(pb){
+    pb.style.display = S.plotClip ? '' : 'none';
+    pb.textContent = S.plotPasteArmed ? '✕ 貼り付けをやめる' : '📋 貼り付け';
+    pb.style.background = S.plotPasteArmed ? '#0277bd' : '';
+    pb.style.color = S.plotPasteArmed ? '#ffffff' : '';
+  }
+  var tsb = document.getElementById('plotSelTranspBtn');
+  if(tsb && S.bg) tsb.textContent = S.bg.transparent ? '◼ 白地を戻す' : '◻ 白を透明に';
+  if(picked){
+    var nm = document.getElementById('plotSelName');
+    if(nm) nm.textContent = 'プロット'+(S.bgs.indexOf(S.bg)+1)+'/'+S.bgs.length;
+  }
+}
+// コピー：その場で複製せず、内容だけを記憶する（貼り付け位置はあとで指定／シートをまたいでも可）
+function plotSelCopy(){
+  if(!S.bg || !S.bg.img){ return; }
+  var b = S.bg;
+  S.plotClip = {img:b.img, baseW:b.baseW, baseH:b.baseH, scale:b.scale, opacity:b.opacity, angle:b.angle||0, transparent:!!b.transparent};
+  S.plotPasteArmed = true;
+  updatePlotSelBar();
+  showToast('コピーしました。貼り付けたい場所をタップしてください（別のシートへ切り替えてから貼り付けもできます）');
+}
+// 貼り付けボタン：貼り付け待ちのON/OFF切替
+function plotSelPasteToggle(){
+  if(!S.plotClip){ showToast('先にプロットを選んで「コピー」してください'); return; }
+  S.plotPasteArmed = !S.plotPasteArmed;
+  updatePlotSelBar();
+  if(S.plotPasteArmed) showToast('貼り付けたい場所をタップしてください');
+}
+// 指定したワールド座標を中心に、コピー済みプロットを現在のシートへ貼り付ける
+function plotSelPasteAt(wx, wy){
+  var c = S.plotClip;
+  if(!c) return;
+  var nb = {img:c.img, wx:wx, wy:wy, baseW:c.baseW, baseH:c.baseH, scale:c.scale, opacity:c.opacity, angle:c.angle, transparent:!!c.transparent};
+  S.bgs.push(nb);
+  S.bg = nb;
+  S.plotSelPicked = true;
+  S.plotPasteArmed = false; // 1回貼り付けたら待ち状態を解除（続けて貼るときは「📋 貼り付け」を押す）
+  updatePlotPanel(); updatePlotSelBar(); render();
+  if(typeof scheduleAutosave==='function') scheduleAutosave();
+  showToast('貼り付けました。ドラッグで位置を微調整できます（続けて貼るなら「📋 貼り付け」）');
+}
+function plotSelTrim(){ if(!S.bg){ return; } openBgCropper(); }
+function plotSelOrder(dir){ if(!S.bg){ return; } moveBgOrder(dir); }
+function plotSelDelete(){
+  if(!S.bg) return;
+  if(!confirm('選択中のプロットを削除しますか？')) return;
+  removeBg();
+  S.plotSelPicked = false; updatePlotSelBar();
+}
+// 直前のトリミングを元に戻す（選択中のプロット・1回分）
+function undoBgCrop(){
+  if(!S.bg || !S.bg._cropUndo){ showToast('元に戻せるトリミングがありません'); return; }
+  var u = S.bg._cropUndo;
+  S.bg.img = u.img; S.bg.wx = u.wx; S.bg.wy = u.wy; S.bg.baseW = u.baseW; S.bg.baseH = u.baseH;
+  S.bg._mips = null; S.bg._mipsSrc = null; S.bg._ghostCanvas = null; S.bg._ghostMips = null;
+  S.bg._cropUndo = null;
+  render();
+  if(typeof scheduleAutosave==='function') scheduleAutosave();
+  showToast('トリミングを元に戻しました');
 }
 function togglePlotPanel(){
   S.plotPanelOpen = !S.plotPanelOpen;
@@ -11978,6 +12573,17 @@ function updatePlotPanel(){
   if(hasBg){
     var bgOp = document.getElementById('bgOpacitySlider');
     if(bgOp) bgOp.value = Math.round((S.bg.opacity!=null?S.bg.opacity:0.8)*100);
+    var tpb = document.getElementById('bgTranspBtn');
+    if(tpb){ tpb.textContent = S.bg.transparent ? '◼ 白地を元に戻す' : '◻ 白地を透明にする'; tpb.classList.toggle('on', !!S.bg.transparent); }
+    var bgSel = document.getElementById('bgSelect');
+    if(bgSel){
+      var bh = '';
+      S.bgs.forEach(function(b, i){
+        bh += '<option value="'+i+'"'+(b===S.bg?' selected':'')+'>プロット'+(i+1)+(i===S.bgs.length-1&&S.bgs.length>1?'（最前面）':'')+'</option>';
+      });
+      bgSel.innerHTML = bh;
+      bgSel.value = String(Math.max(0, S.bgs.indexOf(S.bg)));
+    }
   }
   if(hasGhost){
     var sel = document.getElementById('ghostSheetSelect');
@@ -12082,7 +12688,7 @@ function scheduleAutosave(){
   autosaveTimer = setTimeout(function(){
     try{
       syncActiveSheetFromState();
-      var hasContent = S.sheets.some(function(s){ return (s.els && s.els.length) || (s.pins && s.pins.length) || s.bg; });
+      var hasContent = S.sheets.some(function(s){ return (s.els && s.els.length) || (s.pins && s.pins.length) || s.bg || (s.bgs && s.bgs.length); });
       if(!hasContent){
         idbDeleteAutosave();
         try{ localStorage.removeItem(AUTOSAVE_KEY); }catch(e){}
@@ -12155,12 +12761,12 @@ function tryRestoreAutosave(then){
   });
 }
 function autosaveHasContent(data){
-  var hasSheets = Array.isArray(data.sheets) && data.sheets.some(function(s){ return (s.els&&s.els.length) || (s.pins&&s.pins.length) || s.bg; });
+  var hasSheets = Array.isArray(data.sheets) && data.sheets.some(function(s){ return (s.els&&s.els.length) || (s.pins&&s.pins.length) || s.bg || (s.bgs&&s.bgs.length); });
   var hasOldEls = Array.isArray(data.els) && data.els.length;
   return !!(hasSheets || hasOldEls);
 }
 function applyAutosavePayload(data, then){
-  var hasSheets = Array.isArray(data.sheets) && data.sheets.some(function(s){ return (s.els&&s.els.length) || (s.pins&&s.pins.length) || s.bg; });
+  var hasSheets = Array.isArray(data.sheets) && data.sheets.some(function(s){ return (s.els&&s.els.length) || (s.pins&&s.pins.length) || s.bg || (s.bgs&&s.bgs.length); });
   var hasOldEls = Array.isArray(data.els) && data.els.length;
   lastAutosavePayload = data;
   if(hasSheets){
@@ -12261,7 +12867,7 @@ function openDisplayMenuItem(which){
   if(which==='plot'){ triggerLoadPdf(); }
   else if(which==='removePlot'){
     if(!S.bg) return;
-    if(confirm('配置したプロット（背景のPDF/写真）を削除しますか？')) removeBg();
+    if(confirm('選択中のプロット（背景のPDF/写真）を削除しますか？')) removeBg();
   }
   else if(which==='plotSettings'){ if(!S.plotPanelOpen) togglePlotPanel(); }
   else if(which==='scaffList'){ if(!S.scaffListOpen) toggleScaffListPanel(); }
